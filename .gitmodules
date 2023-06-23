@@ -1,6 +1,6 @@
 [submodule "libs/common"]
 	path = libs/common
-	url = /home/wolp/projects/common.git/
+	url = /home/wolp/projects/common
 [submodule "libs/xarray_extras"]
 	path = libs/xarray_extras
 	url = /home/wolp/projects/xarray_extras
