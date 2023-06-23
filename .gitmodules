@@ -1,0 +1,12 @@
+[submodule "libs/common"]
+	path = libs/common
+	url = /home/wolp/projects/common.git/
+[submodule "libs/xarray_extras"]
+	path = libs/xarray_extras
+	url = /home/wolp/projects/xarray_extras
+[submodule "libs/fpsim"]
+	path = libs/fpsim
+	url = /home/wolp/projects/fpsim
+[submodule "libs/fpout"]
+	path = libs/fpout
+	url = /home/wolp/projects/fpout

@@ -1,0 +1,171 @@
+---------------- AUTO_PLUME_ID ----------------
+################
+print('*******************************************')
+print('PROVIDE_FLIGHT_INFO')
+print('*******************************************')
+################
+
+
+
+##############
+print('*******************************************')
+print('FIN IAGOS-CORE', flight_no)
+print('*******************************************')
+##############
+
+
+
+#### IAGOS CARIBIC
+''' <!!> pour test solo '''
+############
+print(f"is all NaN val_data_NO2 : {np.all(np.isnan(val_data_NO2))}")
+print(f"is all NaN val_data_NO : {np.all(np.isnan(val_data_NO))}")
+print(f"is all NaN val_data_NOx : {np.all(np.isnan(val_data_NOx))}")
+############
+
+
+
+##############
+print('*******************************************')
+print('ADD_PV')
+print('*******************************************')
+##############
+
+##############
+print('*******************************************')
+print('FIN ADD_PV')
+print('*******************************************')
+##############
+
+
+
+##############
+print('*******************************************')
+print('APPLY_CUTS')
+print('*******************************************')
+##############
+
+##############
+print('*******************************************')
+print('FIN APPLY_CUTS')
+print('*******************************************')
+##############
+
+
+
+##############
+print('*******************************************')
+print('NEW_STARTS')
+print('*******************************************')
+##############
+
+##############
+print(f"new_start: {new_start}\ncount : {count}\neof : {eof}")
+##############
+
+###########
+print("~~~ NOx_anom[i] > 0 ~~~")
+print(f"Iteration {i+1}:\tnew_start = {new_start}\tcount = {count}\ti = {i}\tNOx_anom[i] = {NOx_anom[i].values}\tplume_start_id = {plume_start_id}")
+print(f"\tplume_start_id APRES append : {plume_start_id}")
+print(f"Plume_start_NOx = {plume_start_NOx}")
+print(f"plume_start_lon = {plume_start_lon}")
+###########
+
+##############
+print('*******************************************')
+print('FIN NEW_STARTS')
+print('*******************************************')
+############## 
+
+
+
+##############
+print('*******************************************')
+print('NEW_END')
+print('*******************************************')
+############## 
+
+##############
+print(f"new_end : {new_end}")
+print(f"count : {count}\ncount_b : {count_b}")
+##############
+##############
+print(f"~~ count_b : {count_b} donc BREAK ~~")
+print(f"iteration {i - new_end}")
+print(f"plume_end_id : {plume_end_id}\tplume_end_lon : {plume_end_lon}\tplume_end_NOx : {plume_end_NOx}")
+##############
+
+##############
+print('*******************************************')
+print('FIN NEW_END')
+print('*******************************************')
+############## 
+
+
+
+##############
+print('*******************************************')
+print('FIND_PLUMES')
+print('*******************************************')
+##############
+
+##############
+if(len(list1)>0 and len(list2)>0):
+    print("°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°")
+    print(f"potential_plume_start_indices (list1) : {list1}")
+    print(f"potential_plume_end_indices (list2) : {list2}")
+    print("°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°")
+##############
+
+##############
+if(len(list1)>0 and len(list2)>0):
+    print(f"potential_plume_start_indices (list1) : {list1}")
+    print(f"potential_plume_end_indices (list2) : {list2}")
+print('*******************************************')
+print('FIN FIND_PLUMES')
+print('*******************************************')
+##############
+
+
+##############
+print('*******************************************')
+print('CALCULATE_MOVING_AVERAGE')
+print('*******************************************')
+##############
+
+##############
+print(f"taille fenêtre : {window_size}")
+print(f"taille mov_ave_NOX_anom : {len(mov_ave_NOx_anom)}")
+print(f"taille NOX_anom : {len(NOx_anom)}")
+print('*******************************************')
+print('FIN CALCULATE_MOVING_AVERAGE')
+print('*******************************************')
+##############
+
+---------------- FIN AUTO_PLUME_ID ----------------
+
+---------------- CHECK_FLEXPART_OUTPUT ----------------
+############################
+""" TEST PERSO """
+#print(f"dataArray spec00_mr: \n{da}\n")
+print(f"spec_argmax = da.argmax(dim=['longitude', 'latitude']) : \n{spec_argmax}\n")
+############################
+
+############################
+""" TEST PERSO """
+#print(f"lon_argmax = spec_argmax['longitude'] APRES LOAD : \n{lon_argmax}\n")
+#print(f"lat_argmax = spec_argmax['latitude'] APRES LOAD : \n{lat_argmax}\n")
+print(f"spec_max = da.isel(longitude=lon_argmax, latitude=lat_argmax) : \n{spec_max}\n")
+############################
+
+############################
+print(f"lon_argmax = lon_argmax.where(spec_max > 0) APRES WHERE : \n{lon_argmax}\n")
+#print(f"lat_argmax = lat_argmax.where(spec_max > 0) APRES WHERE : \n{lat_argmax}\n")
+#print(f"spec_max = spec_argmax.where(spec_max > 0) APRES WHERE : \n{spec_max}\n")
+############################
+
+############################
+print("lon_argmax[0] : ", lon_argmax[0], "\n")
+print(f"lon_argmax[0,0] : \n{lon_argmax[0,0]}\n")
+print(f"lon_argmax[0,0,0] values : \n{lon_argmax[0,0,0].values}\n")
+############################
