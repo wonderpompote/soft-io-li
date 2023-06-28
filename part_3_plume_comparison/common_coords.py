@@ -15,10 +15,14 @@ SAN_DIEGO_LON = -117.1933
 SAN_DIEGO_LAT = 32.7338
 
 # Satellite coverage
-GOES16_LON_MIN = 118 # -120°
-GOES16_LON_MAX = 298 # -30°
-GOES16_LAT_MIN = 75 # -52°
-GOES16_LAT_MAX = 284 # 52°
+SATELLITES_COVERAGE = {
+    "GOES_16": {
+        "LON_MIN": -120, # 118 # -120°
+        "LON_MAX": -30, # 298 # -30°
+        "LAT_MIN": -52, # 75 # -52°
+        "LAT_MAX": 52 # 284 # 52°
+    }
+}
 
 # --- North America, Atlantic and Europe ---
 NA_LAT_MIN=30
