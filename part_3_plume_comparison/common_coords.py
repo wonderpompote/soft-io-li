@@ -4,15 +4,152 @@ OUT_LAT_LOWER = -90.0
 D_X_OUT_LON = 0.5
 D_Y_OUT_LAT = 0.5
 
-# Airport coordinates
-BOGOTA_LON = -74.1461
-BOGOTA_LAT = 4.7010
-FRANKFURT_LON = 8.5622
-FRAKFURT_LAT = 50.0379
-COLOGNE_LON = 6.9603
-COLOGNE_LAT = 50.9375
-SAN_DIEGO_LON = -117.1933
-SAN_DIEGO_LAT = 32.7338
+# Airport coordinates (--> ?? use airport ID instead of city name ?)
+AIRPORT_COORDS= {
+    "BOG": {
+        "CITY_NAME": "BOGOTA", # <!> city names in upper case
+        "LON": -74.1461,
+        "LAT": 4.7010
+    },
+    "FRA": {
+        "CITY_NAME": "FRANKFURT",
+        "LON": 8.5622,
+        "LAT": 50.0379
+    },
+    "CGN": {
+        "CITY_NAME": "COLOGNE",
+        "LON": 6.9603,
+        "LAT": 50.9375
+    },
+    "SAN": {
+        "CITY_NAME": "SAN_DIEGO",
+        "LON": -117.1933,
+        "LAT": 32.7338
+    }  
+}
+
+# --- Geographical region limits as shown in the article ---
+GEO_REGIONS = {
+    0: {  # Northern North America
+        "REGION_NAME": "NNA",
+        "LON_MIN": -170,
+        "LON_MAX": -25,
+        "LAT_MIN": 60,
+        "LAT_MAX": 80
+    },
+    1: {  # North America Right
+        "REGION_NAME": "NAR",
+        "LON_MIN": -100,
+        "LON_MAX": -60,
+        "LAT_MIN": 30,
+        "LAT_MAX": 60
+    },
+    2: {  # North America Left
+        "REGION_NAME": "NAL",
+        "LON_MIN": -135,
+        "LON_MAX": -100,
+        "LAT_MIN": 30,
+        "LAT_MAX": 60
+    },
+    3: {  # Central America
+        "REGION_NAME": "CAM",
+        "LON_MIN": -110,
+        "LON_MAX": -60,
+        "LAT_MIN": 10,
+        "LAT_MAX": 30
+    },
+    4: {  # South America
+        "REGION_NAME": "SAM",
+        "LON_MIN": -80,
+        "LON_MAX": -35,
+        "LAT_MIN": -55,
+        "LAT_MAX": 10
+    },
+    5: {  # North Atlantic
+        "REGION_NAME": "NAT",
+        "LON_MIN": -60,
+        "LON_MAX": -25,
+        "LAT_MIN": 10,
+        "LAT_MAX": 60
+    },
+    6: {  # North Atlantic 2 (petit trou sur la carte je pense)
+        "REGION_NAME": "NAT2",
+        "LON_MIN": -35,
+        "LON_MAX": -25,
+        "LAT_MIN": 5,
+        "LAT_MAX": 10
+    },
+    7: {  # South Atlantic
+        "REGION_NAME": "SAT",
+        "LON_MIN": -35,
+        "LON_MAX": 10,
+        "LAT_MIN": -70,
+        "LAT_MAX": 5
+    },
+    8: {  # Europe
+        "REGION_NAME": "EU",
+        "LON_MIN": -25,
+        "LON_MAX": 40,
+        "LAT_MIN": 35,
+        "LAT_MAX": 70
+    },
+    9: {  # North Africa
+        "REGION_NAME": "NAF",
+        "LON_MIN": -25,
+        "LON_MAX": 40,
+        "LAT_MIN": 5,
+        "LAT_MAX": 35
+    },
+    10: {  # South Africa
+        "REGION_NAME": "SAF",
+        "LON_MIN": 10,
+        "LON_MAX": 50,
+        "LAT_MIN": -35,
+        "LAT_MAX": 5
+    },
+    11: {  # Russia
+        "REGION_NAME": "RUS",
+        "LON_MIN": 40,
+        "LON_MAX": 180,
+        "LAT_MIN": 50,
+        "LAT_MAX": 75
+    },
+    12: {  # Asia Right
+        "REGION_NAME": "ASR",
+        "LON_MIN": 90,
+        "LON_MAX": 140,
+        "LAT_MIN": -10,
+        "LAT_MAX": 50
+    },
+    13: {  # Asia Left
+        "REGION_NAME": "ASL",
+        "LON_MIN": 40,
+        "LON_MAX": 90,
+        "LAT_MIN": 5,
+        "LAT_MAX": 50
+    },
+    14: {  # Australia
+        "REGION_NAME": "AUS",
+        "LON_MIN": 110,
+        "LON_MAX": 180,
+        "LAT_MIN": -50,
+        "LAT_MAX": -10
+    },
+    15: {  # Pacific
+        "REGION_NAME": "PAC",
+        "LON_MIN": 140,
+        "LON_MAX": 180,
+        "LAT_MIN": -10,
+        "LAT_MAX": 50
+    },
+    16: {  # Pacific US
+        "REGION_NAME": "PAC_US",
+        "LON_MIN": -180,
+        "LON_MAX": -130,
+        "LAT_MIN": -10,
+        "LAT_MAX": 60
+    },
+}
 
 # Satellite coverage
 SATELLITES_COVERAGE = {
@@ -21,113 +158,29 @@ SATELLITES_COVERAGE = {
         "LON_MAX": -30, # 298 # -30°
         "LAT_MIN": -52, # 75 # -52°
         "LAT_MAX": 52 # 284 # 52°
+    },
+    "GOES_17": {
+        "LON_MIN": -180,
+        "LON_MAX": -90,
+        "LAT_MIN": -52,
+        "LAT_MAX": 52
     }
 }
 
-# --- North America, Atlantic and Europe ---
-NA_LAT_MIN=30
-NA_LAT_MAX=60
+"""
+# --- North America, Atlantic and Europe dans le code de catherine des fois ---
 NA_LON_MIN=-120
 NA_LON_MAX=-60
+NA_LAT_MIN=30
+NA_LAT_MAX=60
 
-AT_lat_max=60
-AT_lat_min=0
-AT_long_max=-25
 AT_long_min=-60
+AT_long_max=-25
+AT_lat_min=0
+AT_lat_max=60
 
-EU_lat_max=70
-EU_lat_min=35
-EU_long_max=40
 EU_long_min=-25
-
-# --- Geographical region limits as shown in the article ---
-# Northern North America
-NNA_LAT_MIN = 60
-NNA_LAT_MAX = 80
-NNA_LON_MIN = -170
-NNA_LON_MAX = -25
-# North America Right
-NAR_LAT_MIN = 30
-NAR_LAT_MAX = 60
-NAR_LON_MIN = -100
-NAR_LON_MAX = -60
-# North America Left
-NAL_LAT_MIN = 30
-NAL_LAT_MAX = 60
-NAL_LON_MIN = -135
-NAL_LON_MAX = -100
-# Central America
-CAM_LAT_MIN = 10
-CAM_LAT_MAX = 30
-CAM_LON_MIN = -110
-CAM_LON_MAX = -60
-# South America
-SAM_LAT_MIN = -55
-SAM_LAT_MAX = 10
-SAM_LON_MIN = -80
-SAM_LON_MAX = -35
-
-# North Atlantic
-NAT_LAT_MIN = 10
-NAT_LAT_MAX = 60
-NAT_LON_MIN=-60
-NAT_long_max=-25
-# NorthAtlantic 2 --> ???? pas sur la carte
-NAT2_lat_max=10
-NAT2_lat_min=5
-NAT2_long_max=-25
-NAT2_long_min=-35
-# South Atlantic
-SAT_LAT_MAX=5
-SAT_lat_min=-70
-SAT_long_max=10
-SAT_long_min=-35
-
-# Europe
-EU_lat_max=70
-EU_lat_min=35
 EU_long_max=40
-EU_long_min=-25
-
-# North Africa
-NAF_lat_max=35
-NAF_lat_min=5
-NAF_long_max=40
-NAF_long_min=-25
-# South Africa
-SAF_lat_max=5
-SAF_lat_min=-35
-SAF_long_max=50
-SAF_long_min=10
-
-# Russia
-RUS_lat_max=75
-RUS_lat_min=50
-RUS_long_max=180
-RUS_long_min=40
-# Asia Left
-ASL_lat_max=50
-ASL_lat_min=5
-ASL_long_max=90
-ASL_long_min=40
-# Asia Right
-ASR_lat_max=50
-ASR_lat_min=-10
-ASR_long_max=140
-ASR_long_min=90
-
-# Australia
-AUS_lat_max=-10
-AUS_lat_min=-50
-AUS_long_max=180
-AUS_long_min=110
-# Pacific
-PAC_lat_max=50
-PAC_lat_min=-10
-PAC_long_max=180
-PAC_long_min=140
-# Pacific US
-PAC_US_lat_max=60
-PAC_US_lat_min=-10
-PAC_US_long_max=-130
-PAC_US_long_min=-180
+EU_lat_min=35
+EU_lat_max=70
+"""
