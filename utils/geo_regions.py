@@ -1,7 +1,7 @@
 import xarray as xr
 import numpy as np
 
-def generate_dummy_lon_lat_da(lon_min=-179.25, lon_max=180.5, lon_step=0.5, lat_min=-89.75, lat_max=90, lat_step=0.5, dummy_value=99.):
+def generate_dummy_lon_lat_da(lon_min=-179.75, lon_max=180, lon_step=0.5, lat_min=-89.75, lat_max=90, lat_step=0.5, dummy_value=99.):
     """
 
     :param lon_min:
