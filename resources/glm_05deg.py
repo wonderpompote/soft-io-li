@@ -1,4 +1,5 @@
 import warnings
+import os
 
 import numpy as np
 import pandas as pd
@@ -9,6 +10,11 @@ from pathlib import Path
 
 import fpout
 
+### must be put somewhere else
+GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s"  # OR_GLM-L2-LCFA_G16_sYYYYDDD
+GLM_HOURLY_FILE_NAME = "GLM_array_"  # GLM_array_DDD_HH1-HH2.nc
+GLM_05DEG_DIR_PATH = '/o3p/patj/glm/GLM_array_05deg'
+OG_GLM_FILES_PATH = '/o3p/macc/glm'
 
 ############## will eventually be imported properly from utils etc. ##############
 # déjà dans utils/xarray_utils.py MAIS pas encore fait les imports proprement
@@ -141,11 +147,6 @@ def get_glm_format_date_from_datetime(date_to_split):
     }
 
 
-GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s"  # OR_GLM-L2-LCFA_G16_sYYYYDDD
-GLM_HOURLY_FILE_NAME = "GLM_array_"  # GLM_array_DDD_HH1-HH2.nc
-GLM_05DEG_DIR_PATH = '/o3p/patj/glm/GLM_array_05deg'
-
-
 # already in utils/glm_utils.py but not imported properly !!! <!> comments missing !!!!
 def get_glm_hourly_file_date(glm_filename):
     # expecting str with format GLM_array_DDD_HH1-HH2.nc with DDD: day number, HH1: start hour, HH2: end hour
@@ -183,7 +184,7 @@ def generate_glm_hourly_nc_file_pattern(day_of_year, start_hour="[0-2][0-9]", en
     return GLM_HOURLY_FILE_NAME + str(day_of_year) + "_" + str(start_hour) + "-" + str(end_hour) + ".nc"
 
 def generate_glm_05deg_hourly_nc_file_path(glm_dir_path_root, day_of_year, start_hour, end_hour):
-    return f'{glm_dir_path_root}{day_of_year}/GLM_array_05deg_{day_of_year}_{start_hour}-{end_hour}.nc'
+    return Path(f'{glm_dir_path_root}{day_of_year}/GLM_array_05deg_{day_of_year}_{start_hour}-{end_hour}.nc')
 ####################################################################################
 
 
@@ -265,7 +266,7 @@ def get_fp_output_start_end_dates_dict(fp_out_ds):
 
 
 def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_max=180, lat_min=-89.75, lat_max=90,
-                             grid_resolution=0.5, nc_file_path='/o3p/patj/glm/GLM_array_'):
+                             grid_resolution=0.5, nc_file_root_path=GLM_05DEG_DIR_PATH):
     """
     Function to open an hourly GLM file and grid the data into specific grids (by default 0.5° x 0.5°, same as FLEXPART output).
     The resulting dataset contains the given GLM data variables gridded according to the given grid resolution + a new date coordinate corresponding to the given GLM file date
@@ -276,7 +277,7 @@ def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_ma
     :param lat_min: new grid minimum latitude
     :param lat_max: new grid maximum latitude
     :param grid_resolution: new grid resolution
-    :param nc_file_path: name of result netCDF file
+    :param nc_file_root_path: name of result netCDF file
     :return: <xarray.Dataset> newly gridded dataset
     """
     """ 
@@ -324,43 +325,29 @@ def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_ma
                 # add new values to target_ds for specific latitude and longitude(s)
                 target_ds[data_var_name].loc[
                     dict(latitude=grouped_lat, longitude=da_operation.longitude)] = da_operation
-    # ON VEUT: /o3p/patj/glm/GLM_array_05deg_DDD/GLM_array_05deg_DDD_HH1-HH2.nc
-    # on a:
-    # - /o3p/macc/glm/OR_GLM-L2-LCFA_G16_s2018146/GLM_array_146_21-22.nc
-    #       --> on garde    GLM_array_146_21-22.nc
-    #       --> pour avoir  GLM_array_05deg_DDD_HH1-HH2.nc
-    # -
-    nc_file_path = generate_glm_05deg_hourly_nc_file_path(glm_ds_url, glm_ds_date["day_of_year"], glm_ds_date["start_hour"], glm_ds_date["end_hour"])
-    target_ds.to_netcdf(nc_file_path)
-    """ <!> est-ce que vraiment besoin de return le dataset ?? <!>"""
-    return target_ds
+
+    result_nc_file_path = generate_glm_05deg_hourly_nc_file_path(nc_file_root_path, glm_ds_date["day_of_year"], glm_ds_date["start_hour"], glm_ds_date["end_hour"])
+    # if directory that will contain nc file does not exist -> create it
+    if not result_nc_file_path.parent.exists():
+        os.makedirs(result_nc_file_path.parent)
+        print(f"Creating directory {result_nc_file_path}")
+    # if glm 05 deg file does not already exist -> create it
+    if not result_nc_file_path.exists():
+        target_ds.to_netcdf(result_nc_file_path)
+        print(f"Creating netcdf file {result_nc_file_path.parts[-1]}")
 
 
-if __name__ == '__main__':
+
+def regrid_glm_05deg(fp_out_path, glm_dir_url=OG_GLM_FILES_PATH, target_glm_05deg_dir=GLM_05DEG_DIR_PATH):
     """
-    glm_path = "GLM_array_156_19-20.nc"
     
     """
-    fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
     fp_ds = fpout.open_fp_dataset(fp_out_path, chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False)
     start_date_dic, end_date_dic = get_fp_output_start_end_dates_dict(fp_ds)
-    print("------------------------------------------------------")
-    print(f"start_date_dic : {start_date_dic}\nend_date_dic : {end_date_dic}")
-    print("------------------------------------------------------")
-
-    glm_dir_url = Path('/o3p/macc/glm')
     glm_file_list = get_glm_hourly_nc_files_path(glm_dir_url, start_date_dic, end_date_dic)
-    """
-    MERDOUILLE faut gérer les dossiers en plus !! PAS QUE LES FICHIERS
-    Catherine les met là dedans: 
-    dr.to_netcdf('/o3p/macc/test/GLM_array_154_05deg/GLM_array_154_'+s[0]+'_batch_bis.nc')  
-    """
+
     for glm_file in glm_file_list:
         print(glm_file)
-        #nc_file_path = GLM_05_DIR_PATH +
-        glm_file_date = get_glm_hourly_file_date(glm_file)
-        print(generate_glm_05deg_hourly_nc_file_path(GLM_05_DIR_PATH, glm_file_date["day_of_year"], glm_file_date["start_hour"], glm_file_date["end_hour"]))
-        break
         data_vars = {
             "flash_energy": {
                 "operation": "sum",
@@ -371,29 +358,13 @@ if __name__ == '__main__':
                 "operation_dims": None
             }
         }
-        final_ds = get_hourly_glm_05_deg_ds(
+        get_hourly_glm_05_deg_ds(
             glm_ds_url=glm_file,
             data_vars_dict=data_vars,
-            nc_file_name='glm_o5_ok_date_init_ds.nc'
+            nc_file_root_path=target_glm_05deg_dir
         )
 
-
-
-
-
-"""
-OK- STEP 1: get list of all hourly netcdf files
-    1- from FP output ds get start and end date 
-        --> faire une fonction qui appelle:
-            get_min_max_fp_output_date
-            np_datetime64_to_datetime
-            get_split_glm_format_date
-    2- 
-STEP 2: for each hourly file call, regrid it to 0.5 x 0.5 deg grid
-    1- get nc dir list
-    2- get nc file list
-    3- loop through nc file list and call get_hourly_glm_05_deg_ds on each of them
-    <!> gérer le nom des fichiers de sortie !!!
-"""
-
-{ "flash_energy": { "operation": "sum", "operation_dims": None }, "flash_count": { "operation": "count", "operation_dims": None } }
+if __name__ == '__main__':
+    # flight 003 --> à terme faire une boucle ? ou appeler les fonctions depuis ailleurs et la loop sera ailleurs aussi du coup
+    fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
+    regrid_glm_05deg(fp_out_path)
