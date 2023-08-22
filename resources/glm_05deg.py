@@ -7,6 +7,8 @@ from tqdm import tqdm
 from datetime import datetime
 from pathlib import Path
 
+import fpout
+
 
 ############## will eventually be imported properly from utils etc. ##############
 # déjà dans utils/xarray_utils.py MAIS pas encore fait les imports proprement
@@ -31,8 +33,11 @@ def check_all_dims_in_ds_or_da(dims_to_check, da_or_ds):
     else:
         return all(dim in da_or_ds.sizes for dim in dims_to_check)
 
+
 """ AMELIORATIONS: ??
 Check values to make sure they're in the right range --> maybe already done by datetime.strptime"""
+
+
 # déjà dans utils/utilitaires.py MAIS pas encore fait les imports proprement
 def get_np_datetime64_from_string(year, day_of_year, hour=0, mins=0, secs=0, month=None, day=None):
     """
@@ -56,7 +61,7 @@ def get_np_datetime64_from_string(year, day_of_year, hour=0, mins=0, secs=0, mon
         # if day_of_year AND month and day are all not None, raise warning and use day_of_year
         if all(d is not None for d in [month, day]):
             warnings.warn('Expecting day of the year OR month and day values, not both. Day of year value will be used',
-                      Warning)
+                          Warning)
         date_iso_str = datetime.strptime(f'{year}-{day_of_year}-{hour}-{mins}-{secs}', '%Y-%j-%H-%M-%S').isoformat()
     elif day_of_year is None and all(d is not None for d in [month, day]):
         date_iso_str = datetime.strptime(f'{year}-{day_of_year}-{hour}-{mins}-{secs}', '%Y-%j-%H-%M-%S').isoformat()
@@ -90,6 +95,7 @@ def apply_operation_on_grouped_da(grouped_by_da, operation, operation_dims=None)
     else:
         raise ValueError(f'{operation} operation not supported, expecting \'sum\' or \'count\'')
 
+
 # already in utils/fp_utils.py but not imported properly
 def get_min_max_fp_output_date(fp_out_ds):
     """
@@ -98,6 +104,7 @@ def get_min_max_fp_output_date(fp_out_ds):
     :return: <tuple> (<numpy.datetime64>, <numpy.datetime64>)
     """
     return fp_out_ds.spec001_mr.time.min().values, fp_out_ds.spec001_mr.time.max().values
+
 
 # already in utils/utilitaires.py but not imported properly
 def np_datetime64_to_datetime(np_date):
@@ -115,10 +122,11 @@ def np_datetime64_to_datetime(np_date):
     else:
         raise TypeError("wrong date format, expecting np.datetime64 object")
 
+
 # already in utils/glm_utils.py but not imported properly
 def get_glm_format_date_from_datetime(date_to_split):
     """
-    Funtion returning a dictionary containing year, day_number and hour from a datetime object
+    Funtion returning a dictionary containing year, day_of_year and hour from a datetime object
     Used for glm file manipulations (with day of year)
     :param date_to_split: <datetime.datetime> date to split
     :return: <dict> { "year": <str>, "day_of_year": <str>, "hour": <str> }
@@ -128,111 +136,136 @@ def get_glm_format_date_from_datetime(date_to_split):
     date_split = date_str.split('-')
     return {
         "year": date_split[0],
-        "day_number": date_split[1],
+        "day_of_year": date_split[1],
         "hour": date_split[2]
     }
 
-GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s" # OR_GLM-L2-LCFA_G16_sYYYYDDD
-GLM_HOURLY_FILE_NAME = "GLM_array_" # GLM_array_DDD_HH1-HH2.nc
 
-# already in utils/glm_utils.py but not imported properly !!! <!> comments missing !!!!
-def get_min_max_glm_daily_dir_path_list(glm_dir_path, min_date_dic, max_date_dic):
-    """
-    Function to get
-    :param glm_dir_path:
-    :param min_date_dic:
-    :param max_date_dic:
-    :return:
-    """
-    all_dir_list = sorted(glm_dir_path.glob(GLM_DIR_NAME+min_date_dic["year"]+"[0-3][0-6][0-9]"))
-    dir_list = []
-    # <!> glm_dir_path doit être un Path
-    min_date_dir_path = glm_dir_path / Path(GLM_DIR_NAME+min_date_dic["year"]+min_date_dic["day_number"])
-    max_date_dir_path = glm_dir_path / Path(GLM_DIR_NAME+max_date_dic["year"]+max_date_dic["day_number"])
-    for dir_name in all_dir_list:
-        if min_date_dir_path <= dir_name <= max_date_dir_path:
-            dir_list.append(dir_name)
-    return sorted(dir_list)
+GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s"  # OR_GLM-L2-LCFA_G16_sYYYYDDD
+GLM_HOURLY_FILE_NAME = "GLM_array_"  # GLM_array_DDD_HH1-HH2.nc
+GLM_05DEG_DIR_PATH = '/o3p/patj/glm/GLM_array_05deg'
+
 
 # already in utils/glm_utils.py but not imported properly !!! <!> comments missing !!!!
 def get_glm_hourly_file_date(glm_filename):
     # expecting str with format GLM_array_DDD_HH1-HH2.nc with DDD: day number, HH1: start hour, HH2: end hour
     # --> faire un pattern check (utiliser une fonction qui sera mise dans utils pour faire ça ?)
     #     ---> comme ça si on change le format on peut changer le check easy peasy (mais y aura quand même des pbms en fait)
-    glm_filename = glm_filename.split(".")[0] # remove .nc part of the path
+    if isinstance(glm_filename, Path):
+        glm_filename = str(glm_filename)
+    glm_filename = glm_filename.split(".")[0]  # remove .nc part of the path
     glm_filename_split = glm_filename.split("_")
     glm_hour_split = glm_filename_split[-1].split('-')
     return {
-        "day_number": glm_filename_split[-2],
+        "day_of_year": glm_filename_split[-2],
         "start_hour": glm_hour_split[0],
         "end_hour": glm_hour_split[1]
     }
+
 
 # already in utils/glm_utils.py but not imported properly !!! <!> comments missing !!!!
 def get_glm_daily_dir_date(glm_dirname):
     # expecting str with format OR_GLM-L2-LCFA_G16_sYYYYDDD with YYYY: year, DDD: day number
     # --> faire un pattern check (utiliser une fonction qui sera mise dans utils pour faire ça ?)
     #     ---> comme ça si on change le format on peut changer le check easy peasy (mais y aura quand même des pbms en fait)
-    glm_dirname = glm_dirname.split("_")[-1] # get last part of the dir name (sYYYYDDD)
-    glm_dirname_split = glm_dirname[1:] # remove the s
+    if isinstance(glm_dirname, Path):
+        glm_filename = str(glm_dirname)
+    glm_dirname = glm_dirname.split("_")[-1]  # get last part of the dir name (sYYYYDDD)
+    glm_dirname_split = glm_dirname[1:]  # remove the s
     return {
         "year": glm_dirname_split[:4],
-        "day_number": glm_dirname_split[-3:]
+        "day_of_year": glm_dirname_split[-3:]
     }
 
+
 # already in utils/glm_utils.py but not imported properly !!! <!> comments missing !!!!
-def get_glm_hourly_nc_file_pattern(day_number, start_hour="[0-2][0-9]", end_hour="[0-2][0-9]"):
-    return GLM_HOURLY_FILE_NAME+str(day_number)+"_"+str(start_hour)+"-"+str(end_hour)+".nc"
+def generate_glm_hourly_nc_file_pattern(day_of_year, start_hour="[0-2][0-9]", end_hour="[0-2][0-9]"):
+    return GLM_HOURLY_FILE_NAME + str(day_of_year) + "_" + str(start_hour) + "-" + str(end_hour) + ".nc"
+
+def generate_glm_05deg_hourly_nc_file_path(glm_dir_path_root, day_of_year, start_hour, end_hour):
+    return f'{glm_dir_path_root}{day_of_year}/GLM_array_05deg_{day_of_year}_{start_hour}-{end_hour}.nc'
 ####################################################################################
+
+
+# already in utils/glm_utils.py but not imported properly !!! <!> comments missing !!!!
+# <!> à laisser dans utils ???
+def get_daily_glm_dir_path_list(glm_dir_path, start_date_dic, end_date_dic):
+    """
+    Function returning a list of all the daily glm directories between start and end date
+    Each daily glm directory contains the hourly glm files for this day
+    :param glm_dir_path: directory where the daily glm directories are stored
+    :param start_date_dic: start date dictionary (year, day number, hour)
+    :param end_date_dic: end date dictionary (year, day number, hour)
+    :return: list of Path objects for all the directories between start and end date
+    :rtype: <list> [ <pathlib.Path>, ..., <pathlib.Path> ]
+    """
+    all_dir_list = sorted(glm_dir_path.glob(GLM_DIR_NAME + start_date_dic["year"] + "[0-3][0-6][0-9]"))
+    dir_list = []
+    # <!> glm_dir_path doit être un Path
+    min_date_dir_path = glm_dir_path / Path(GLM_DIR_NAME + start_date_dic["year"] + start_date_dic["day_of_year"])
+    max_date_dir_path = glm_dir_path / Path(GLM_DIR_NAME + end_date_dic["year"] + end_date_dic["day_of_year"])
+    for dir_name in all_dir_list:
+        if min_date_dir_path <= dir_name <= max_date_dir_path:
+            dir_list.append(dir_name)
+    return sorted(dir_list)
+
+
+def get_glm_hourly_nc_files_path(glm_dir_path, start_date_dic, end_date_dic):
+    """
+    Function returning a list of all the hourly GLM files between start and end date.
+    The hourly files are in the directories listed in glm_daily_dir_path
+    :param glm_dir_path: directory where the daily glm directories are stored
+    :param start_date_dic: <dict> containing year, day number and hour of the start date
+    :param end_date_dic: <dict> containing year, day number and hour of the end date
+    :return: list of Path objects for all the hourly glm netCDF files between start and end date
+    :rtype: <list> [ <pathlib.Path>, ..., <pathlib.Path> ]
+    """
+    nc_file_list = []
+    glm_daily_dir_list = get_daily_glm_dir_path_list(glm_dir_path, start_date_dic, end_date_dic)
+    for daily_dir_path in sorted(glm_daily_dir_list):  # for each day dir go through hourly file list
+        # get directory day and year (according to dir name)
+        daily_dir_path_dic = get_glm_daily_dir_date(str(daily_dir_path))
+        # if dir day between min and max day, add all nc files corresponding to the pattern --> GLM_array_DDD_HH1-HH2.nc
+        if start_date_dic["day_of_year"] < daily_dir_path_dic["day_of_year"] < end_date_dic["day_of_year"]:
+            nc_file_list.extend(
+                sorted(daily_dir_path.glob(generate_glm_hourly_nc_file_pattern(daily_dir_path_dic["day_of_year"]))))
+
+        # if min day, we only keep the hourly files > min day start hour
+        elif daily_dir_path_dic["day_of_year"] == start_date_dic["day_of_year"]:
+            for hourly_file_path in sorted(daily_dir_path.iterdir()):
+                hourly_file_date_dic = get_glm_hourly_file_date(hourly_file_path.parts[-1])
+                if hourly_file_date_dic["start_hour"] >= start_date_dic["hour"]:
+                    nc_file_list.append(hourly_file_path)
+
+        # if max day, we only keep the hourly files < max day end hour
+        elif daily_dir_path_dic["day_of_year"] == end_date_dic["day_of_year"]:
+            for hourly_file_path in sorted(daily_dir_path.iterdir()):
+                hourly_file_date_dic = get_glm_hourly_file_date(hourly_file_path.parts[-1])
+                if hourly_file_date_dic["start_hour"] <= end_date_dic["hour"]:
+                    nc_file_list.append(hourly_file_path)
+                else:  # break the loop once file date is over the end hour
+                    break
+    return sorted(nc_file_list)
 
 
 def get_fp_output_start_end_dates_dict(fp_out_ds):
     """
     Function returning FLEXPART simulation start and end date as dictionaries containing year, day of year and hour value
     :param fp_out_ds: <xarray.Dataset> FLEXPART simulation output
-    :return: <tuple> ( <dict> { "year": <str>, "day_of_year": <str>, "hour": <str> }, <dict> { "year": <str>, "day_of_year": <str>, "hour": <str> } )
+    :return: <tuple> ( <dict> { "year": <str>, "day_of_year": <str>, "hour": <str> },
+                        <dict> { "year": <str>, "day_of_year": <str>, "hour": <str> } )
     """
-    start_npdate, end_npdate = get_min_max_fp_output_date(fp_out_ds) # <numpy.datetime64>
-    start_date = np_datetime64_to_datetime(start_npdate) # <datetime.datetime>
+    start_npdate, end_npdate = get_min_max_fp_output_date(fp_out_ds)  # <numpy.datetime64>
+    start_date = np_datetime64_to_datetime(start_npdate)  # <datetime.datetime>
     end_date = np_datetime64_to_datetime(end_npdate)
     return get_glm_format_date_from_datetime(start_date), get_glm_format_date_from_datetime(end_date)
 
 
-def get_glm_hourly_nc_files_path(glm_daily_dir_path, start_date_dic, end_date_dic):
-    """
-    Function returning a list of all the hourly GLM files between start and end date.
-    The hourly files are in the directories listed in glm_daily_dir_path
-    :param glm_daily_dir_path: list of directories containing the hourly GLM netCDF files
-    :param start_date_dic: <dict> containing year, day number and hour of the start date
-    :param end_date_dic: <dict> containing year, day number and hour of the end date
-    :return: <list> [ <pathlib.Path>, ..., <pathlib.Path> ] list of Path objects for all the hourly glm netCDF files between start and end date
-    """
-    nc_file_list = []
-    glm_daily_dir_path = sorted(glm_daily_dir_path) # make sure glm daily directory path list is sorted
-    for daily_dir_path in glm_daily_dir_path: # for each day dir go through hourly file list
-        daily_dir_path_dic = get_glm_daily_dir_date(str(daily_dir_path)) # get directory day and year (according to dir name)
-        # if dir day is between min and max day, add all nc files corresponding to the pattern --> GLM_array_DDD_HH1-HH2.nc
-        if daily_dir_path_dic["day_number"] > start_date_dic["day_number"] and daily_dir_path_dic["day_number"] < end_date_dic["day_number"]:
-            nc_file_list.extend(sorted(daily_dir_path.glob(get_glm_hourly_nc_file_pattern(daily_dir_path_dic["day_number"]))))
-        # if min day, we only keep the hourly files > min day start hour
-        elif daily_dir_path_dic["day_number"] == start_date_dic["day_number"]:
-            for hourly_file_path in sorted(daily_dir_path.iterdir()):
-                hourly_file_date_dic = get_glm_hourly_file_date(hourly_file_path.parts[-1])
-                if hourly_file_date_dic["start_hour"] >= start_date_dic["hour"]:
-                    nc_file_list.append(hourly_file_path)
-        # if max day, we only keep the hourly files < max day end hour
-        elif daily_dir_path_dic["day_number"] == end_date_dic["day_number"]:
-            for hourly_file_path in sorted(daily_dir_path.iterdir()):
-                hourly_file_date_dic = get_glm_hourly_file_date(hourly_file_path.parts[-1])
-                if hourly_file_date_dic["start_hour"] <= end_date_dic["hour"]:
-                    nc_file_list.append(hourly_file_path)
-                elif hourly_file_date_dic["start_hour"] > end_date_dic["hour"]:
-                    break
-    return sorted(nc_file_list)
-
 """ <!> va falloir bidouiller pour le nom du resulting nc file"""
+
+
 def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_max=180, lat_min=-89.75, lat_max=90,
-                             grid_resolution=0.5, nc_file_name='target_ds_test01.nc'):
+                             grid_resolution=0.5, nc_file_path='/o3p/patj/glm/GLM_array_'):
     """
     Function to open an hourly GLM file and grid the data into specific grids (by default 0.5° x 0.5°, same as FLEXPART output).
     The resulting dataset contains the given GLM data variables gridded according to the given grid resolution + a new date coordinate corresponding to the given GLM file date
@@ -243,7 +276,7 @@ def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_ma
     :param lat_min: new grid minimum latitude
     :param lat_max: new grid maximum latitude
     :param grid_resolution: new grid resolution
-    :param nc_file_name: name of result netCDF file
+    :param nc_file_path: name of result netCDF file
     :return: <xarray.Dataset> newly gridded dataset
     """
     """ 
@@ -256,10 +289,10 @@ def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_ma
     # generate dataset in which we'll be putting the summed flash_energy values
     latitudes = np.arange(lat_min, lat_max, grid_resolution)
     longitudes = np.arange(lon_min, lon_max, grid_resolution)
-    day_number = glm_path.split('_')[2]
-    start_hour = glm_path.split('_')[3].split('-')[0]
+    glm_ds_date = get_glm_hourly_file_date(glm_ds_url)
     """ <!!!!!> YEAR EN DUR POUR L'INSTANT AIE AIE AIE """
-    date = get_np_datetime64_from_string(year=2018, day_of_year=day_number, hour=start_hour)
+    date = get_np_datetime64_from_string(year=2018, day_of_year=glm_ds_date['day_of_year'],
+                                         hour=glm_ds_date['start_hour'])
     data_vars = {}
     for var in data_vars_dict:
         data_vars[var] = (['time', 'latitude', 'longitude'], np.zeros(shape=(1, len(latitudes), len(longitudes))))
@@ -289,8 +322,16 @@ def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_ma
                     operation_dims=data_vars_dict[data_var_name]['operation_dims']
                 )
                 # add new values to target_ds for specific latitude and longitude(s)
-                target_ds[data_var_name].loc[dict(latitude=grouped_lat, longitude=da_operation.longitude)] = da_operation
-    target_ds.to_netcdf(nc_file_name)
+                target_ds[data_var_name].loc[
+                    dict(latitude=grouped_lat, longitude=da_operation.longitude)] = da_operation
+    # ON VEUT: /o3p/patj/glm/GLM_array_05deg_DDD/GLM_array_05deg_DDD_HH1-HH2.nc
+    # on a:
+    # - /o3p/macc/glm/OR_GLM-L2-LCFA_G16_s2018146/GLM_array_146_21-22.nc
+    #       --> on garde    GLM_array_146_21-22.nc
+    #       --> pour avoir  GLM_array_05deg_DDD_HH1-HH2.nc
+    # -
+    nc_file_path = generate_glm_05deg_hourly_nc_file_path(glm_ds_url, glm_ds_date["day_of_year"], glm_ds_date["start_hour"], glm_ds_date["end_hour"])
+    target_ds.to_netcdf(nc_file_path)
     """ <!> est-ce que vraiment besoin de return le dataset ?? <!>"""
     return target_ds
 
@@ -298,30 +339,50 @@ def get_hourly_glm_05_deg_ds(glm_ds_url, data_vars_dict, lon_min=-179.75, lon_ma
 if __name__ == '__main__':
     """
     glm_path = "GLM_array_156_19-20.nc"
-    data_vars = {
-        "flash_energy": {
-            "operation": "sum",
-            "operation_dims": None
-        },
-        "flash_count": {
-            "operation": "count",
-            "operation_dims": None
-        }
-    }
-
-    final_ds = get_hourly_glm_05_deg_ds(
-        glm_ds_url=glm_path,
-        data_vars_dict=data_vars,
-        nc_file_name='glm_o5_ok_date_init_ds.nc'
-    )
+    
     """
-    fp_out_path = "'/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'"
-    with xr.open_dataset(fp_out_path) as fp_ds:
-        print(get_fp_output_start_end_dates_dict(fp_ds))
+    fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
+    fp_ds = fpout.open_fp_dataset(fp_out_path, chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False)
+    start_date_dic, end_date_dic = get_fp_output_start_end_dates_dict(fp_ds)
+    print("------------------------------------------------------")
+    print(f"start_date_dic : {start_date_dic}\nend_date_dic : {end_date_dic}")
+    print("------------------------------------------------------")
+
+    glm_dir_url = Path('/o3p/macc/glm')
+    glm_file_list = get_glm_hourly_nc_files_path(glm_dir_url, start_date_dic, end_date_dic)
+    """
+    MERDOUILLE faut gérer les dossiers en plus !! PAS QUE LES FICHIERS
+    Catherine les met là dedans: 
+    dr.to_netcdf('/o3p/macc/test/GLM_array_154_05deg/GLM_array_154_'+s[0]+'_batch_bis.nc')  
+    """
+    for glm_file in glm_file_list:
+        print(glm_file)
+        #nc_file_path = GLM_05_DIR_PATH +
+        glm_file_date = get_glm_hourly_file_date(glm_file)
+        print(generate_glm_05deg_hourly_nc_file_path(GLM_05_DIR_PATH, glm_file_date["day_of_year"], glm_file_date["start_hour"], glm_file_date["end_hour"]))
+        break
+        data_vars = {
+            "flash_energy": {
+                "operation": "sum",
+                "operation_dims": None
+            },
+            "flash_count": {
+                "operation": "count",
+                "operation_dims": None
+            }
+        }
+        final_ds = get_hourly_glm_05_deg_ds(
+            glm_ds_url=glm_file,
+            data_vars_dict=data_vars,
+            nc_file_name='glm_o5_ok_date_init_ds.nc'
+        )
+
+
+
 
 
 """
-STEP 1: get list of all hourly netcdf files
+OK- STEP 1: get list of all hourly netcdf files
     1- from FP output ds get start and end date 
         --> faire une fonction qui appelle:
             get_min_max_fp_output_date
@@ -329,8 +390,10 @@ STEP 1: get list of all hourly netcdf files
             get_split_glm_format_date
     2- 
 STEP 2: for each hourly file call, regrid it to 0.5 x 0.5 deg grid
-    1- loop through nc file list and call get_hourly_glm_05_deg_ds on each of them
+    1- get nc dir list
+    2- get nc file list
+    3- loop through nc file list and call get_hourly_glm_05_deg_ds on each of them
     <!> gérer le nom des fichiers de sortie !!!
 """
 
-
+{ "flash_energy": { "operation": "sum", "operation_dims": None }, "flash_count": { "operation": "count", "operation_dims": None } }
