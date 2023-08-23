@@ -29,6 +29,31 @@ DEFAULT_GLM_DATA_VARS_TO_REGRID = {
 
 
 ############## will eventually be imported properly from utils etc. ##############
+def concat_hourly_nc_files_into_daily_file(root_dir=GLM_REGRID_DIR_PATH, year='2018', dir_pattern=GLM_REGRID_DIR_NAME+"[0-3][0-6][0-9]", result_file_name=GLM_REGRID_DIR_NAME):
+    # <!> PAS de file_pattern parce qu'on utilise generate glm pattern 
+    #    --> MAIS si on met concat ailleurs va falloir changer ça pour qu'on ait des patterns adapté aux données
+    # idem pour dir_path_day
+    root_dir_path = Path(f'{root_dir}/{year}/')
+    dir_list = sorted(root_dir_path.glob(dir_pattern))
+    for dir_path in dir_list:
+        dir_path_day = str(dir_path).split('_')[-1]
+        pattern = generate_glm_hourly_nc_file_pattern(day_of_year=dir_path_day, regrid_str="05deg_")
+        file_list = sorted(dir_path.glob(pattern))
+        with xr.open_mfdataset(file_list) as combined_ds:
+            ##################
+            print(combined_ds.time.values)
+            ##################
+            # save to netcdf --> <!> que la même date dans time quand je write to netcdf
+            combined_ds.to_netcdf('/o3p/patj/test.nc')#(f'{root_dir_path}/{result_file_name}_{str(dir_path_day)}.nc')
+            print(dir_path)
+            print(f'Creating file: {result_file_name}{dir_path_day}')
+            print('-----')
+        break
+    return 
+
+
+
+
 # déjà dans utils/xarray_utils.py MAIS pas encore fait les imports proprement
 def check_all_dims_in_ds_or_da(dims_to_check, da_or_ds):
     """
@@ -201,8 +226,8 @@ def get_glm_daily_dir_date(glm_dirname):
 
 
 # already in utils/glm_utils.py but not imported properly !!! <!> comments missing !!!!
-def generate_glm_hourly_nc_file_pattern(day_of_year, start_hour="[0-2][0-9]", end_hour="[0-2][0-9]"):
-    return GLM_HOURLY_FILE_NAME + str(day_of_year) + "_" + str(start_hour) + "-" + str(end_hour) + ".nc"
+def generate_glm_hourly_nc_file_pattern(day_of_year="[0-3][0-6][0-9]", start_hour="[0-2][0-9]", end_hour="[0-2][0-9]", regrid_str=""):
+    return GLM_HOURLY_FILE_NAME + regrid_str + str(day_of_year) + "_" + str(start_hour) + "-" + str(end_hour) + ".nc"
 
 
 def generate_glm_05deg_hourly_nc_file_path(glm_dir_path_root, day_of_year, start_hour, end_hour):
@@ -316,7 +341,7 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.75,
     """
     # get glm file day of year, start hour, end hour and year (taken from glm directory name)
     glm_ds_date = get_glm_hourly_file_date(glm_ds_url, get_glm_daily_dir_date(glm_ds_url.parent)["year"])
-    result_nc_file_path = generate_glm_05deg_hourly_nc_file_path(Path(f'{regrid_result_root_path}/{regrid_daily_dir_name}'), glm_ds_date["day_of_year"],
+    result_nc_file_path = generate_glm_05deg_hourly_nc_file_path(Path(f'{regrid_result_root_path}/{glm_ds_date["year"]}/{regrid_daily_dir_name}'), glm_ds_date["day_of_year"],
                                                                  glm_ds_date["start_hour"], glm_ds_date["end_hour"])
 
     # if directory that will contain nc file does not exist -> create it
@@ -329,7 +354,6 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.75,
         # generate dataset in which we'll be putting the summed flash_energy values
         latitudes = np.arange(lat_min, lat_max, grid_resolution)
         longitudes = np.arange(lon_min, lon_max, grid_resolution)
-        """ <!!!!!> YEAR EN DUR POUR L'INSTANT AIE AIE AIE """
         date = get_np_datetime64_from_string(year=glm_ds_date["year"], day_of_year=glm_ds_date['day_of_year'],
                                              hour=glm_ds_date['start_hour'])
         data_vars = {}
@@ -338,11 +362,10 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.75,
         target_ds = xr.Dataset(
             data_vars=data_vars,
             coords={
-                'time': np.atleast_1d(date),
+                'time': [date],#np.atleast_1d(date),
                 'latitude': latitudes,
                 'longitude': longitudes,
-            }
-        )
+            })
         with xr.open_dataset(glm_ds_url) as glm_ds:
             # assign new longitude and latitude coords with chosen grid resolution using nearest method
             glm_ds_regrid_lon_lat = glm_ds.assign_coords({
@@ -363,16 +386,12 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.75,
                     # add new values to target_ds for specific latitude and longitude(s)
                     target_ds[data_var_name].loc[
                         dict(latitude=grouped_lat, longitude=da_operation.longitude)] = da_operation
-        # convert target ds to netCDF file
-        target_ds.to_netcdf(result_nc_file_path)
+        # convert target ds to netCDF file (manual encoding to keep finer date value (by default converted to int64, units "days since 1970-01-01")
+        target_ds.to_netcdf(result_nc_file_path, encoding={"time":{"dtype":'float64', 'units':'nanoseconds since 1970-01-01'}})
         print(f"Created netcdf file {result_nc_file_path.parts[-1]}")
 
     else:  # file already exists so no need to create it again
         print(f"{result_nc_file_path} already exists")
-
-
-def concat_hourly_into_daily_file():
-    return None
 
 
 def regrid_glm_files_for_fp_output(fp_out_path, data_vars_to_regrid=DEFAULT_GLM_DATA_VARS_TO_REGRID, glm_dir_url=OG_GLM_FILES_PATH, target_glm_05deg_dir=GLM_REGRID_DIR_PATH, regrid_daily_dir_name=GLM_REGRID_DIR_NAME,
@@ -386,7 +405,7 @@ def regrid_glm_files_for_fp_output(fp_out_path, data_vars_to_regrid=DEFAULT_GLM_
     start_date_dic, end_date_dic = get_fp_output_start_end_dates_dict(fp_ds)
     glm_file_list = get_glm_hourly_nc_files_path(glm_dir_url, start_date_dic, end_date_dic)
 
-    for glm_file in glm_file_list:
+    for glm_file in sorted(glm_file_list):
         print(glm_file)
         regrid_file = generate_hourly_regrid_glm_file(
             glm_ds_url=glm_file,
@@ -401,5 +420,7 @@ def regrid_glm_files_for_fp_output(fp_out_path, data_vars_to_regrid=DEFAULT_GLM_
 if __name__ == '__main__':
     # flight 003 --> à terme faire une boucle ? ou appeler les fonctions depuis ailleurs et la loop sera ailleurs aussi du coup
     fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
-    regrid_file_list = regrid_glm_files_for_fp_output(fp_out_path)
+    regrid_glm_files_for_fp_output(fp_out_path)
+    #print(concat_hourly_nc_files_into_daily_file())
+    #print(get_glm_daily_dir_date("GLM_array_05deg_146"))
 
