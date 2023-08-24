@@ -1,5 +1,6 @@
 import warnings
 import os
+import nco
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ import fpout
 GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s"  # OR_GLM-L2-LCFA_G16_sYYYYDDD
 GLM_HOURLY_FILE_NAME = "GLM_array_"  # GLM_array_DDD_HH1-HH2.nc
 GLM_REGRID_DIR_PATH = Path('/o3p/patj/glm/GLM_array_05deg/')
+CONCAT_GLM_REGRID_DIR_NAME = "concat_GLM_array_05deg"
 GLM_REGRID_DIR_NAME = "GLM_array_05deg_"
 OG_GLM_FILES_PATH = Path('/o3p/macc/glm')
 DEFAULT_GLM_DATA_VARS_TO_REGRID = {
@@ -29,27 +31,39 @@ DEFAULT_GLM_DATA_VARS_TO_REGRID = {
 
 
 ############## will eventually be imported properly from utils etc. ##############
-def concat_hourly_nc_files_into_daily_file(root_dir=GLM_REGRID_DIR_PATH, year='2018', dir_pattern=GLM_REGRID_DIR_NAME+"[0-3][0-6][0-9]", result_file_name=GLM_REGRID_DIR_NAME):
+"""
+nco.ncrcat(input=full_path_filenames, output='../GLM_array_163_'+folders[i]+'.nc', options=['-h'])
+"""
+def concat_hourly_nc_files_into_daily_file(root_dir=GLM_REGRID_DIR_PATH, year='2018', dir_pattern=GLM_REGRID_DIR_NAME+"[0-3][0-6][0-9]", result_dir_name=CONCAT_GLM_REGRID_DIR_NAME, result_file_name=GLM_REGRID_DIR_NAME):
     # <!> PAS de file_pattern parce qu'on utilise generate glm pattern 
     #    --> MAIS si on met concat ailleurs va falloir changer ça pour qu'on ait des patterns adapté aux données
     # idem pour dir_path_day
     root_dir_path = Path(f'{root_dir}/{year}/')
     dir_list = sorted(root_dir_path.glob(dir_pattern))
+    # loop through dir list
     for dir_path in dir_list:
         dir_path_day = str(dir_path).split('_')[-1]
         pattern = generate_glm_hourly_nc_file_pattern(day_of_year=dir_path_day, regrid_str="05deg_")
         file_list = sorted(dir_path.glob(pattern))
-        with xr.open_mfdataset(file_list) as combined_ds:
-            ##################
-            print(combined_ds.time.values)
-            ##################
-            # save to netcdf --> <!> que la même date dans time quand je write to netcdf
-            combined_ds.to_netcdf('/o3p/patj/test.nc')#(f'{root_dir_path}/{result_file_name}_{str(dir_path_day)}.nc')
-            print(dir_path)
-            print(f'Creating file: {result_file_name}{dir_path_day}')
+        concat_file_name = Path(f'{root_dir_path}/{result_dir_name}/{result_file_name}{str(dir_path_day)}.nc')
+        # check if dir containing result concatenated files exists
+        if not concat_file_name.parent.exists():
+            os.makedirs(concat_file_name.parent)
+            print(f"Creating directory {concat_file_name.parent}")
+        # check if concatenated file already exists
+        # if not concatenate all hourly glm files to create a daily
+        if not concat_file_name.exists():
+            """nco.Nco().ncrcat(input=file_list, output=concat_file_name, options=['-h'])
+            print(f"{concat_file_name} created successfully")
+            """
+            with xr.open_mfdataset(file_list) as combined_ds:
+                # save to netcdf
+                combined_ds.to_netcdf(concat_file_name, encoding={"time":{"dtype":'float64', 'units':'nanoseconds since 1970-01-01'}})
+                print(f'Creating file: {concat_file_name}')
+                print('-----')
+        else:
+            print(f'{concat_file_name} already exists')
             print('-----')
-        break
-    return 
 
 
 
@@ -393,7 +407,8 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.75,
     else:  # file already exists so no need to create it again
         print(f"{result_nc_file_path} already exists")
 
-
+# va surement pas servir parce qu'en fait sert à rien d'avoir juste pour un vol
+# !! SAUF si on veut ensuite concat tous les GLM en un seul dataset géant pour chaque vol
 def regrid_glm_files_for_fp_output(fp_out_path, data_vars_to_regrid=DEFAULT_GLM_DATA_VARS_TO_REGRID, glm_dir_url=OG_GLM_FILES_PATH, target_glm_05deg_dir=GLM_REGRID_DIR_PATH, regrid_daily_dir_name=GLM_REGRID_DIR_NAME,
                                    lon_min=-179.75, lon_max=180, lat_min=-89.75, lat_max=90,
                                    grid_resolution=0.5):
@@ -415,12 +430,35 @@ def regrid_glm_files_for_fp_output(fp_out_path, data_vars_to_regrid=DEFAULT_GLM_
             lon_min=lon_min, lon_max=lon_max, lat_min=lat_min, lat_max=lat_max,
             grid_resolution=grid_resolution
         )
+        
+def regrid_glm_files(glm_dir_url=OG_GLM_FILES_PATH, glm_dir_pattern=GLM_DIR_NAME + "[0-2][0-9][0-9][0-9][0-3][0-6][0-9]", glm_hourly_file_pattern=generate_glm_hourly_nc_file_pattern(),
+                     data_vars_to_regrid=DEFAULT_GLM_DATA_VARS_TO_REGRID, target_glm_05deg_dir=GLM_REGRID_DIR_PATH, regrid_daily_dir_name=GLM_REGRID_DIR_NAME,
+                                   lon_min=-179.75, lon_max=180, lat_min=-89.75, lat_max=90,
+                                   grid_resolution=0.5):
+    # looking for all glm directories with names following pattern: OR_GLM-L2-LCFA_G16_sYYYYDDD
+    glm_dir_list = sorted(glm_dir_url.glob(glm_dir_pattern))
+    # for each directory, get all glm files and call generate_hourly_regrid_glm_file
+    for dir_path in glm_dir_list:
+        glm_file_list = sorted(dir_path.glob(glm_hourly_file_pattern))
+        for glm_file in glm_file_list:
+            print(glm_file)
+            generate_hourly_regrid_glm_file(
+                glm_ds_url=glm_file,
+                data_vars_dict=data_vars_to_regrid,
+                regrid_result_root_path=target_glm_05deg_dir,
+                regrid_daily_dir_name=regrid_daily_dir_name,
+                lon_min=lon_min, lon_max=lon_max, lat_min=lat_min, lat_max=lat_max,
+                grid_resolution=grid_resolution
+            )
 
 
 if __name__ == '__main__':
     # flight 003 --> à terme faire une boucle ? ou appeler les fonctions depuis ailleurs et la loop sera ailleurs aussi du coup
-    fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
-    regrid_glm_files_for_fp_output(fp_out_path)
-    #print(concat_hourly_nc_files_into_daily_file())
+    
+    #fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
+    
+    #regrid_glm_files()
+    #regrid_glm_files_for_fp_output(fp_out_path)
+    concat_hourly_nc_files_into_daily_file()
     #print(get_glm_daily_dir_date("GLM_array_05deg_146"))
 
