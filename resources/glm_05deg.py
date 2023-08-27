@@ -5,8 +5,13 @@ from pathlib import Path
 from tqdm import tqdm
 import xarray as xr
 
-from ..utils import constants as cts
-from ..utils import glm_utils, utils, xarray_utils
+""" beurk beurk temporaire """
+import sys
+sys.path.append('/home/patj/SOFT-IO-LI/src/')
+""" beurk beurk temporaire """
+
+from utils import constants as cts # ..utils avant mais fonctionne pas
+from utils import glm_utils, utils_functions, xarray_utils
 
 
 def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, year='2018',
@@ -97,7 +102,7 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.75,
         # generate dataset in which we'll be putting the summed flash_energy values
         latitudes = np.arange(lat_min, lat_max, grid_resolution)
         longitudes = np.arange(lon_min, lon_max, grid_resolution)
-        date = utils.get_np_datetime64_from_string(year=glm_ds_date["year"], day_of_year=glm_ds_date['day_of_year'],
+        date = utils_functions.get_np_datetime64_from_string(year=glm_ds_date["year"], day_of_year=glm_ds_date['day_of_year'],
                                                    hour=glm_ds_date['start_hour'])
         data_vars = {}
         for var in data_vars_dict:
