@@ -41,29 +41,10 @@ def get_np_datetime64_from_string(year, day_of_year, hour=0, mins=0, secs=0, mon
         # if day_of_year AND month and day are all not None, raise warning and use day_of_year
         if all(d is not None for d in [month, day]):
             warnings.warn('Expecting day of the year OR month and day values, not both. Day of year value will be used',
-                      Warning)
+                          Warning)
         date_iso_str = datetime.strptime(f'{year}-{day_of_year}-{hour}-{mins}-{secs}', '%Y-%j-%H-%M-%S').isoformat()
     elif day_of_year is None and all(d is not None for d in [month, day]):
         date_iso_str = datetime.strptime(f'{year}-{day_of_year}-{hour}-{mins}-{secs}', '%Y-%j-%H-%M-%S').isoformat()
     else:
         raise TypeError('Day_of_year value equal to None and month or day value missing')
     return np.datetime64(date_iso_str)
-
-
-def np_datetime64_to_datetime(np_date):
-    """
-    Function to convert a numpy.datetime64 object to a datetime.datetime object using pandas.to_datetime function
-    :param np_date: date to convert
-    :type np_date: <numpy.datetime64> or <xarray.DataArray> if value contained is <numpy.datetime64>
-    :return: converted date
-    :rtype: <pandas.Timestamp> (pandas equivalent of <datetime.datetime>)
-    """
-    if isinstance(np_date, xr.DataArray):
-        np_date = np_date.values
-    if isinstance(np_date, np.datetime64):
-        return pd.to_datetime(np_date)
-    else:
-        raise TypeError("wrong date format, expecting np.datetime64 object")
-
-
-
