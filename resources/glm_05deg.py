@@ -9,17 +9,101 @@ import xarray as xr
 import sys
 sys.path.append('/home/patj/SOFT-IO-LI/src/')
 """ beurk beurk temporaire """
-
 from utils import constants as cts # ..utils avant mais fonctionne pas
 from utils import glm_utils, utils_functions, xarray_utils
 
 
+def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_glm_files_path=cts.GLM_REGRID_DIR_PATH,
+                                                   daily_glm_files_dirname=cts.CONCAT_GLM_REGRID_DIR_NAME,
+                                                   daily_regrid_file_name=cts.GLM_REGRID_DIR_NAME+cts.DDD_pattern+".nc"):
+    """
+
+    :param min_date:
+    :param max_date:
+    :param regrid_glm_files_path:
+    :param daily_glm_files_dirname:
+    :param daily_regrid_file_name:
+    :return:
+    """
+    daily_regrid_glm_files_path = Path(f'{regrid_glm_files_path}/{min_date.dt.year.values}/{daily_glm_files_dirname}')
+    all_daily_file_list = sorted(Path(daily_regrid_glm_files_path).glob(daily_regrid_file_name))
+    hourly_regrid_glm_files_dirs = Path(f'{regrid_glm_files_path}/{min_date.dt.year.values}')
+    nc_file_list = []
+    for daily_file in sorted(all_daily_file_list):
+        daily_file_date_int = int(glm_utils.get_day_of_year_from_glm_daily_regrid_filename(daily_file))
+        # if daily_file date between min and max --> append daily file to nc_file_list
+        if min_date.dt.dayofyear.values < daily_file_date_int < max_date.dt.dayofyear.values:
+            nc_file_list.append(daily_file)
+
+        # if file.day_of_year == min_date.day_of_year --> only append hourly files starting from min date hour
+        elif daily_file_date_int == min_date.dt.dayofyear.values:
+            """ <!> revoir ce path là et utiliser une de mes petites fonctions """
+            hourly_files_path = Path(f'{hourly_regrid_glm_files_dirs}/GLM_array_05deg_{daily_file_date_int}')
+            all_hourly_file_for_day = sorted(
+                hourly_files_path.glob(f'{glm_utils.generate_glm_hourly_nc_file_pattern(daily_file_date_int)}')
+            )
+            # go through hourly regrid files for this specific day
+            for h_file_index, hourly_file in enumerate(all_hourly_file_for_day):
+                hourly_file_start_hour = int(glm_utils.get_start_hour_from_glm_hourly_regrid_filename(hourly_file))
+                # if file.hour == min_date.start_hour
+                if hourly_file_start_hour == min_date.dt.hour.values:
+                    # add all files with hours >= min_date.hour
+                    nc_file_list += all_hourly_file_for_day[h_file_index:]
+                    break
+
+        # if file.day_of_year == max_date.day_of_year --> only append hourly files before max date hour
+        elif daily_file_date_int == max_date.dt.dayofyear.values:
+            hourly_files_path = hourly_regrid_glm_files_dirs / Path(f"GLM_array_05deg_{daily_file_date_int}")
+            all_hourly_file_for_day = sorted(
+                hourly_files_path.glob(f'{glm_utils.generate_glm_hourly_nc_file_pattern(daily_file_date_int)}')
+            )
+            # go through hourly regrid files for this specific day
+            for h_file_index, hourly_file in enumerate(all_hourly_file_for_day):
+                hourly_file_start_hour = int(glm_utils.get_start_hour_from_glm_hourly_regrid_filename(hourly_file))
+                # if file.hour == max_date.start_hour
+                if hourly_file_start_hour == max_date.dt.hour.values:
+                    # add all files with hour <= max_date.hour
+                    nc_file_list += all_hourly_file_for_day[:(h_file_index+1)]
+                    break
+
+        # if bigger day than max_date, stop for loop
+        elif daily_file_date_int > max_date.dt.dayofyear.values:
+            break
+    ########################
+    print(nc_file_list)
+    ########################
+    return nc_file_list
+
+
+def concat_glm_files_for_flight(nc_file_list, result_concat_file_path, overwrite=False):
+    """
+
+    :param nc_file_list:
+    :param result_concat_file_path:
+    :param overwrite:
+    :return:
+    """
+    # <!> check pas si on a bien donné un truc en .nc
+    if not isinstance(result_concat_file_path, Path):
+        result_concat_file_path = Path(result_concat_file_path)
+    if (not result_concat_file_path.exists()) or (result_concat_file_path.exists() and overwrite):
+        result_concat_ds = xr.open_mfdataset(nc_file_list)
+        if not result_concat_file_path.parent.exists():
+            os.makedirs(result_concat_file_path.parent)
+            print(f"Creating directory {result_concat_file_path.parent}")
+        result_concat_ds.to_netcdf(result_concat_file_path,
+                                   encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}})
+        print(f"Creating file: {result_concat_file_path.parts[-1]}")
+    else:
+        print(f'{result_concat_file_path} already exists')
+
+
 def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, year='2018',
-                                           dir_pattern=cts.GLM_REGRID_DIR_NAME + "[0-3][0-6][0-9]",
+                                           dir_pattern=cts.GLM_REGRID_DIR_NAME+cts.DDD_pattern,
                                            result_dir_name=cts.CONCAT_GLM_REGRID_DIR_NAME,
                                            result_file_name=cts.GLM_REGRID_DIR_NAME):
     """
-
+    Function to concatenate regridded hourly glm files stored in root_dir into bigger daily ones
     :param root_dir:
     :param year:
     :param dir_pattern:
@@ -27,7 +111,7 @@ def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, yea
     :param result_file_name:
     :return:
     """
-    # <!> PAS de file_pattern parce qu'on utilise generate glm pattern 
+    # <!> PAS de file_pattern parce qu'on utilise generate glm pattern
     #    --> MAIS si on met concat ailleurs va falloir changer ça pour qu'on ait des patterns adapté aux données
     # idem pour dir_path_day
     root_dir_path = Path(f'{root_dir}/{year}/')
@@ -149,7 +233,7 @@ def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_
                      target_glm_05deg_dir=cts.GLM_REGRID_DIR_PATH, regrid_daily_dir_name=cts.GLM_REGRID_DIR_NAME,
                      lon_min=-179.75, lon_max=180, lat_min=-89.75, lat_max=90, grid_resolution=0.5):
     """
-
+    Function to regrid hourly glm files, calls generate_hourly_regrid_glm_file() on a list of hourly glm netCDF files
     :param glm_dir_url:
     :param glm_dir_pattern:
     :param glm_hourly_file_pattern:
@@ -181,5 +265,15 @@ def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_
 
 
 if __name__ == '__main__':
-    regrid_glm_files()
-    concat_hourly_nc_files_into_daily_file()
+    #regrid_glm_files()
+    #concat_hourly_nc_files_into_daily_file()
+    fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
+    with xr.open_dataset(fp_out_path).spec001_mr as fp_da:
+        nc_file_list = find_regrid_glm_file_list_between_min_max_date(
+            min_date=fp_da.time.min(),
+            max_date=fp_da.time.max()
+        )
+        concat_glm_files_for_flight(
+            nc_file_list=nc_file_list,
+            result_concat_file_path='/o3p/patj/test-glm/flights_concat/GLM_flight_003_test-propre_28-08.nc'
+        )
