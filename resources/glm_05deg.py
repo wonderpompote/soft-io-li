@@ -69,9 +69,6 @@ def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_gl
         # if bigger day than max_date, stop for loop
         elif daily_file_date_int > max_date.dt.dayofyear.values:
             break
-    ########################
-    print(nc_file_list)
-    ########################
     return nc_file_list
 
 
@@ -267,7 +264,8 @@ def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_
 if __name__ == '__main__':
     #regrid_glm_files()
     #concat_hourly_nc_files_into_daily_file()
-    fp_out_path = '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
+    # flight003: '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
+    fp_out_path = '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_001_1h_05deg/10j_100k_output/grid_time_20180603150000.nc'
     with xr.open_dataset(fp_out_path).spec001_mr as fp_da:
         nc_file_list = find_regrid_glm_file_list_between_min_max_date(
             min_date=fp_da.time.min(),
@@ -275,5 +273,5 @@ if __name__ == '__main__':
         )
         concat_glm_files_for_flight(
             nc_file_list=nc_file_list,
-            result_concat_file_path='/o3p/patj/test-glm/flights_concat/GLM_flight_003_test-propre_28-08.nc'
+            result_concat_file_path='/o3p/patj/test-glm/flights_concat/GLM_flight_001.nc'
         )
