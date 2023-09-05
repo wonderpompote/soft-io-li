@@ -21,3 +21,4 @@ HH_pattern = "[0-2][0-9]" # hour
 DDD_pattern = "[0-3][0-6][0-9]" # day of year
 YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 YYYYDDD_PATTERN = YYYY_pattern+DDD_pattern
+REGRID_STR = "05deg_"
