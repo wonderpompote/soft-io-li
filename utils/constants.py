@@ -22,3 +22,13 @@ DDD_pattern = "[0-3][0-6][0-9]" # day of year
 YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 YYYYDDD_PATTERN = YYYY_pattern+DDD_pattern
 REGRID_STR = "05deg_"
+
+# histograms
+HIST_STEP = 0.1
+FLASH_ENERGY_BINS = 50
+FLASH_ENERGY_LOG10_RANGE = [-15, -10] # <!> log10
+FLASH_AREA_BINS = 30
+FLASH_AREA_LOG10_RANGE = [1.5, 4.5] # <!> log10
+
+# miscellaneous
+DUMMY_VALUE = -99
