@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .constants import GLM_DIR_NAME, GLM_HOURLY_FILE_NAME, HH_pattern, DDD_pattern
+from .constants import GLM_DIR_NAME, GLM_HOURLY_FILE_NAME, HH_pattern, DDD_pattern, HIST_STEP
 
 
 def get_glm_hourly_file_date_from_filename(glm_filename, year=None):
@@ -104,5 +104,3 @@ def generate_glm_regrid_hourly_nc_file_path(glm_dir_path_root, day_of_year, star
     hourly_filename = generate_glm_hourly_nc_file_pattern(day_of_year=day_of_year, start_hour=start_hour,
                                                           end_hour=end_hour, regrid_str=regrid_str)
     return Path(f'{glm_dir_path_root}{day_of_year}/{hourly_filename}')
-
-

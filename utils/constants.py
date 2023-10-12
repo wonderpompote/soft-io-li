@@ -8,12 +8,25 @@ CONCAT_GLM_REGRID_DIR_NAME = "concat_GLM_array_05deg"
 GLM_REGRID_DIR_NAME = "GLM_array_05deg_"
 DEFAULT_GLM_DATA_VARS_TO_REGRID = {
     "flash_energy": {
-        "operation": "sum",
-        "operation_dims": None
+        "operation": ['histogram', 'count'],
+        "histogram": {
+            "min_bin_edge": -15,
+            "max_bin_edge": -10,
+            "step": 0.1,
+            "res_var_name": "flash_energy_log_hist"
+        },
+        "count": {
+            "res_var_name": "flash_count"
+        }
     },
-    "flash_count": {
-        "operation": "count",
-        "operation_dims": None
+    "flash_area": {
+        "operation": ['histogram'],
+        "histogram": {
+            "min_bin_edge": 1.5,
+            "max_bin_edge": 4.5,
+            "step": 0.1,
+            "res_var_name": "flash_area_log_hist"
+        }
     }
 }
 # glob patterns

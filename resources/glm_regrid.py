@@ -1,5 +1,5 @@
 """
-glm_05deg.py 
+glm_regrid.py
 Main functions:
 - regrid hourly GLM files into target grid hourly GLM files
 - concat hourly regrid GLM files into a daily GLM file
@@ -13,20 +13,20 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 import xarray as xr
-
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """ <!!> beurk beurk temporaire <!!> """
 import sys
+
 sys.path.append('/home/patj/SOFT-IO-LI/src/')
 """ <!!> beurk beurk temporaire <!!> """
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-from utils import constants as cts # ..utils avant mais fonctionne pas
+from utils import constants as cts  # ..utils avant mais fonctionne pas
 from utils import glm_utils, utils_functions, xarray_utils
 
 
 def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_glm_files_path=cts.GLM_REGRID_DIR_PATH,
                                                    daily_glm_files_dirname=cts.CONCAT_GLM_REGRID_DIR_NAME,
-                                                   daily_regrid_file_name=cts.GLM_REGRID_DIR_NAME+cts.DDD_pattern+".nc"):
+                                                   daily_regrid_file_name=cts.GLM_REGRID_DIR_NAME + cts.DDD_pattern + ".nc"):
     """
     Function to get a list of all GLM files (previously regridded) between min and max date
     :param min_date: <numpy.datetime64>
@@ -53,7 +53,8 @@ def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_gl
             """ <!> revoir ce path là et utiliser une de mes petites fonctions """
             hourly_files_path = Path(f'{hourly_regrid_glm_files_dirs}/GLM_array_05deg_{daily_file_date_int}')
             all_hourly_file_for_day = sorted(
-                hourly_files_path.glob(f'{glm_utils.generate_glm_hourly_nc_file_pattern(daily_file_date_int, regrid_str=cts.REGRID_STR)}')
+                hourly_files_path.glob(
+                    f'{glm_utils.generate_glm_hourly_nc_file_pattern(daily_file_date_int, regrid_str=cts.REGRID_STR)}')
             )
             # go through hourly regrid files for this specific day
             for h_file_index, hourly_file in enumerate(all_hourly_file_for_day):
@@ -68,7 +69,8 @@ def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_gl
         elif daily_file_date_int == max_date.dt.dayofyear.values:
             hourly_files_path = hourly_regrid_glm_files_dirs / Path(f"GLM_array_05deg_{daily_file_date_int}")
             all_hourly_file_for_day = sorted(
-                hourly_files_path.glob(f'{glm_utils.generate_glm_hourly_nc_file_pattern(daily_file_date_int, regrid_str=cts.REGRID_STR)}')
+                hourly_files_path.glob(
+                    f'{glm_utils.generate_glm_hourly_nc_file_pattern(daily_file_date_int, regrid_str=cts.REGRID_STR)}')
             )
             # go through hourly regrid files for this specific day
             for h_file_index, hourly_file in enumerate(all_hourly_file_for_day):
@@ -76,7 +78,7 @@ def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_gl
                 # if file.hour == max_date.start_hour
                 if hourly_file_start_hour == max_date.dt.hour.values:
                     # add all files with hour <= max_date.hour
-                    nc_file_list += all_hourly_file_for_day[:(h_file_index+1)]
+                    nc_file_list += all_hourly_file_for_day[:(h_file_index + 1)]
                     break
 
         # if bigger day than max_date, stop for loop
@@ -101,17 +103,17 @@ def concat_glm_files_for_flexpart_out(nc_file_list, result_concat_file_path, ove
         if not result_concat_file_path.parent.exists():
             os.makedirs(result_concat_file_path.parent)
             print(f"Creating directory {result_concat_file_path.parent}")
-        result_concat_ds.to_netcdf(result_concat_file_path,
-                                   encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}},
-                                   mode="w"
-                                )
+        result_concat_ds.to_netcdf(
+            path=result_concat_file_path, mode="w",
+            encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
+        )
         print(f"Creating file: {result_concat_file_path.parts[-1]}")
     else:
         print(f'{result_concat_file_path} already exists')
 
 
 def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, year='2018',
-                                           dir_pattern=cts.GLM_REGRID_DIR_NAME+cts.DDD_pattern,
+                                           dir_pattern=cts.GLM_REGRID_DIR_NAME + cts.DDD_pattern,
                                            result_dir_name=cts.CONCAT_GLM_REGRID_DIR_NAME,
                                            result_file_name=cts.GLM_REGRID_DIR_NAME, overwrite=False):
     """
@@ -141,8 +143,6 @@ def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, yea
         # check if concatenated file already exists OR if we want to overwrite it
         # if not concatenate all hourly glm files to create a daily
         if (not concat_file_name.exists()) or (concat_file_name.exists() and overwrite):
-            # OU sinon nco.Nco().ncrcat(input=file_list, output=concat_file_name, options=['-h'])
-            # (mais fonctionne pas)
             with xr.open_mfdataset(file_list) as combined_ds:
                 # save to netcdf
                 combined_ds.to_netcdf(concat_file_name,
@@ -153,9 +153,10 @@ def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, yea
             print(f'{concat_file_name} already exists')
             print('-----')
 
+
 #### lon_min used to be -179.75 and lon_max 180 (to have lon between -179.75 and -179.75) BUT FP out lon between -179.25 and 180.25
-def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25, lon_max=180.75, lat_min=-89.75,
-                                    lat_max=90,
+def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25, lon_max=180.75,
+                                    lat_min=-89.75, lat_max=90,
                                     grid_resolution=0.5, regrid_result_root_path=cts.GLM_REGRID_DIR_PATH,
                                     regrid_daily_dir_name=cts.GLM_REGRID_DIR_NAME, overwrite=False):
     """
@@ -173,91 +174,86 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25,
     :param regrid_daily_dir_name: name of the directory in which the resulting hourly file will be stored
     :param overwrite: if True, existing file will be overwritten
     """
-    """ <!> améliorations:
-        - là on groupby latitude sur flash_energy mais on pourrait vouloir le faire sur autres trucs (genre group qchose)
-            --> rendre ça + générique pour qu'on puisse récup plusieurs variables
-            Parce que là du coup même le sum et le count sont fait sur le flash_energy grouped by
-        - est-ce que vraiment besoin return le dataset ??? 
-            --> pour concat oui
-                --> non en fait, je vais faire le concat avec une liste de path ça évitera de se trimballer des gros ds dans une liste
-        OK- pourrait check si file existe déjà et si oui PAS besoin de le créer
-    """
+    if not isinstance(glm_ds_url, Path):
+        glm_ds_url = Path(glm_ds_url)
     # get glm file day of year, start hour, end hour and year (taken from glm directory name)
-    glm_ds_date = glm_utils.get_glm_hourly_file_date_from_filename(glm_ds_url, glm_utils.get_glm_daily_dir_date(glm_ds_url.parent)["year"])
+    glm_ds_date = glm_utils.get_glm_hourly_file_date_from_filename(
+        glm_filename=glm_ds_url,
+        year=glm_utils.get_glm_daily_dir_date(glm_ds_url.parent)["year"]
+    )
+    # create result nc file path
     result_nc_file_path = glm_utils.generate_glm_regrid_hourly_nc_file_path(
         Path(f'{regrid_result_root_path}/{glm_ds_date["year"]}/{regrid_daily_dir_name}'),
         glm_ds_date["day_of_year"], glm_ds_date["start_hour"], glm_ds_date["end_hour"]
     )
+
     # if directory that will contain nc file does not exist -> create it
     if not result_nc_file_path.parent.exists():
         os.makedirs(result_nc_file_path.parent)
         print(f"Creating directory {result_nc_file_path}")
 
-    # if glm 05 deg file does not already exist (or if exists but overwrite == True) -> create it
+    # if regridded glm file does not already exist (or if exists but overwrite == True) -> create it
     if (not result_nc_file_path.exists()) or (result_nc_file_path.exists() and overwrite):
-        # generate dataset in which we'll be putting the summed flash_energy values
-        latitudes = np.arange(lat_min, lat_max, grid_resolution)
-        longitudes = np.arange(lon_min, lon_max, grid_resolution)
-        date = utils_functions.get_np_datetime64_from_string(year=glm_ds_date["year"], day_of_year=glm_ds_date['day_of_year'],
-                                                   hour=glm_ds_date['start_hour'])
-        data_vars = {} # { "data_var1": ( [<dims>], <values> ), "data_var2": ( [<dims>], <values> ), ... }
-        hist_intervals = {} # { "<var1>_hist_interval": [...], "<var2>_hist_interval": [...], ... }
-        for var in data_vars_dict:
-            """
-            je veux quoi:
-            - pour hist --> créer variable "var_hist" avec en dimension time, lon, lat ET "var_hist_interval"
-            - pour count/sum etc --> créer variable "var" avec en dimension time, lon, lat
-            en fait hist = la règle
-            count = exception (qui peut s'obtenir avec sum histogram)
-            <!> ne pas remplir de 0, plutôt mettre des nan
-            """
-            if 'hist' in var['operation']:
-                hist_intervals[f'{var}_hist_interval'] = np.linspace(
-                    start=var['range_start'], stop=var['range_stop'], num=var['bins']
-                )
-                data_vars[f'{var}_hist'] = (['time', 'latitude', 'longitude', f'{var}_hist_interval'],
-                                            np.full(shape=(1, len(latitudes), len(longitudes), len(hist_intervals[f'{var}_hist_interval'])), fill_value=np.nan))
-        coords = {
-                'time': [date],
-                'latitude': latitudes,
-                'longitude': longitudes,
-        }
-        coords.update(hist_intervals) # add histogram intervals to coords
-        # generate target dataset
-        target_ds = xr.Dataset(
-            data_vars=data_vars,
-            coords=coords
+        # generate dataset with correctly gridded longitudes and latitudes
+        date = utils_functions.get_np_datetime64_from_string(
+            year=glm_ds_date["year"],
+            day_of_year=glm_ds_date['day_of_year'],
+            hour=glm_ds_date['start_hour']
         )
-        with xr.open_dataset(glm_ds_url) as glm_ds:
+        target_ds = xr.Dataset(
+            coords={
+                'latitude': np.arange(lat_min, lat_max, grid_resolution),
+                'longitude': np.arange(lon_min, lon_max, grid_resolution)
+            }
+        )
+
+        with xr.open_dataset(glm_ds_url) as _glm_ds:
             # assign new longitude and latitude coords with chosen grid resolution using nearest method
-            glm_ds_regrid_lon_lat = glm_ds.assign_coords({
-                'latitude': target_ds.latitude.sel(latitude=glm_ds.flash_lat, method='nearest'),
-                'longitude': target_ds.longitude.sel(longitude=glm_ds.flash_lon, method='nearest')
+            _ds_assigncoords_lonlat = _glm_ds.assign_coords({
+                'latitude': target_ds.latitude.sel(latitude=_glm_ds.flash_lat, method='nearest'),
+                'longitude': target_ds.longitude.sel(longitude=_glm_ds.flash_lon, method='nearest')
             })
-            var_grouped_by_lat_da = glm_ds_regrid_lon_lat['flash_energy'].groupby('latitude')
-            # for each latitude, group by longitude and apply operation
-            for grouped_lat, da_for_lat in tqdm(var_grouped_by_lat_da):
-                # group by longitude
-                da_for_lat_grouped_by_lon = da_for_lat.groupby('longitude')
-                for data_var_name in data_vars_dict:
-                    da_operation = xarray_utils.apply_operation_on_grouped_da(
-                        grouped_by_da=da_for_lat_grouped_by_lon,
-                        operation=data_vars_dict[data_var_name]['operation'],
-                        operation_dims=data_vars_dict[data_var_name]['operation_dims']
-                    )
-                    # add new values to target_ds for specific latitude and longitude(s)
-                    target_ds[data_var_name].loc[dict(latitude=grouped_lat, longitude=da_operation.longitude)] = da_operation
-        # convert target ds to netCDF file (manual encoding to keep finer date value (by default converted to int64, units "days since 1970-01-01")
-        target_ds.to_netcdf(result_nc_file_path,
-                            encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}})
+
+            # for each operation on each data variable
+            for data_var in data_vars_dict:
+                 for op in data_vars_dict[data_var]['operation']:
+                    # only keep interesting variable and coords
+                    _ds = _ds_assigncoords_lonlat[data_var] \
+                        .reset_coords(names=['latitude', 'longitude'], drop=False) \
+                        .reset_coords(drop=True)
+                    # histogram
+                    if op.lower() == "histogram":
+                        hist_params = data_vars_dict[data_var]['histogram']
+                        _ds[f'log_{data_var}'] = np.log10(_ds[data_var])
+                        # --> call histogram function
+                        res_ds = xarray_utils.histogram_using_pandas(_ds, f'log_{data_var}', hist_params)
+                    # count
+                    elif op.lower() == 'count':
+                        res_ds = xarray_utils.count_using_pandas(_ds, data_var, data_vars_dict[data_var]['count'])
+                    else:
+                        raise ValueError(f'Unexpected operation name ({op}, operations supported: "histogram", "count"')
+                    # merge resulting ds with target ds
+                    target_ds = xr.merge([res_ds, target_ds])
+
+        # add date to target_ds
+        target_ds = target_ds.expand_dims({'time': [date]})
+        # convert target ds to netCDF file, manual encoding to keep finer date value
+        # --> by default converted to int64, units "days since 1970-01-01")
+        target_ds.to_netcdf(
+            path=result_nc_file_path,
+            mode='w',
+            encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
+        )
         print(f"Created netcdf file {result_nc_file_path.parts[-1]}")
+        return target_ds
 
     else:  # file already exists so no need to create it again
         print(f"{result_nc_file_path} already exists")
+        return xr.open_dataset(result_nc_file_path)
 
 
 #### lon_min used to be -179.75 and lon_max 180 (to have lon between -179.75 and -179.75) BUT FP out lon between -179.25 and 180.25
-def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_DIR_NAME + cts.YYYYDDD_PATTERN,
+def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_DIR_NAME+cts.YYYYDDD_PATTERN,
                      glm_hourly_file_pattern=glm_utils.generate_glm_hourly_nc_file_pattern(),
                      data_vars_to_regrid=cts.DEFAULT_GLM_DATA_VARS_TO_REGRID,
                      target_glm_05deg_dir=cts.GLM_REGRID_DIR_PATH, regrid_daily_dir_name=cts.GLM_REGRID_DIR_NAME,
@@ -294,18 +290,56 @@ def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_
                 grid_resolution=grid_resolution,
                 overwrite=overwrite
             )
+            print('-----')
 
 
 if __name__ == '__main__':
-    #regrid_glm_files(overwrite=True)
-    #concat_hourly_nc_files_into_daily_file(overwrite=True)
-    # flight003: '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc'
-    """ create GLM file for a particular FP out """
-    fp_out_path_dic = {
-        "flight_001": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_001_1h_05deg/10j_100k_output/grid_time_20180603150000.nc', 
+
+    data_vars_dict = {
+        "flash_energy": {
+            "operation": ['histogram', 'count'],
+            "histogram": {
+                "min_bin_edge": -15,
+                "max_bin_edge": -10,
+                "step": 0.1,
+                "res_var_name": "flash_energy_log_hist"
+            },
+            "count": {
+                "res_var_name": "flash_count"
+            }
+        },
+        "flash_area": {
+            "operation": ['histogram'],
+            "histogram": {
+                "min_bin_edge": 1.5,
+                "max_bin_edge": 4.5,
+                "step": 0.1,
+                "res_var_name": "flash_area_log_hist"
+            }
+        }
+    }
+
+    #regrid_glm_files(data_vars_to_regrid=data_vars_dict, overwrite=False)
+
+    concat_hourly_nc_files_into_daily_file(overwrite=False)
+
+    # regrid one single file
+    """glm_path = '/o3p/macc/glm/OR_GLM-L2-LCFA_G16_s2018156/GLM_array_156_19-20.nc'
+    test_ds = generate_hourly_regrid_glm_file(
+        glm_ds_url=glm_path,
+        data_vars_dict=data_vars_dict,
+        regrid_result_root_path='/o3p/patj/test-glm/hist_regrid',
+        regrid_daily_dir_name='GLM_regrid_hist_05',
+        overwrite=False
+    )"""
+
+    # create GLM file for a particular FP out
+    """fp_out_path_dic = {
+        "flight_001": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_001_1h_05deg/10j_100k_output/grid_time_20180603150000.nc',
         "flight_003": '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc',
         "flight_004": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_004_1h_05deg/10j_100k_output/grid_time_20180606120000.nc'
     }
+
     for flight in fp_out_path_dic:
         with xr.open_dataset(fp_out_path_dic[flight]).spec001_mr as fp_da:
             print(f"min_date {flight}: {fp_da.time.min().values} --> {fp_da.time.min().dt.dayofyear.values}")
@@ -319,3 +353,4 @@ if __name__ == '__main__':
                 result_concat_file_path=f'/o3p/patj/test-glm/flights_concat/GLM_{flight}.nc',
                 overwrite=False
             )
+    """
