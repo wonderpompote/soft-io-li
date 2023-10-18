@@ -58,7 +58,7 @@ def histogram_using_pandas(_ds, data_var_name, hist_params):
     # get new variable name or use default value
     if not "res_var_name" in hist_params.keys() or not hist_params['res_var_name']:
         hist_params['res_var_name'] = f'{data_var_name}_hist'
-    # get histogram values from cdf
+    # get histogram values from cdf and fill nan values with 0
     _da_hist = _da_cdf \
         .diff(f'{data_var_name}_edges') \
         .fillna(0.).astype('i4') \

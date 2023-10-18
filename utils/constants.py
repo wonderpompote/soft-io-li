@@ -4,7 +4,7 @@ GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s" # OR_GLM-L2-LCFA_G16_sYYYYDDD
 GLM_HOURLY_FILE_NAME = "GLM_array_" # GLM_array_DDD_HH1-HH2.nc
 # regrid
 GLM_REGRID_DIR_PATH = '/o3p/patj/glm/GLM_array_05deg/'
-CONCAT_GLM_REGRID_DIR_NAME = "concat_GLM_array_05deg"
+CONCAT_GLM_REGRID_DIR_NAME = "daily_GLM_array_05deg"
 GLM_REGRID_DIR_NAME = "GLM_array_05deg_"
 DEFAULT_GLM_DATA_VARS_TO_REGRID = {
     "flash_energy": {

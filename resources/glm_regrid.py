@@ -232,7 +232,7 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25,
                         res_ds = xarray_utils.count_using_pandas(_ds, data_var, data_vars_dict[data_var]['count'])
                     else:
                         raise ValueError(f'Unexpected operation name ({op}, operations supported: "histogram", "count"')
-                    # merge resulting ds with target ds
+                    # merge resulting ds with target ds --> puts nans for missing latitude and longitude values
                     target_ds = xr.merge([res_ds, target_ds])
 
         # add date to target_ds
@@ -295,7 +295,7 @@ def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_
 
 if __name__ == '__main__':
 
-    data_vars_dict = {
+    """data_vars_dict = {
         "flash_energy": {
             "operation": ['histogram', 'count'],
             "histogram": {
@@ -317,11 +317,13 @@ if __name__ == '__main__':
                 "res_var_name": "flash_area_log_hist"
             }
         }
-    }
+    }"""
 
+    # regrid all glm files in og glm file path
     #regrid_glm_files(data_vars_to_regrid=data_vars_dict, overwrite=False)
 
-    concat_hourly_nc_files_into_daily_file(overwrite=False)
+    # concat all houry gml files into daily files
+    #concat_hourly_nc_files_into_daily_file(overwrite=False)
 
     # regrid one single file
     """glm_path = '/o3p/macc/glm/OR_GLM-L2-LCFA_G16_s2018156/GLM_array_156_19-20.nc'
@@ -334,10 +336,10 @@ if __name__ == '__main__':
     )"""
 
     # create GLM file for a particular FP out
-    """fp_out_path_dic = {
+    fp_out_path_dic = {
         "flight_001": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_001_1h_05deg/10j_100k_output/grid_time_20180603150000.nc',
         "flight_003": '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc',
-        "flight_004": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_004_1h_05deg/10j_100k_output/grid_time_20180606120000.nc'
+        "flight_006": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_006_1h_05deg/10j_100k_output/grid_time_20180607150000.nc'
     }
 
     for flight in fp_out_path_dic:
@@ -350,7 +352,7 @@ if __name__ == '__main__':
             )
             concat_glm_files_for_flexpart_out(
                 nc_file_list=nc_file_list,
-                result_concat_file_path=f'/o3p/patj/test-glm/flights_concat/GLM_{flight}.nc',
+                result_concat_file_path=f'/o3p/patj/glm/flights_glm/GLM_{flight}.nc',
                 overwrite=False
             )
-    """
+    
