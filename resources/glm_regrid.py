@@ -7,9 +7,10 @@ Main functions:
 Last docstring update: 27/09/23
 """
 
-import os
 
+from datetime import datetime
 import numpy as np
+import os
 from pathlib import Path
 from tqdm import tqdm
 import xarray as xr
@@ -204,6 +205,9 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25,
             coords={
                 'latitude': np.arange(lat_min, lat_max, grid_resolution),
                 'longitude': np.arange(lon_min, lon_max, grid_resolution)
+            },
+            attrs={
+                'grid_resolution': f'{grid_resolution}° x {grid_resolution}°'
             }
         )
 
@@ -213,7 +217,17 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25,
                 'latitude': target_ds.latitude.sel(latitude=_glm_ds.flash_lat, method='nearest'),
                 'longitude': target_ds.longitude.sel(longitude=_glm_ds.flash_lon, method='nearest')
             })
-
+            # keep several attributes from the original glm file
+            target_ds.assign_attrs({
+                'production_site': _glm_ds.attrs.get('production_site', ''),
+                'orbital_slot': _glm_ds.attrs.get('orbital_slot', ''),
+                'platform_ID': _glm_ds.attrs.get('platform_ID', ''),
+                'instrument_type': _glm_ds.attrs.get('instrument_type', ''),
+                'instrument_ID': _glm_ds.attrs.get('instrument_ID', ''),
+                'spatial_resolution': _glm_ds.attrs.get('spatial_resolution', ''),
+                'glm_data_procesing_level': _glm_ds.attrs.get('processing_level', '')
+            })
+            
             # for each operation on each data variable
             for data_var in data_vars_dict:
                  for op in data_vars_dict[data_var]['operation']:
@@ -233,7 +247,7 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25,
                     else:
                         raise ValueError(f'Unexpected operation name ({op}, operations supported: "histogram", "count"')
                     # merge resulting ds with target ds --> puts nans for missing latitude and longitude values
-                    target_ds = xr.merge([res_ds, target_ds])
+                    target_ds = xr.merge([res_ds, target_ds], combine_attrs='no_conflicts')
 
         # add date to target_ds
         target_ds = target_ds.expand_dims({'time': [date]})
@@ -245,7 +259,9 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25,
             encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
         )
         print(f"Created netcdf file {result_nc_file_path.parts[-1]}")
-        return target_ds
+        # add creation date to dataset attributes
+        target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()
+        return target_ds.attrs
 
     else:  # file already exists so no need to create it again
         print(f"{result_nc_file_path} already exists")
@@ -295,7 +311,7 @@ def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_
 
 if __name__ == '__main__':
 
-    """data_vars_dict = {
+    data_vars_dict = {
         "flash_energy": {
             "operation": ['histogram', 'count'],
             "histogram": {
@@ -317,13 +333,13 @@ if __name__ == '__main__':
                 "res_var_name": "flash_area_log_hist"
             }
         }
-    }"""
-
+    }
+    
     # regrid all glm files in og glm file path
-    #regrid_glm_files(data_vars_to_regrid=data_vars_dict, overwrite=False)
-
-    # concat all houry gml files into daily files
-    #concat_hourly_nc_files_into_daily_file(overwrite=False)
+    regrid_glm_files(data_vars_to_regrid=data_vars_dict, overwrite=True)
+    
+    # concat all houry glm files into daily files
+    concat_hourly_nc_files_into_daily_file(overwrite=True)
 
     # regrid one single file
     """glm_path = '/o3p/macc/glm/OR_GLM-L2-LCFA_G16_s2018156/GLM_array_156_19-20.nc'
@@ -331,12 +347,12 @@ if __name__ == '__main__':
         glm_ds_url=glm_path,
         data_vars_dict=data_vars_dict,
         regrid_result_root_path='/o3p/patj/test-glm/hist_regrid',
-        regrid_daily_dir_name='GLM_regrid_hist_05',
-        overwrite=False
+        regrid_daily_dir_name='GLM_regrid_hist_attrs_05',
+        overwrite=True
     )"""
 
     # create GLM file for a particular FP out
-    fp_out_path_dic = {
+    """fp_out_path_dic = {
         "flight_001": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_001_1h_05deg/10j_100k_output/grid_time_20180603150000.nc',
         "flight_003": '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc',
         "flight_006": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_006_1h_05deg/10j_100k_output/grid_time_20180607150000.nc'
@@ -355,4 +371,4 @@ if __name__ == '__main__':
                 result_concat_file_path=f'/o3p/patj/glm/flights_glm/GLM_{flight}.nc',
                 overwrite=False
             )
-    
+    """
