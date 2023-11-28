@@ -5,6 +5,13 @@ Main functions:
 - concat hourly regrid GLM files into a daily GLM file
 - 
 Last docstring update: 27/09/23
+
+Future ameliorations:
+- add attributes to regridded data variables
+- add more descriptive attributes to the regridded dataset itself
+- complete file doctring properly
+
+Last amelioration docstring update: 28/11/23
 """
 
 
@@ -30,8 +37,8 @@ def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_gl
                                                    daily_regrid_file_name=cts.GLM_REGRID_DIR_NAME + cts.DDD_pattern + ".nc"):
     """
     Function to get a list of all GLM files (previously regridded) between min and max date
-    :param min_date: <numpy.datetime64>
-    :param max_date: <numpy.datetime64>
+    :param min_date: <xr.DataArray> (<numpy.datetime64>)
+    :param max_date: <xr.DataArray> (<numpy.datetime64>)
     :param regrid_glm_files_path: <Path>
     :param daily_glm_files_dirname: <str>
     :param daily_regrid_file_name: <str>
@@ -68,7 +75,7 @@ def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_gl
 
         # if file.day_of_year == max_date.day_of_year --> only append hourly files before max date hour
         elif daily_file_date_int == max_date.dt.dayofyear.values:
-            hourly_files_path = hourly_regrid_glm_files_dirs / Path(f"GLM_array_05deg_{daily_file_date_int}")
+            hourly_files_path = hourly_regrid_glm_files_dirs / Path(f"{cts.GLM_REGRID_DIR_NAME}{daily_file_date_int}")
             all_hourly_file_for_day = sorted(
                 hourly_files_path.glob(
                     f'{glm_utils.generate_glm_hourly_nc_file_pattern(daily_file_date_int, regrid_str=cts.REGRID_STR)}')
@@ -85,16 +92,18 @@ def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_gl
         # if bigger day than max_date, stop for loop
         elif daily_file_date_int > max_date.dt.dayofyear.values:
             break
+
     return nc_file_list
 
 
 def concat_glm_files_for_flexpart_out(nc_file_list, result_concat_file_path, overwrite=False):
     """
-    Concat all GLM files for duration of a FLEXPART simulation (usually 10 days) into a single netCDF file
+    Concat all GLM files for duration of a FLEXPART simulation (usually 10 days)
+    and saves it into a single netCDF file
+    <!> the resulting dataset is NOT returned but saved as a .nc file <!>
     :param nc_file_list:
     :param result_concat_file_path:
     :param overwrite: if True, existing file will be overwritten
-    <!!> return PAS concat file
     """
     # <!!> check pas si on a bien donné un truc en .nc
     if not isinstance(result_concat_file_path, Path):
@@ -116,9 +125,10 @@ def concat_glm_files_for_flexpart_out(nc_file_list, result_concat_file_path, ove
 def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, year='2018',
                                            dir_pattern=cts.GLM_REGRID_DIR_NAME + cts.DDD_pattern,
                                            result_dir_name=cts.CONCAT_GLM_REGRID_DIR_NAME,
-                                           result_file_name=cts.GLM_REGRID_DIR_NAME, overwrite=False):
+                                           result_file_name=cts.GLM_REGRID_DIR_NAME,
+                                           overwrite=False):
     """
-    Function to concatenate regridded hourly glm files stored in root_dir into bigger daily files
+    Function to concatenate regridded hourly glm files stored in root_dir into daily files
     :param root_dir:
     :param year:
     :param dir_pattern:
@@ -156,12 +166,14 @@ def concat_hourly_nc_files_into_daily_file(root_dir=cts.GLM_REGRID_DIR_PATH, yea
 
 
 #### lon_min used to be -179.75 and lon_max 180 (to have lon between -179.75 and -179.75) BUT FP out lon between -179.25 and 180.25
-def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25, lon_max=180.75,
-                                    lat_min=-89.75, lat_max=90,
-                                    grid_resolution=0.5, regrid_result_root_path=cts.GLM_REGRID_DIR_PATH,
-                                    regrid_daily_dir_name=cts.GLM_REGRID_DIR_NAME, overwrite=False):
+def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict,
+                                    lon_min=-179.25, lon_max=180.75,
+                                    lat_min=-89.75, lat_max=90, grid_resolution=0.5,
+                                    regrid_result_root_path=cts.GLM_REGRID_DIR_PATH,
+                                    regrid_daily_dir_name=cts.GLM_REGRID_DIR_NAME,
+                                    overwrite=False):
     """
-    Function to open an hourly GLM file and grid the data into specific grids (by default 0.5° x 0.5°, same as FLEXPART output).
+    Function to open hourly GLM file and grid the data into specific grid (by default 0.5° x 0.5°, same as FLEXPART output)
     The resulting dataset contains the given GLM data variables gridded according to the given grid resolution
         + a new date coordinate corresponding to the given GLM file date
     :param glm_ds_url: path to glm file that needs to be regridded
@@ -252,7 +264,7 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict, lon_min=-179.25,
         # add date to target_ds
         target_ds = target_ds.expand_dims({'time': [date]})
         # convert target ds to netCDF file, manual encoding to keep finer date value
-        # --> by default converted to int64, units "days since 1970-01-01")
+        # (otherwise converted by default to int64, units "days since 1970-01-01")
         target_ds.to_netcdf(
             path=result_nc_file_path,
             mode='w',
@@ -275,7 +287,8 @@ def regrid_glm_files(glm_dir_url=cts.OG_GLM_FILES_PATH, glm_dir_pattern=cts.GLM_
                      target_glm_05deg_dir=cts.GLM_REGRID_DIR_PATH, regrid_daily_dir_name=cts.GLM_REGRID_DIR_NAME,
                      lon_min=-179.25, lon_max=180.75, lat_min=-89.75, lat_max=90, grid_resolution=0.5, overwrite=False):
     """
-    Function to regrid hourly glm files, calls generate_hourly_regrid_glm_file() on a list of hourly glm netCDF files
+    Function to regrid hourly glm file
+    calls generate_hourly_regrid_glm_file() on a list of hourly glm netCDF files
     :param glm_dir_url:
     :param glm_dir_pattern:
     :param glm_hourly_file_pattern:
@@ -336,7 +349,7 @@ if __name__ == '__main__':
     }
     
     # regrid all glm files in og glm file path
-    regrid_glm_files(data_vars_to_regrid=data_vars_dict, overwrite=True)
+    #regrid_glm_files(data_vars_to_regrid=data_vars_dict, overwrite=True)
     
     # concat all houry glm files into daily files
     concat_hourly_nc_files_into_daily_file(overwrite=True)
@@ -352,10 +365,11 @@ if __name__ == '__main__':
     )"""
 
     # create GLM file for a particular FP out
-    """fp_out_path_dic = {
+    fp_out_path_dic = {
         "flight_001": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_001_1h_05deg/10j_100k_output/grid_time_20180603150000.nc',
         "flight_003": '/o3p/macc/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_003_1h_05deg/10j_100k_output/grid_time_20180605210000.nc',
-        "flight_006": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_006_1h_05deg/10j_100k_output/grid_time_20180607150000.nc'
+        "flight_006": '/o3p/patj/SOFT-IO-LI/flexpart10.4/flexpart_v10.4_3d7eebf/src/exercises/soft-io-li/flight_2018_006_1h_05deg/10j_100k_output/grid_time_20180607150000.nc',
+        
     }
 
     for flight in fp_out_path_dic:
@@ -371,4 +385,4 @@ if __name__ == '__main__':
                 result_concat_file_path=f'/o3p/patj/glm/flights_glm/GLM_{flight}.nc',
                 overwrite=False
             )
-    """
+    

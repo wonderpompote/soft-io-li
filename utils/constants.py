@@ -32,8 +32,10 @@ DEFAULT_GLM_DATA_VARS_TO_REGRID = {
 # glob patterns
 HH_pattern = "[0-2][0-9]" # hour
 DDD_pattern = "[0-3][0-6][0-9]" # day of year
+MM_pattern = "[0-1][1-9]" # month
 YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 YYYYDDD_PATTERN = YYYY_pattern+DDD_pattern
+
 REGRID_STR = "05deg_"
 
 # histograms
@@ -44,4 +46,4 @@ FLASH_AREA_BINS = 30
 FLASH_AREA_LOG10_RANGE = [1.5, 4.5] # <!> log10
 
 # miscellaneous
-DUMMY_VALUE = -99
+DUMMY_VALUE = -999
