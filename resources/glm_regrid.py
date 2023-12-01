@@ -8,6 +8,8 @@ Last docstring update: 27/09/23
 
 Future ameliorations:
 - add attributes to regridded data variables
+- .filna(0) for zone covered by GOES satellite (nan for the rest)
+- deal with GOES-E and GOES-W data
 - add more descriptive attributes to the regridded dataset itself
 - complete file doctring properly
 
