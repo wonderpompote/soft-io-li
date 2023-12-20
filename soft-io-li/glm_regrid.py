@@ -27,7 +27,7 @@ import xarray as xr
 """ <!!> beurk beurk temporaire <!!> """
 import sys
 
-sys.path.append('/home/patj/SOFT-IO-LI/src/')
+sys.path.append('/src/')
 """ <!!> beurk beurk temporaire <!!> """
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 from utils import constants as cts  # ..utils avant mais fonctionne pas
