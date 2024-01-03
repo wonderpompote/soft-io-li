@@ -23,15 +23,9 @@ import os
 from pathlib import Path
 from tqdm import tqdm
 import xarray as xr
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-""" <!!> beurk beurk temporaire <!!> """
-import sys
 
-sys.path.append('/src/')
-""" <!!> beurk beurk temporaire <!!> """
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-from utils import constants as cts  # ..utils avant mais fonctionne pas
-from utils import glm_utils, utils_functions, xarray_utils
+import constants as cts
+import glm_utils, utils_functions, xarray_utils
 
 
 def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_glm_files_path=cts.GLM_REGRID_DIR_PATH,
