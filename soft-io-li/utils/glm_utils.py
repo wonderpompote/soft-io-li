@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .constants import GLM_DIR_NAME, GLM_HOURLY_FILE_NAME, HH_pattern, DDD_pattern, HIST_STEP
+from .constants import GLM_HOURLY_FILE_NAME, HH_pattern, DDD_pattern
 
 
 def get_glm_hourly_file_date_from_filename(glm_filename, year=None):
