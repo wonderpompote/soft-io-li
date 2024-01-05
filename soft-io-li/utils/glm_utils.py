@@ -3,6 +3,7 @@ from pathlib import Path
 from .constants import GLM_HOURLY_FILE_NAME, HH_pattern, DDD_pattern
 
 
+############# used by the old version of GLM regrid ####################################
 def get_glm_hourly_file_date_from_filename(glm_filename, year=None):
     """
 

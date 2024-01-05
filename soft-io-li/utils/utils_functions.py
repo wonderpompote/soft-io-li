@@ -1,24 +1,75 @@
 from datetime import datetime
 import numpy as np
-import pandas as pd
-from pathlib import Path
-import xarray as xr
+import pathlib
 import warnings
+import xarray as xr
 
-def check_str_to_Path(path_to_check):
+import fpout
+
+
+def str_to_path(path_to_convert):
+    if isinstance(path_to_convert, str):
+        return pathlib.Path(path_to_convert)
+    elif isinstance(path_to_convert, pathlib.PurePath):
+        return path_to_convert
+    else:
+        raise TypeError('Expecting str or pathlib object')
+
+def get_fp_da(fp_path, sum_height=True, load=False, chunks='auto', max_chunk_size=1e8,
+              assign_releases_position_coords=False):
+    fp_ds = fpout.open_fp_dataset(fp_path, chunks=chunks, max_chunk_size=max_chunk_size,
+                                  assign_releases_position_coords=assign_releases_position_coords)
+    fp_da = fp_ds.spec001_mr
+    fp_da = fp_da.squeeze()
+    if 'pointspec' in fp_da.dims:
+        fp_da = fp_da.assign_coords(pointspec=fp_da.pointspec)
+    if sum_height:
+        fp_da = fp_da.sum('height')
+    if load:
+        fp_da.load()
+    return fp_da
+
+
+def get_glm_da_PROVISOIRE(glm_path):
+    glm_ds = xr.open_dataset(glm_path)
+    glm_da = glm_ds.flash_count
+    glm_da = glm_da.sortby(glm_da.time, ascending=False)
+    """ <!> attention quand on aura GOES-E et GOES-W faudra prévoir ce cas là <!> """
+    # GOES East covers approximately longitudes between -130 and -10 and latitudes between -60 and 60
+    _glm_da_fillna = glm_da.sel(latitude=slice(-60, 60), longitude=slice(-135, -10)).fillna(0.)
+    glm_da = xr.merge([glm_da, _glm_da_fillna]).flash_count
+    return glm_da
+
+
+def get_fp_glm_ds(fp_da, glm_da, sum_height=True, load_fp_da=False):
+    if isinstance(fp_da, str) or isinstance(fp_da, pathlib.PurePath):
+        fp_da = get_fp_da(fp_path=fp_da, sum_height=sum_height, load=load_fp_da)
+    if isinstance(glm_da, str) or isinstance(glm_da, pathlib.PurePath):
+        glm_da = get_glm_da_PROVISOIRE(glm_path=glm_da)
+    fp_glm_ds = xr.merge([fp_da, glm_da])
+    fp_glm_ds = fp_glm_ds.sortby(fp_glm_ds.time, ascending=False)
+    seven_days = np.timedelta64(7, 'D')
+    end_date = fp_glm_ds.time.max() - seven_days
+    fp_glm_ds = fp_glm_ds.where(fp_glm_ds['time'] >= end_date, drop=True)
+    return fp_glm_ds
+
+
+def check_file_exists_with_suffix(path, file_suffix='.nc'):
     """
-    Function to check if path_to_check is Path instance. 
-    If not, check if path_to_check is a str and convert it to pathlib.Path object
-    :path_to_check: should be Path or str
-    :return: path_to_check as a pathlib.Path object or raise exception if path_to_check not Path nor str
+    Function to check is a given path points to existing file with specific file_suffix
+    :param path: <str> or <pathlib.Path>
+    :param file_suffix: '.nc' by default
+    :return: <bool>
     """
-    if not isinstance(path_to_check, Path):
-        if isinstance(path_to_check, str):
-            path_to_check = Path(path_to_check)
+    if not isinstance(path, pathlib.PurePath):
+        if type(path) == str:
+            path = pathlib.Path(path)
         else:
-            raise TypeError(f'given path should be str or Path object, not {type(path_to_check)}')
-    return path_to_check
+            raise TypeError(f'Expecting <str> or <pathlib.PurePath> object, not {type(path)}')
+    return path.exists() and path.suffix == file_suffix
 
+
+############# used by the old version of GLM regrid ####################################
 def get_np_datetime64_from_string(year, day_of_year, hour=0, mins=0, secs=0, month=None, day=None):
     """
     Function to generate a np datetime64 object with specific year, day of year (or day + month), hour, min and sec
