@@ -1,7 +1,7 @@
 import datetime
 import pandas as pd
 
-from utils_functions import str_to_path
+from .utils_functions import str_to_path
 
 
 class GLMPathParser:

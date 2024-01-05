@@ -1,3 +1,15 @@
+import pathlib
+
+# constants part 3 new version
+REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/GLM_array_05deg')
+# <!> to be updated !!
+PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('o3p/macc/glm/')
+
+GLM_DIRNAME = 'OR_GLM-L2-LCFA'
+REGRID_RES = '05deg'
+GOES_SATELLITE = 'GOES'
+
+
 # "original" GLM files
 OG_GLM_FILES_PATH = '/o3p/macc/glm'
 GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s" # OR_GLM-L2-LCFA_G16_sYYYYDDD

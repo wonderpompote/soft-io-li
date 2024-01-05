@@ -24,7 +24,7 @@ from pathlib import Path
 import xarray as xr
 
 from utils import constants as cts
-from utils import glm_utils, utils_functions, xarray_utils
+from utils import glm_utils, utils_functions, xarray_pandas_utils
 
 
 def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_glm_files_path=cts.GLM_REGRID_DIR_PATH,

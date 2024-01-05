@@ -17,6 +17,8 @@ def str_to_path(path_to_convert):
 
 def get_fp_da(fp_path, sum_height=True, load=False, chunks='auto', max_chunk_size=1e8,
               assign_releases_position_coords=False):
+    if not str_to_path(fp_path).exists():
+        raise ValueError(f'fp_path {fp_path} does NOT exist')
     fp_ds = fpout.open_fp_dataset(fp_path, chunks=chunks, max_chunk_size=max_chunk_size,
                                   assign_releases_position_coords=assign_releases_position_coords)
     fp_da = fp_ds.spec001_mr
