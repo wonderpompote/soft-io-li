@@ -39,8 +39,8 @@ from utils import check_file_exists_with_suffix, get_fp_glm_ds, get_fp_da, GLMPa
 from utils import constants as cts
 
 
-def generate_satellite_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
-                                                       regrid_res=cts.REGRID_RES):
+def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
+                                                 regrid_res=cts.REGRID_RES):
     """
     Generate list of daily directory path containing satellite data between start and end date
     :param start_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
@@ -50,16 +50,16 @@ def generate_satellite_dir_list_between_start_end_date(start_date, end_date, sat
     :param regrid_res: <str> regrid resolution
     :return:
     """
-    start_date_dirpath = generate_dir_path(date=start_date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
-    end_date_dirpath = generate_dir_path(date=end_date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
+    start_date_dirpath = generate_sat_dir_path(date=start_date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
+    end_date_dirpath = generate_sat_dir_path(date=end_date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
     dir_list = [start_date_dirpath]
     for i in range(1, (end_date - start_date).days + 1):
-        dir_list.append(generate_dir_path(date=start_date + pd.Timedelta(i, 'D'), satellite=satellite, regrid=regrid))
+        dir_list.append(generate_sat_dir_path(date=start_date + pd.Timedelta(i, 'D'), satellite=satellite, regrid=regrid))
     dir_list.append(end_date_dirpath)
     return dir_list
 
 
-def generate_dir_path(date, satellite, regrid, regrid_res=cts.REGRID_RES):
+def generate_sat_dir_path(date, satellite, regrid, regrid_res=cts.REGRID_RES):
     """
     Generate the path to the directory containing the satellite data for a specific date (regridded or not)
     <!> The path does not necessarily point to an existing directory, if it does not exist it will need to be created and filled with the correct data files
@@ -104,93 +104,105 @@ def get_weighted_flash_count(spec001_mr_da, flash_count_da):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # change type quand je vais juste passer les dossiers PAS les fichiers
-    parser.add_argument('-f', '--fpout_path', required=True, help='Path to flexpart output netcdf file',
-                        type=pathlib.Path)
 
+    group = parser.add_mutually_exclusive_group() # soit fpout, soit start et end date
+
+    # change type quand je vais juste passer les dossiers PAS les fichiers
+    group.add_argument('-f', '--fpout_path', help='Path to flexpart output netcdf file', type=pathlib.Path)
     # optional arguments for fp out
     parser.add_argument('--sum_height', action='store_true', help='sum fp out values over altitude', default=True)
     parser.add_argument('--load_fpout', action='store_true', help='load fp_out dataArray into memory')
+
+    # soit fpout, soit start et end date
+    group.add_argument('--start_date', help='Start date (dry-run mode only) <!> format: YYYY-MM-DD (YYYY: year, MM: month, DD: day)')
+    parser.add_argument('--end_date', help='End date (dry-run mode only) <!> format: YYYY-MM-DD (YYYY: year, MM: month, DD: day)')
 
     # glm args --> give the path to the 7 day GLM regrid file (will be deprecated) or nothing and we'll look for the files
     parser.add_argument('-g', '--glm_path', help='Path to 7-day GLM netcdf file', type=pathlib.Path)
 
     # dry run --> only display args for now
     parser.add_argument('--dry_run', action='store_true',
-                        help='dry run (fp_out NOT loaded into memory and weighted flash count NOT calculated)')
+                        help='dry run (fp_out and glm_out NOT loaded into memory and weighted flash count NOT calculated)')
 
     args = parser.parse_args()
 
     if args.dry_run:
-        args.load_fpout = True
-        print(args)
+        args.load_fpout = False
 
-    else:
-        print(args)
+    print(args)
 
-        # check FP OUT path
-        if not check_file_exists_with_suffix(args.fpout_path):
-            raise ValueError(f'Incorrect fpout_path, {args.fpout_path} does not exist')
+    # check FP OUT path
+    if not args.dry_run and not check_file_exists_with_suffix(args.fpout_path):
+        raise ValueError(f'Incorrect fpout_path, {args.fpout_path} does not exist')
 
-        # 7-day GLM file
-        elif args.glm_path is not None:
-            # recup fp_glm_ds (merge de fp_out et glm sur 7 jours)
-            if not check_file_exists_with_suffix(args.glm_path):
-                raise ValueError(f'Incorrect glm_path attribute, expecting existing netcdf file')
-            else:
-                fp_glm_ds = get_fp_glm_ds(fp_da=args.fpout_path, glm_da=args.glm_path,
-                                          sum_height=args.sum_height, load_fp_da=args.load_fpout)
-                print(fp_glm_ds)
-
-                ######### !!!!!!!!!! #########
-                # BOUGER CA EN DEHORS QUAND j'ai récup les fichiers GLM en 1 dataset
-                # recup les nb flash
-                fp_glm_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_glm_ds['spec001_mr'],
-                                                                             flash_count_da=fp_glm_ds['flash_count'])
-                print()
-                print(fp_glm_ds['weighted_flash_count'])
-
-        # NO 7-day GLM file
+    # 7-day GLM file
+    elif not args.dry_run and args.glm_path is not None:
+        # recup fp_glm_ds (merge de fp_out et glm sur 7 jours)
+        if not check_file_exists_with_suffix(args.glm_path):
+            raise ValueError(f'Incorrect glm_path attribute, expecting existing netcdf file')
         else:
-            print('no glm file')
-            # IL VA ME FALLOIR LES CONSTANTES
-            # <!> we assume that if the directory exists it means that it contains all the GLM files available for that day
-            # STEP 1: get start and end date (pd.Timestamps)
+            fp_glm_ds = get_fp_glm_ds(fp_da=args.fpout_path, glm_da=args.glm_path,
+                                      sum_height=args.sum_height, load_fp_da=args.load_fpout)
+            print(fp_glm_ds)
+
+            ######### !!!!!!!!!! #########
+            # BOUGER CA EN DEHORS QUAND j'ai récup les fichiers GLM en 1 dataset
+            # recup les nb flash
+            fp_glm_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_glm_ds['spec001_mr'],
+                                                                         flash_count_da=fp_glm_ds['flash_count'])
+            print()
+            print(fp_glm_ds['weighted_flash_count'])
+
+    # NO 7-day GLM file (+ dry_run OK)
+    else:
+        print('no glm file')
+        # IL VA ME FALLOIR LES CONSTANTES
+        # <!> we assume that if the directory exists it means that it contains all the GLM files available for that day
+        # STEP 1: get start and end date (pd.Timestamps)
+        if not args.dry_run:
             fp_da = get_fp_da(args.fpout_path)
             start_date, end_date = pd.Timestamp(fp_da.time.min().values), pd.Timestamp(fp_da.time.max().values)
-            # STEP 2: génère liste des dossiers qu'on doit avoir (fonction à mettre qqpart ou pas ?)
-            regrid_daily_dir_list = generate_satellite_dir_list_between_start_end_date(
-                start_date=start_date, end_date=end_date, satellite=cts.GOES_SATELLITE, regrid=True
-            )
-            # STEP 3: regarde si tous les dossiers de la liste existent et récup missing dir list (RAW dir name !!!)
-            missing_raw_daily_dir_list = []
-            for d in regrid_daily_dir_list:
-                if not d.exists():
-                    missing_date = GLMPathParser(d, directory=True, regrid=True).get_start_date_pdTimestamp(
-                        ignore_missing_start_hour=True)
-                    missing_raw_daily_dir_list.append(
-                        generate_dir_path(date=missing_date, satellite=cts.GOES_SATELLITE, regrid=False))
-            # STEP 4: if missing dir list PAS vide --> regarde s'ils existent (dans le dossier raw du coup)
+        else:
+            start_date, end_date = pd.Timestamp(args.start_date), pd.Timestamp(args.end_date)
+        # STEP 2: génère liste des dossiers qu'on doit avoir (fonction à mettre qqpart ou pas ?)
+        regrid_daily_dir_list = generate_sat_dir_list_between_start_end_date(
+            start_date=start_date, end_date=end_date, satellite=cts.GOES_SATELLITE, regrid=True
+        )
+        # STEP 3: regarde si tous les dossiers de la liste existent et récup missing dir list (RAW dir name !!!)
+        missing_raw_daily_dir_list = []
+        for d in regrid_daily_dir_list:
+            if not d.exists():
+                missing_date = GLMPathParser(d, directory=True, regrid=True).get_start_date_pdTimestamp(
+                    ignore_missing_start_hour=True)
+                missing_raw_daily_dir_list.append(
+                    generate_sat_dir_path(date=missing_date, satellite=cts.GOES_SATELLITE, regrid=False)
+                )
+        # STEP 4: if missing dir list PAS vide --> regarde s'ils existent (dans le dossier raw du coup)
+        if len(missing_raw_daily_dir_list) > 0:
+            dir_to_regrid_list = []
+            for r_dir in missing_raw_daily_dir_list:
+                if r_dir.exists():
+                    missing_raw_daily_dir_list.remove(r_dir)
+                    dir_to_regrid_list.append(r_dir)
+            #   a) si certains n'existent PAS --> warning / error qui dit d'aller les chercher sur ICARE
             if len(missing_raw_daily_dir_list) > 0:
-                dir_to_regrid_list = []
-                for r_dir in missing_raw_daily_dir_list:
-                    if r_dir.exists():
-                        missing_raw_daily_dir_list.remove(r_dir)
-                        dir_to_regrid_list.append(r_dir)
-                #   a) si certains n'existent PAS --> warning / error qui dit d'aller les chercher sur ICARE
-                if len(missing_raw_daily_dir_list) > 0:
-                    missing_dates = [
-                        GLMPathParser(m_dir, regrid=False, directory=True) \
-                            .get_start_date_pdTimestamp(ignore_missing_start_hour=True) \
-                            .strftime('%Y-%j')
-                        for m_dir in missing_raw_daily_dir_list
-                    ]
-                    raise FileNotFoundError(
-                        f'The GLM files for the following dates are missing: {missing_dates}\nPlease download them from the ICARE server and try again')
-                #   b) s'ils existent --> les mets dans to_regrid_list et fait regrid sur la liste
-                elif len(dir_to_regrid_list) > 0:
-                    print('PASSER LA LISTE DES DOSSIERS A REGRID')
-                    print(f'to regrid : {dir_to_regrid_list}')
-            # STEP 5: recup tous les path des fichiers qui sont dans les dossiers de la dir list originelle
-            #   <!> entre start et end date !!
-            # STEP 6: create glm_ds puis fp_glm_ds et récup le nombre d'éclairs pondérés
+                missing_dates = [
+                    GLMPathParser(m_dir, regrid=False, directory=True) \
+                        .get_start_date_pdTimestamp(ignore_missing_start_hour=True) \
+                        .strftime('%Y-%j')
+                    for m_dir in missing_raw_daily_dir_list
+                ]
+                raise FileNotFoundError(
+                    f'The GLM files for the following dates are missing: {missing_dates}\nPlease download them from the ICARE server and try again')
+            #   b) s'ils existent --> les mets dans to_regrid_list et fait regrid sur la liste
+            elif len(dir_to_regrid_list) > 0:
+                print('PASSER LA LISTE DES DOSSIERS A REGRID')
+                print(f'to regrid : {dir_to_regrid_list}')
+        # STEP 5: recup tous les path des fichiers qui sont dans les dossiers de la dir list originelle
+        #   <!> entre start et end date !!
+        # STEP 6: create glm_ds puis fp_glm_ds et récup le nombre d'éclairs pondérés
+
+        """ ######################## PRINTY PRINT ######################## """
+        print(f'regrid_daily_dir_list : {regrid_daily_dir_list}\n')
+        print(f'missing_raw_daily_dir_list : {missing_raw_daily_dir_list}\n')
+        print(f'dir_to_regrid_list : {dir_to_regrid_list}')

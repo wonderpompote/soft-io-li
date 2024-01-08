@@ -10,6 +10,7 @@ REGRID_RES = '05deg'
 GOES_SATELLITE = 'GOES'
 
 
+####### old version
 # "original" GLM files
 OG_GLM_FILES_PATH = '/o3p/macc/glm'
 GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s" # OR_GLM-L2-LCFA_G16_sYYYYDDD
