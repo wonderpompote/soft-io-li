@@ -27,6 +27,10 @@ STEP 5:
         --> tous les fichiers du dossier
 - merge tous les fichiers avec xr.open_mfdataset
 
+
+<!> améliorations:
+- pour l'instant indique cts.GOES_SATELLITE en dur quand doit passer satellite argument dans les fonction
+    ---> faudra que ce soit un param pour que plus tard on puisse utiliser avec d'autres satellites
 """
 import argparse
 from datetime import datetime
@@ -50,12 +54,13 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
     :param regrid_res: <str> regrid resolution
     :return:
     """
-    start_date_dirpath = generate_sat_dir_path(date=start_date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
+    start_date_dirpath = generate_sat_dir_path(date=start_date, satellite=satellite, regrid=regrid,
+                                               regrid_res=regrid_res)
     end_date_dirpath = generate_sat_dir_path(date=end_date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
     dir_list = [start_date_dirpath]
     for i in range(1, (end_date - start_date).days + 1):
-        dir_list.append(generate_sat_dir_path(date=start_date + pd.Timedelta(i, 'D'), satellite=satellite, regrid=regrid))
-    dir_list.append(end_date_dirpath)
+        dir_list.append(
+            generate_sat_dir_path(date=start_date + pd.Timedelta(i, 'D'), satellite=satellite, regrid=regrid))
     return dir_list
 
 
@@ -92,6 +97,25 @@ def generate_sat_dir_path(date, satellite, regrid, regrid_res=cts.REGRID_RES):
         raise ValueError('Only GOES satellite supported for now')
 
 
+def generate_sat_regrid_filename_pattern(sat_name, regrid, regrid_res=cts.REGRID_RES):
+    """
+    Generate filename pattern for a specific satellite and regrid resolution (to be used with pathlib glob function)
+    :param sat_name: <str>
+    :param regrid: <bool>
+    :param regrid_res: <str>
+    :return: <str> filename pattern for the satellite
+    """
+    if sat_name == cts.GOES_SATELLITE:
+        # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
+        filename_pattern = f'{cts.GLM_DIRNAME}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
+    else:
+        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES"')
+    if regrid:
+        return f'{regrid_res}_{filename_pattern}'
+    else:
+        return filename_pattern
+
+
 def get_weighted_flash_count(spec001_mr_da, flash_count_da):
     """
 
@@ -105,7 +129,7 @@ def get_weighted_flash_count(spec001_mr_da, flash_count_da):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    group = parser.add_mutually_exclusive_group() # soit fpout, soit start et end date
+    group = parser.add_mutually_exclusive_group()  # soit fpout, soit start et end date
 
     # change type quand je vais juste passer les dossiers PAS les fichiers
     group.add_argument('-f', '--fpout_path', help='Path to flexpart output netcdf file', type=pathlib.Path)
@@ -114,8 +138,10 @@ if __name__ == "__main__":
     parser.add_argument('--load_fpout', action='store_true', help='load fp_out dataArray into memory')
 
     # soit fpout, soit start et end date
-    group.add_argument('--start_date', help='Start date (dry-run mode only) <!> format: YYYY-MM-DD (YYYY: year, MM: month, DD: day)')
-    parser.add_argument('--end_date', help='End date (dry-run mode only) <!> format: YYYY-MM-DD (YYYY: year, MM: month, DD: day)')
+    group.add_argument('--start_date',
+                       help='Start date (dry-run mode only) <!> format: YYYY-MM-DD (YYYY: year, MM: month, DD: day)')
+    parser.add_argument('--end_date',
+                        help='End date (dry-run mode only) <!> format: YYYY-MM-DD (YYYY: year, MM: month, DD: day)')
 
     # glm args --> give the path to the 7 day GLM regrid file (will be deprecated) or nothing and we'll look for the files
     parser.add_argument('-g', '--glm_path', help='Path to 7-day GLM netcdf file', type=pathlib.Path)
@@ -177,6 +203,10 @@ if __name__ == "__main__":
                 missing_raw_daily_dir_list.append(
                     generate_sat_dir_path(date=missing_date, satellite=cts.GOES_SATELLITE, regrid=False)
                 )
+        """ ######################## PRINTY PRINT ######################## """
+        print(f'start_date : {start_date}\nend_date : {end_date}')
+        print('regrid_daily_dir_list : \n' + "\n".join([str(p) for p in regrid_daily_dir_list]) + '\n')
+        """ ######################## PRINTY PRINT ######################## """
         # STEP 4: if missing dir list PAS vide --> regarde s'ils existent (dans le dossier raw du coup)
         if len(missing_raw_daily_dir_list) > 0:
             dir_to_regrid_list = []
@@ -184,6 +214,13 @@ if __name__ == "__main__":
                 if r_dir.exists():
                     missing_raw_daily_dir_list.remove(r_dir)
                     dir_to_regrid_list.append(r_dir)
+
+            """ ######################## PRINTY PRINT ######################## """
+            print('missing_raw_daily_dir_list : \n' + "\n".join([str(p) for p in missing_raw_daily_dir_list]) + '\n')
+            if missing_raw_daily_dir_list:
+                print('dir_to_regrid_list : \n' + "\n".join([str(p) for p in dir_to_regrid_list]))
+            """ ######################## PRINTY PRINT ######################## """
+
             #   a) si certains n'existent PAS --> warning / error qui dit d'aller les chercher sur ICARE
             if len(missing_raw_daily_dir_list) > 0:
                 missing_dates = [
@@ -198,11 +235,15 @@ if __name__ == "__main__":
             elif len(dir_to_regrid_list) > 0:
                 print('PASSER LA LISTE DES DOSSIERS A REGRID')
                 print(f'to regrid : {dir_to_regrid_list}')
+
         # STEP 5: recup tous les path des fichiers qui sont dans les dossiers de la dir list originelle
         #   <!> entre start et end date !!
-        # STEP 6: create glm_ds puis fp_glm_ds et récup le nombre d'éclairs pondérés
-
+        """ <!!> me fait une list of list + comme sorted ça charge tout en mémoire !!!!! """
+        regrid_daily_file_list = [
+            sorted(dirpath.glob(generate_sat_regrid_filename_pattern(cts.GOES_SATELLITE, regrid=True)))
+            for dirpath in regrid_daily_dir_list
+        ]
         """ ######################## PRINTY PRINT ######################## """
-        print(f'regrid_daily_dir_list : {regrid_daily_dir_list}\n')
-        print(f'missing_raw_daily_dir_list : {missing_raw_daily_dir_list}\n')
-        print(f'dir_to_regrid_list : {dir_to_regrid_list}')
+        print('regrid_daily_file_list : \n' + ("\n".join([str(p) for p in regrid_daily_file_list])) + '\n')
+        """ ######################## PRINTY PRINT ######################## """
+        # STEP 6: create glm_ds puis fp_glm_ds et récup le nombre d'éclairs pondérés

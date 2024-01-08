@@ -1,13 +1,17 @@
 import pathlib
 
 # constants part 3 new version
-REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/GLM_array_05deg')
-# <!> to be updated !!
-PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('o3p/macc/glm/')
+REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/regrid_hourly_glm/')
+PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/pre_regrid_hourly_glm/')
 
 GLM_DIRNAME = 'OR_GLM-L2-LCFA'
 REGRID_RES = '05deg'
 GOES_SATELLITE = 'GOES'
+Gxx_PATTERN = 'G1[6-7]' # update if newer versions available
+
+YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
+DDD_pattern = "[0-3][0-6][0-9]" # day of year
+HH_pattern = "[0-2][0-9]" # hour
 
 
 ####### old version
@@ -43,10 +47,10 @@ DEFAULT_GLM_DATA_VARS_TO_REGRID = {
     }
 }
 # glob patterns
-HH_pattern = "[0-2][0-9]" # hour
-DDD_pattern = "[0-3][0-6][0-9]" # day of year
+#HH_pattern = "[0-2][0-9]" # hour
+#DDD_pattern = "[0-3][0-6][0-9]" # day of year
 MM_pattern = "[0-1][1-9]" # month
-YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
+#YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 YYYYDDD_PATTERN = YYYY_pattern+DDD_pattern
 
 REGRID_STR = "05deg_"
