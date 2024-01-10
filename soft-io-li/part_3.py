@@ -35,9 +35,9 @@ STEP 5:
 import argparse
 from datetime import datetime
 import numpy as np
-import pathlib
-
 import pandas as pd
+import pathlib
+import xarray as xr
 
 from utils import check_file_exists_with_suffix, get_fp_glm_ds, get_fp_da, GLMPathParser
 from utils import constants as cts
@@ -239,11 +239,14 @@ if __name__ == "__main__":
         # STEP 5: recup tous les path des fichiers qui sont dans les dossiers de la dir list originelle
         #   <!> entre start et end date !!
         """ <!!> me fait une list of list + comme sorted ça charge tout en mémoire !!!!! """
-        regrid_daily_file_list = [
-            sorted(dirpath.glob(generate_sat_regrid_filename_pattern(cts.GOES_SATELLITE, regrid=True)))
-            for dirpath in regrid_daily_dir_list
-        ]
+        regrid_daily_file_list = []
+        for d_path in regrid_daily_dir_list:
+            regrid_daily_file_list.extend(sorted(d_path.glob(generate_sat_regrid_filename_pattern(cts.GOES_SATELLITE, regrid=True))))
         """ ######################## PRINTY PRINT ######################## """
-        print('regrid_daily_file_list : \n' + ("\n".join([str(p) for p in regrid_daily_file_list])) + '\n')
+        print('regrid_daily_file_list : \n' + ("\n".join([str(p) for p in regrid_daily_file_list[:10]])) + '\n')
         """ ######################## PRINTY PRINT ######################## """
         # STEP 6: create glm_ds puis fp_glm_ds et récup le nombre d'éclairs pondérés
+        if not args.dry_run:
+            glm_ds_between_start_end_date = xr.open_mfdataset(regrid_daily_file_list) # <?> utiliser dask ???
+            fp_glm_ds = get_fp_glm_ds(args.fpout_path, glm_ds_between_start_end_date, load_fp_da=args.load_fpout)
+            fp_glm_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_glm_ds['spec001_mr'], flash_count_da=fp_glm_ds['flash_count'])

@@ -12,9 +12,9 @@ class GLMPathParser:
         - OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc (raw hourly)
         - 05deg_OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc (regrid hourly)
         DIRECTORIES:
-        - OR_GLM-L2-LCFA_YYYY_DDD (pre-regrid dir <!> NO satellite nb)
-        - 05deg_OR_GLM-L2-LCFA_YYYY_DDD (regrid dir <!> NO satellite nb)
-        - OR_GLM-L2-LCFA_Gxx_sYYYYDDD (raw hourly macc)
+        - OR_GLM-L2-LCFA_YYYY_DDD (<!> NO satellite nb, in pre_regrid_hourly_glm dir)
+        - 05deg_OR_GLM-L2-LCFA_YYYY_DDD (<!> NO satellite nb, in regrid_hourly_glm dir)
+        - OR_GLM-L2-LCFA_Gxx_sYYYYDDD (raw hourly macc for now) <!>
     """
 
     def __init__(self, file_url, regrid, hourly=True, year=None, day_of_year=None, start_hour=None, end_hour=None,
