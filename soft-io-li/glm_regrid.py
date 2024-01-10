@@ -11,7 +11,7 @@ Future ameliorations:
 - .filna(0) for zone covered by GOES satellite (nan for the rest)
 - deal with GOES-E and GOES-W data
 - add more descriptive attributes to the regridded dataset itself
-- complete file doctring properly
+- complete file docstring properly
 
 Last amelioration docstring update: 28/11/23
 """
@@ -258,6 +258,8 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict,
 
         # add date to target_ds
         target_ds = target_ds.expand_dims({'time': [date]})
+        # add creation date to dataset attributes
+        target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()
         # convert target ds to netCDF file, manual encoding to keep finer date value
         # (otherwise converted by default to int64, units "days since 1970-01-01")
         target_ds.to_netcdf(
@@ -266,8 +268,6 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict,
             encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
         )
         print(f"Created netcdf file {result_nc_file_path.parts[-1]}")
-        # add creation date to dataset attributes
-        target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()
         return target_ds.attrs
 
     else:  # file already exists so no need to create it again
