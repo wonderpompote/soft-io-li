@@ -39,12 +39,12 @@ import pandas as pd
 import pathlib
 import xarray as xr
 
-from utils import check_file_exists_with_suffix, get_fp_glm_ds, get_fp_da, GLMPathParser
+from utils import check_file_exists_with_suffix, get_fp_glm_ds, get_fp_da, GLMPathParser, generate_sat_hourly_filename_pattern, generate_sat_dir_path
 from utils import constants as cts
 
 
 def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
-                                                 regrid_res=cts.REGRID_RES):
+                                                 regrid_res=cts.GRID_RESOLUTION_STR):
     """
     Generate list of daily directory path containing satellite data between start and end date
     :param start_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
@@ -62,58 +62,6 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
         dir_list.append(
             generate_sat_dir_path(date=start_date + pd.Timedelta(i, 'D'), satellite=satellite, regrid=regrid))
     return dir_list
-
-
-def generate_sat_dir_path(date, satellite, regrid, regrid_res=cts.REGRID_RES):
-    """
-    Generate the path to the directory containing the satellite data for a specific date (regridded or not)
-    <!> The path does not necessarily point to an existing directory, if it does not exist it will need to be created and filled with the correct data files
-    :param date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime> or <GLMPathParser>
-    :param satellite: <str> satellite name
-    :param regrid: <bool> indicates if the directory contains regridded files
-    :param regrid_res: <str> regrid resolution (if regrid == True)
-    :return: <pathlib.Path> object to satellite data directory for a specific date
-    """
-    # expecting a pd.Timestamp OR a datetime object OR np.datetime64 object OR GLMPathParser
-    if not isinstance(date, pd.Timestamp):
-        if isinstance(date, datetime) or isinstance(date, np.datetime64):
-            date = pd.Timestamp(date)
-        elif isinstance(date, pathlib.PurePath):
-            date = GLMPathParser(date, directory=True, regrid=True).get_start_date_pdTimestamp(
-                ignore_missing_start_hour=True)
-        elif isinstance(date, GLMPathParser):
-            date = date.get_start_date_pdTimestamp(ignore_missing_start_hour=True)
-        else:
-            raise TypeError('Expecting pandas.Timestamp, datetime.datime, xarray.DataArray or GLMPathParser object')
-    # now that we have the pandas.Timestamp we can generate the path
-    if satellite == 'GOES':
-        if regrid:
-            return pathlib.Path(
-                f'{cts.REGRID_GLM_ROOT_DIR}/{date.year}/{regrid_res}_{cts.GLM_DIRNAME}_{date.year}_{date.dayofyear:03d}')
-        else:
-            return pathlib.Path(
-                f'{cts.PRE_REGRID_GLM_ROOT_DIR}/{date.year}/{cts.GLM_DIRNAME}_{date.year}_{date.dayofyear:03d}')
-    else:
-        raise ValueError('Only GOES satellite supported for now')
-
-
-def generate_sat_regrid_filename_pattern(sat_name, regrid, regrid_res=cts.REGRID_RES):
-    """
-    Generate filename pattern for a specific satellite and regrid resolution (to be used with pathlib glob function)
-    :param sat_name: <str>
-    :param regrid: <bool>
-    :param regrid_res: <str>
-    :return: <str> filename pattern for the satellite
-    """
-    if sat_name == cts.GOES_SATELLITE:
-        # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
-        filename_pattern = f'{cts.GLM_DIRNAME}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
-    else:
-        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES"')
-    if regrid:
-        return f'{regrid_res}_{filename_pattern}'
-    else:
-        return filename_pattern
 
 
 def get_weighted_flash_count(spec001_mr_da, flash_count_da):
@@ -241,7 +189,7 @@ if __name__ == "__main__":
         """ <!!> me fait une list of list + comme sorted ça charge tout en mémoire !!!!! """
         regrid_daily_file_list = []
         for d_path in regrid_daily_dir_list:
-            regrid_daily_file_list.extend(sorted(d_path.glob(generate_sat_regrid_filename_pattern(cts.GOES_SATELLITE, regrid=True))))
+            regrid_daily_file_list.extend(sorted(d_path.glob(generate_sat_hourly_filename_pattern(cts.GOES_SATELLITE, regrid=True))))
         """ ######################## PRINTY PRINT ######################## """
         print('regrid_daily_file_list : \n' + ("\n".join([str(p) for p in regrid_daily_file_list[:10]])) + '\n')
         """ ######################## PRINTY PRINT ######################## """

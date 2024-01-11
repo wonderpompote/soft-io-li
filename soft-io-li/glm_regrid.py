@@ -24,7 +24,8 @@ from pathlib import Path
 import xarray as xr
 
 from utils import constants as cts
-from utils import glm_utils, utils_functions, xarray_utils
+from utils import glm_utils, utils_functions
+from utils import xarray_pandas_utils as xrx_pd_utils
 
 
 def find_regrid_glm_file_list_between_min_max_date(min_date, max_date, regrid_glm_files_path=cts.GLM_REGRID_DIR_PATH,
@@ -247,10 +248,10 @@ def generate_hourly_regrid_glm_file(glm_ds_url, data_vars_dict,
                         hist_params = data_vars_dict[data_var]['histogram']
                         _ds[f'log_{data_var}'] = np.log10(_ds[data_var])
                         # --> call histogram function
-                        res_ds = xarray_utils.histogram_using_pandas(_ds, f'log_{data_var}', hist_params)
+                        res_ds = xrx_pd_utils.histogram_using_pandas(_ds, f'log_{data_var}', hist_params)
                     # count
                     elif op.lower() == 'count':
-                        res_ds = xarray_utils.count_using_pandas(_ds, data_var, data_vars_dict[data_var]['count'])
+                        res_ds = xrx_pd_utils.count_using_pandas(_ds, data_var, data_vars_dict[data_var]['count'])
                     else:
                         raise ValueError(f'Unexpected operation name ({op}, operations supported: "histogram", "count"')
                     # merge resulting ds with target ds --> puts nans for missing latitude and longitude values

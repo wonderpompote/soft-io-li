@@ -18,7 +18,7 @@ class GLMPathParser:
     """
 
     def __init__(self, file_url, regrid, hourly=True, year=None, day_of_year=None, start_hour=None, end_hour=None,
-                 regrid_res=None, old_glm_filename=False, macc_glm_dirname=False, satellite=None, directory=False):
+                 regrid_res=None, old_glm_filename=False, macc_glm_dirname=False, satellite_version=None, directory=False):
         """
 
         @param file_url: str or pathlib object
@@ -30,13 +30,13 @@ class GLMPathParser:
         @param end_hour: <int> or <str>
         @param regrid_res: <str> usually '05deg'
         @param old_glm_filename: <bool>
-        @param satellite: <str>
+        @param satellite_version: <str>
         """
         self.url = str_to_path(file_url)  # pathlib.Path object
         self.hourly = hourly
         self.regrid = regrid
         self.regrid_res = regrid_res
-        self.satellite = satellite
+        self.satellite_version = satellite_version
         # file/dir name related attributes
         self.directory = directory
         self.old_glm_filename = old_glm_filename
@@ -55,7 +55,7 @@ class GLMPathParser:
             self.extract_missing_date()
         if self.regrid and self.regrid_res is None:
             self.extract_regrid_res()
-        if self.satellite is None and not self.old_glm_filename:
+        if self.satellite_version is None and not self.old_glm_filename:
             self.extract_satellite()
 
 
@@ -138,9 +138,9 @@ class GLMPathParser:
         filename = self.url.stem
         filename_split = filename.split('_')
         if self.old_glm_filename or self.directory:
-            self.satellite = None
+            self.satellite_version = None
         else:
-            self.satellite = filename_split[-4]
+            self.satellite_version = filename_split[-4]
 
     def get_start_date_pdTimestamp(self, ignore_missing_start_hour=False):
         """

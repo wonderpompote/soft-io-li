@@ -1,11 +1,13 @@
 from datetime import datetime
 import numpy as np
+import pandas as pd
 import pathlib
 import warnings
 import xarray as xr
 
 import fpout
 
+import GLMPathParser
 
 def str_to_path(path_to_convert):
     if isinstance(path_to_convert, str):
@@ -71,7 +73,31 @@ def check_file_exists_with_suffix(path, file_suffix='.nc'):
     return path.exists() and path.suffix == file_suffix
 
 
-############# used by the old version of GLM regrid ####################################
+def date_to_pd_timestamp(date_to_check):
+    """
+    Function to convert date or GLMPathParser to pandas.Timestamp object
+    Expecting pd.Timestamp OR datetime.datetime object OR numpy.datetime64 object OR GLMPathParser
+    :param date_to_check: <pd.Timestamp> or <datetime.datetime> or <nup.datetime64> or <GLMPathParser> object
+    :return: <pd.Timestamp>
+    """
+    # expecting a pd.Timestamp OR a datetime object OR np.datetime64 object OR GLMPathParser
+    if not isinstance(date_to_check, pd.Timestamp):
+        if isinstance(date_to_check, datetime) or isinstance(date_to_check, np.datetime64):
+            return pd.Timestamp(date_to_check)
+        elif isinstance(date_to_check, pathlib.PurePath):
+            return GLMPathParser(date_to_check, directory=True, regrid=True).get_start_date_pdTimestamp(
+                ignore_missing_start_hour=True)
+        elif isinstance(date_to_check, GLMPathParser):
+            return date_to_check.get_start_date_pdTimestamp(ignore_missing_start_hour=True)
+        else:
+            raise TypeError('Expecting pandas.Timestamp, datetime.datime, xarray.DataArray or GLMPathParser object')
+    else:
+        return date_to_check
+
+
+
+
+###################### used by the old version of GLM regrid ####################################
 def get_np_datetime64_from_string(year, day_of_year, hour=0, mins=0, secs=0, month=None, day=None):
     """
     Function to generate a np datetime64 object with specific year, day of year (or day + month), hour, min and sec
