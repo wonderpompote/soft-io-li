@@ -1,7 +1,7 @@
 import pathlib
 
-import constants as cts
-from utils_functions import date_to_pd_timestamp
+from .utils_functions import date_to_pd_timestamp, str_to_path
+from . import constants as cts
 
 def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_RESOLUTION_STR):
     """
@@ -46,7 +46,7 @@ def generate_sat_dir_path(date, satellite, regrid, regrid_res=cts.GRID_RESOLUTIO
         raise ValueError(f'Satellite {satellite} not supported yet. Only GOES satellite supported for now')
 
 
-def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_res=cts.GRID_RESOLUTION_STR):
+def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_res=cts.GRID_RESOLUTION_STR, dir_path=None):
     """
     Generate absolute path to a satellite hourly file (regridded or not)
     <!> The path does not necessarily point to an existing file, it might point to a file that has yet to be created
@@ -55,10 +55,16 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
     :param sat_version: <str> satellite version e.g.: 'G16' for GOES satellite
     :param regrid: <bool> indicates if the file is regridded
     :param regrid_res: <str> regrid resolution (if regrid == True)
+    :param dir_path: <str> or <pathlib.Path> mostly used for testing purposes, if == None the default directory path is used
     :return: <pathlib.Path> object pointing to satellite hourly data file
     """
     date = date_to_pd_timestamp(date)
-    dir_path = generate_sat_dir_path(date=date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
+    if dir_path is None:
+        dir_path = generate_sat_dir_path(date=date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
+    else: # mostly used for testing purposes
+        dir_path = str_to_path(dir_path)
+        if not dir_path.exists():
+            dir_path.mkdir()
     if satellite == cts.GOES_SATELLITE:
         filename = f'{cts.GLM_DIRNAME}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date.hour+1):02d}.nc'
         if regrid:

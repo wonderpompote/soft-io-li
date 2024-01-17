@@ -1,7 +1,6 @@
 import datetime
 import pandas as pd
-
-from .utils_functions import str_to_path
+import pathlib
 
 
 class GLMPathParser:
@@ -32,7 +31,7 @@ class GLMPathParser:
         @param old_glm_filename: <bool>
         @param satellite_version: <str>
         """
-        self.url = str_to_path(file_url)  # pathlib.Path object
+        self.url = pathlib.Path(file_url)  # pathlib.Path object
         self.hourly = hourly
         self.regrid = regrid
         self.regrid_res = regrid_res
@@ -46,17 +45,17 @@ class GLMPathParser:
         self.day_of_year = int(day_of_year) if day_of_year is not None else day_of_year
         self.start_hour = int(start_hour) if start_hour is not None else start_hour
         self.end_hour = int(end_hour) if end_hour is not None else end_hour
-        self.start_datetime = self.get_start_date_pdTimestamp()
-        # extract missing values
-        if end_hour is None and self.hourly and start_hour is not None:
-            self.end_hour = start_hour + 1
         # if we're missing at least 1 date info --> extract date from filename
         if any(val is None for val in [self.year, self.day_of_year, self.start_hour]):
             self.extract_missing_date()
+        # extract missing values
+        if end_hour is None and self.hourly and start_hour is not None:
+            self.end_hour = start_hour + 1
         if self.regrid and self.regrid_res is None:
             self.extract_regrid_res()
-        if self.satellite_version is None and not self.old_glm_filename:
+        if self.satellite_version is None:
             self.extract_satellite()
+        self.start_datetime = self.get_start_date_pdTimestamp()
 
 
 
@@ -99,9 +98,10 @@ class GLMPathParser:
                 "end_hour": None
             }
         elif self.old_glm_filename:  # GLM_array(_xxdeg)_DDD_HH1-HH2.nc
+            # if old_glm_filename --> year = 2018
             hour_split = filename_split[-1].split('-')
             date = {
-                "year": None,
+                "year": 2018,
                 "day_of_year": int(filename_split[-2]),
                 "start_hour": int(hour_split[0]),
                 "end_hour": int(hour_split[1])
@@ -137,7 +137,10 @@ class GLMPathParser:
     def extract_satellite(self):
         filename = self.url.stem
         filename_split = filename.split('_')
-        if self.old_glm_filename or self.directory:
+        if self.old_glm_filename:
+            # old_glm_filename --> usually only for 05-2018 or 06-2018 files so 'G16' satellite
+            self.satellite_version = 'G16'
+        elif self.directory:
             self.satellite_version = None
         else:
             self.satellite_version = filename_split[-4]

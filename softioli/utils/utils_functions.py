@@ -7,7 +7,7 @@ import xarray as xr
 
 import fpout
 
-import GLMPathParser
+from .GLMPathParser import GLMPathParser
 
 def str_to_path(path_to_convert):
     if isinstance(path_to_convert, str):
