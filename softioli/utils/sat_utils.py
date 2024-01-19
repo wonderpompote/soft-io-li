@@ -2,6 +2,7 @@ import pathlib
 
 from .utils_functions import date_to_pd_timestamp, str_to_path
 from . import constants as cts
+from . import GLMPathParser
 
 def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_RESOLUTION_STR):
     """
@@ -22,14 +23,14 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_R
         return filename_pattern
 
 
-def generate_sat_dir_path(date, satellite, regrid, regrid_res=cts.GRID_RESOLUTION_STR):
+def generate_sat_dir_path(date, satellite, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
     """
     Generate the path to the directory containing the satellite data for a specific date (regridded or not)
     <!> The path does not necessarily point to an existing directory, if it does not exist it will need to be created and filled with the correct data files
     :param date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime> or <GLMPathParser>
     :param satellite: <str> satellite name
     :param regrid: <bool> indicates if the directory contains regridded files
-    :param regrid_res: <str> regrid resolution (if regrid == True)
+    :param regrid_res_str: <str> regrid resolution (if regrid == True)
     :return: <pathlib.Path> object pointing to satellite data directory for a specific date
     """
     # check date
@@ -38,12 +39,12 @@ def generate_sat_dir_path(date, satellite, regrid, regrid_res=cts.GRID_RESOLUTIO
     if satellite == cts.GOES_SATELLITE:
         if regrid:
             return pathlib.Path(
-                f'{cts.REGRID_GLM_ROOT_DIR}/{date.year}/{regrid_res}_{cts.GLM_DIRNAME}_{date.year}_{date.dayofyear:03d}')
+                f'{cts.REGRID_GLM_ROOT_DIR}/{date.year}/{regrid_res_str}_{cts.GLM_DIRNAME}_{date.year}_{date.dayofyear:03d}')
         else:
             return pathlib.Path(
                 f'{cts.PRE_REGRID_GLM_ROOT_DIR}/{date.year}/{cts.GLM_DIRNAME}_{date.year}_{date.dayofyear:03d}')
     else:
-        raise ValueError(f'Satellite {satellite} not supported yet. Only GOES satellite supported for now')
+        raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
 
 
 def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_res=cts.GRID_RESOLUTION_STR, dir_path=None):
@@ -60,7 +61,7 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
     """
     date = date_to_pd_timestamp(date)
     if dir_path is None:
-        dir_path = generate_sat_dir_path(date=date, satellite=satellite, regrid=regrid, regrid_res=regrid_res)
+        dir_path = generate_sat_dir_path(date=date, satellite=satellite, regrid=regrid, regrid_res_str=regrid_res)
     else: # mostly used for testing purposes
         dir_path = str_to_path(dir_path)
         if not dir_path.exists():
@@ -72,4 +73,29 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
         else:
             return dir_path / pathlib.Path(filename)
     else:
-        raise ValueError(f'Satellite {satellite} not supported yet. Only GOES satellite supported for now')
+        raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
+
+
+def get_list_of_dates_from_list_of_sat_path(path_list, directory, satellite, regrid, date_str, date_format='%Y-%j'):
+    """
+    Takes a list of satellite data paths (directories or files) and returns the corresponding dates
+    extracted from the file/directory names
+    @param path_list: <list> [ <pathlib.Path> or <str>, ... ]
+    @param directory: <bool> indicates if the paths point to directories
+    @param satellite: <str> satellite name
+    @param regrid: <bool> indicates if the paths point to regridded files or directories
+    @param date_str: <bool> indicates if we want the dates as str
+    @return: <list> [ <pd.Timestamp> or <str>, ... ] list of all the dates as pd.Timestamps or str
+    """
+    date_list = []
+    if satellite == cts.GOES_SATELLITE:
+        for p in path_list:
+            date = GLMPathParser(p, regrid=regrid, directory=directory) \
+                        .get_start_date_pdTimestamp(ignore_missing_start_hour=True)
+            if date_str:
+                date = date.strftime(date_format)
+            date_list.append(date)
+    else:
+        raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
+
+    return date_list

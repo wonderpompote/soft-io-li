@@ -1,12 +1,17 @@
 import pathlib
+import socket
 
 # constants part 3 new version
+DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
+
+SAT_VALUE_ERROR = f'satellite not supported yet. Only GOES satellite supported for now' # TODO: update when other satellites OK
+
 REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/regrid_hourly_glm/')
 PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/pre_regrid_hourly_glm/')
 
 GLM_DIRNAME = 'OR_GLM-L2-LCFA'
 GOES_SATELLITE = 'GOES'
-Gxx_PATTERN = 'G1[6-7]' # update if newer versions available
+Gxx_PATTERN = 'G1[6-7]' # TODO: update if newer versions available
 
 DEFAULT_GLM_DATA_VARS_TO_REGRID = {
     "flash_energy": {
@@ -45,7 +50,7 @@ DDD_pattern = "[0-3][0-6][0-9]" # day of year
 HH_pattern = "[0-2][0-9]" # hour
 
 
-####### old version
+############ old version
 # "original" GLM files
 OG_GLM_FILES_PATH = '/o3p/macc/glm'
 GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s" # OR_GLM-L2-LCFA_G16_sYYYYDDD
