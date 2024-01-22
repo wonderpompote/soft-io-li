@@ -33,7 +33,7 @@ def get_fp_da(fp_path, sum_height=True, load=False, chunks='auto', max_chunk_siz
         fp_da.load()
     return fp_da
 
-
+# TODO: supprmier (elle est dans fpout_sat_comparison maintenant je crois
 def get_glm_da_PROVISOIRE(glm_path):
     glm_ds = xr.open_dataset(glm_path)
     glm_da = glm_ds.flash_count
@@ -44,7 +44,7 @@ def get_glm_da_PROVISOIRE(glm_path):
     glm_da = xr.merge([glm_da, _glm_da_fillna]).flash_count
     return glm_da
 
-
+#TODO: mettre à jour le nom et la fonction elle même / la supprimer d'ici si je a met dans fpout_sat_comparison
 def get_fp_glm_ds(fp_da, glm_da, sum_height=True, load_fp_da=False):
     if isinstance(fp_da, str) or isinstance(fp_da, pathlib.PurePath):
         fp_da = get_fp_da(fp_path=fp_da, sum_height=sum_height, load=load_fp_da)
@@ -66,7 +66,7 @@ def check_file_exists_with_suffix(path, file_suffix='.nc'):
     :return: <bool>
     """
     if not isinstance(path, pathlib.PurePath):
-        if type(path) == str:
+        if isinstance(path, str):
             path = pathlib.Path(path)
         else:
             raise TypeError(f'Expecting <str> or <pathlib.PurePath> object, not {type(path)}')

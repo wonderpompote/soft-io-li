@@ -8,7 +8,7 @@ if __name__ == '__main__':
 
     # nargs donc -f file1 file2 file3 ... PAS -f file1 -f file2 -f file3 ... (ça c'est quand action='append')
     parser.add_argument('-f', '--file_list', required=True, help='List of GLM files to regrid', nargs='+')
-    parser.add_argument('--res-path', help='result netcdf file path (only used when testing)')
+    parser.add_argument('--res-path', help='result netcdf file path (mostly used when testing)')
     parser.add_argument('--tests', help='test mode (using default test result path if --res-path arg was forgotten', action='store_true')
     parser.add_argument('--old-glm', help='old GLM file name', action='store_true')
 
@@ -19,4 +19,5 @@ if __name__ == '__main__':
 
     print(args)
 
-    regrid_sat_files(file_list=args.file_list, sat_name=cts.GOES_SATELLITE, overwrite=False, result_dir_path=args.res_path, old_glm_filename=args.old_glm)
+    regrid_sat_files(path_list=args.file_list, sat_name=cts.GOES_SATELLITE,
+                     overwrite=False, result_dir_path=args.res_path, old_glm_filename=args.old_glm)

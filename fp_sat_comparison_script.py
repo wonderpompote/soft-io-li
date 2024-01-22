@@ -89,4 +89,6 @@ if __name__ == '__main__':
         print(f'start_date : {start_date} ({start_date.year}-{start_date.dayofyear}) \tend_date: {end_date} ({end_date.year}-{end_date.dayofyear})')
         """ ######################## PRINTY PRINT ######################## """
 
-        fs_comp.get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=args.sat_name)
+        sat_ds = fs_comp.get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=args.sat_name, dry_run=args.dry_run)
+
+

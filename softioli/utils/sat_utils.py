@@ -14,7 +14,7 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_R
     """
     if sat_name == cts.GOES_SATELLITE:
         # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
-        filename_pattern = f'{cts.GLM_DIRNAME}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
+        filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
     else:
         raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES"')
     if regrid:
@@ -39,10 +39,10 @@ def generate_sat_dir_path(date, satellite, regrid, regrid_res_str=cts.GRID_RESOL
     if satellite == cts.GOES_SATELLITE:
         if regrid:
             return pathlib.Path(
-                f'{cts.REGRID_GLM_ROOT_DIR}/{date.year}/{regrid_res_str}_{cts.GLM_DIRNAME}_{date.year}_{date.dayofyear:03d}')
+                f'{cts.REGRID_GLM_ROOT_DIR}/{date.year}/{regrid_res_str}_{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
         else:
             return pathlib.Path(
-                f'{cts.PRE_REGRID_GLM_ROOT_DIR}/{date.year}/{cts.GLM_DIRNAME}_{date.year}_{date.dayofyear:03d}')
+                f'{cts.PRE_REGRID_GLM_ROOT_DIR}/{date.year}/{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
     else:
         raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
 
@@ -67,7 +67,7 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
         if not dir_path.exists():
             dir_path.mkdir()
     if satellite == cts.GOES_SATELLITE:
-        filename = f'{cts.GLM_DIRNAME}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date.hour+1):02d}.nc'
+        filename = f'{cts.GLM_PATH_PREFIX}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date.hour + 1):02d}.nc'
         if regrid:
             return dir_path / pathlib.Path(f'{regrid_res}_{filename}')
         else:

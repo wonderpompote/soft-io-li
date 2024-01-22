@@ -44,6 +44,7 @@ import fpout
 from . import utils
 from .utils import constants as cts
 from .utils import GLMPathParser
+from . import sat_regrid
 
 
 def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
@@ -55,29 +56,19 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
     :param satellite: <str> satellite name
     :param regrid: <bool> indicates if the directory contains regridded files
     :param regrid_res_str: <str> regrid resolution
-    :return: <generator>
+    :return: <list>
     """
     # make sure the dates are pd.Timestamps
     start_date = utils.date_to_pd_timestamp(start_date)
     end_date = utils.date_to_pd_timestamp(end_date)
-    start_date_dirpath = utils.generate_sat_dir_path(date=start_date, satellite=satellite, regrid=regrid,
-                                                     regrid_res_str=regrid_res_str)
-    dir_list = [start_date_dirpath]
-    for i in range(1, (end_date - start_date).days + 1):
-        dir_list.append(
-            utils.generate_sat_dir_path(date=start_date + pd.Timedelta(i, 'D'), satellite=satellite, regrid=regrid,
-                                        regrid_res_str=regrid_res_str))
+    dir_list = [
+        utils.generate_sat_dir_path(
+            date=start_date + pd.Timedelta(i, 'D'), satellite=satellite,
+            regrid=regrid, regrid_res_str=regrid_res_str
+        )
+        for i in range((end_date - start_date).days + 1)
+    ]
     return dir_list
-
-
-def get_weighted_flash_count(spec001_mr_da, flash_count_da, satellite):
-    """
-
-    :param spec001_mr_da:
-    :param flash_count_da:
-    :return:
-    """
-    return (spec001_mr_da * flash_count_da).sum(['latitude', 'longitude']) / 3600
 
 
 # TODO: dask !!
@@ -107,8 +98,21 @@ def get_fp_out_da(fpout_path, sum_height=True, load=False, chunks='auto', max_ch
         fp_da.load()
     return fp_da
 
-# TODO: découper en plusieurs fonctions ? genre get_sat_data
-def get_satellite_ds(start_date, end_date, sat_name):
+
+# TODO: suppr dry_run une fois que les tests sont finis
+def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RESOLUTION,
+                     grid_res_str=cts.GRID_RESOLUTION_STR, overwrite=False, dry_run=False):
+    """
+
+    @param start_date:
+    @param end_date:
+    @param sat_name:
+    @param grid_resolution:
+    @param grid_res_str:
+    @param overwrite:
+    @param dry_run:
+    @return:
+    """
     start_date, end_date = utils.date_to_pd_timestamp(start_date), utils.date_to_pd_timestamp(end_date)
     # list of daily directories containing the hourly satellite data files between start and end date
     regrid_daily_dir_list = generate_sat_dir_list_between_start_end_date(start_date=start_date, end_date=end_date,
@@ -117,58 +121,107 @@ def get_satellite_ds(start_date, end_date, sat_name):
         SatPathParser = GLMPathParser
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
+
     # get list of missing regrid sat dir
-    missing_raw_daily_dir_list = []
-    for d in regrid_daily_dir_list:
-        if not d.exists():
-            # get missing date from dir_path and generate and add path to the pre-regrid daily satellite directory
-            missing_raw_daily_dir_list.append(
-                utils.generate_sat_dir_path(
-                    date=SatPathParser(d, directory=True, regrid=True) \
-                                .get_start_date_pdTimestamp(ignore_missing_start_hour=True),
-                    satellite=sat_name, regrid=False)
-            )
+    missing_raw_daily_dir_list = {
+        utils.generate_sat_dir_path(
+            date=SatPathParser(regrid_dir_path, directory=True, regrid=True) \
+                        .get_start_date_pdTimestamp(ignore_missing_start_hour=True),
+            satellite=sat_name,
+            regrid=False
+        )
+        for regrid_dir_path in regrid_daily_dir_list if not regrid_dir_path.exists()
+    }
     # check if missing_raw_daily_dir_list is empty, if not --> check if pre-regrid directories exist
-    if len(missing_raw_daily_dir_list) > 0:
-        dir_to_regrid_list = []
-        for r_dir in missing_raw_daily_dir_list:
-            if r_dir.exists():
-                # remove existing pre_regrid from missing_raw_daily_dir_list
-                missing_raw_daily_dir_list.remove(r_dir)
-                # and add it to the list of directories to regrid
-                dir_to_regrid_list.append(r_dir)
+    if missing_raw_daily_dir_list:
+        ########################################"
+        print()
+        print(f"regrid_daily_dir_list : {regrid_daily_dir_list}")
+        print()
+        print(f'missing_raw_daily_dir_list : {missing_raw_daily_dir_list}')
+        print()
+        ##########################################
+        # directories to regrid (pre-regrid directory exist but NOT regrid directory)
+        dir_to_regrid_list = {d_path for d_path in missing_raw_daily_dir_list if d_path.exists()}
         # regrid the files in the missing directories
-        if len(dir_to_regrid_list) > 0:
-            # TODO: regrid files from a directory list
-            print(f"DIRS TO REGRID: {dir_to_regrid_list}")
-    # if we still have some missing pre-regrid directories --> FileNotFoundError
-    if len(missing_raw_daily_dir_list) > 0:
-        # get the missing dates from the remaining missing directory paths to display them in the error message
-        missing_dates = utils.get_list_of_dates_from_list_of_sat_path(path_list=missing_raw_daily_dir_list,
-                                                                      directory=True, satellite=sat_name,
-                                                                      regrid=False, date_str=True)
-        raise FileNotFoundError(f'The GLM files for the following dates are missing: {missing_dates}\nPlease download '
-                                f'them from the ICARE server and try again')
-
-    # TODO: recup fp_sat_ds
-    # TODO: STEP1: recup liste des fichiers de données satellite entre start et end date
-    """
+        if dir_to_regrid_list:
+            # TODO: tests on fait juste print for now
+            ##########################################
+            print(f'Directories to regrid: {sorted(dir_to_regrid_list)}')
+            print()
+            ##########################################
+            sat_regrid.regrid_sat_files(path_list=dir_to_regrid_list, sat_name=sat_name,
+                                        grid_resolution=grid_resolution, dir_list=True,
+                                        grid_res_str=grid_res_str, overwrite=overwrite, old_glm_filename=False)
+            ##########################################
+            return
+            ##########################################
+        # if we still have missing pre-regrid directories --> FileNotFoundError
+        if missing_raw_daily_dir_list - dir_to_regrid_list:
+            # get the missing dates from the remaining missing directory paths to display them in the error message
+            missing_dates = utils.get_list_of_dates_from_list_of_sat_path(
+                path_list=(missing_raw_daily_dir_list - dir_to_regrid_list),
+                directory=True, satellite=sat_name, regrid=False, date_str=True
+            )
+            raise FileNotFoundError(f'The GLM files for the following dates are missing: {sorted(missing_dates)}\nPlease download '
+                                    f'them from the ICARE server and try again')
+    # get list of satellite data files between start and end date
     regrid_daily_file_list = []
-        for d_path in regrid_daily_dir_list:
-            regrid_daily_file_list.extend(
-                sorted(d_path.glob(generate_sat_hourly_filename_pattern(cts.GOES_SATELLITE, regrid=True))))
-    """
-    # TODO: STEP2: recup sat_ds entre start et end date puis fp_sat_ds puis weighted flash count
-    """
-    if not args.dry_run:
-        glm_ds_between_start_end_date = xr.open_mfdataset(regrid_daily_file_list)  # <?> utiliser dask ???
-        fp_glm_ds = get_fp_glm_ds(args.fpout_path, glm_ds_between_start_end_date, load_fp_da=args.load_fpout)
-        fp_glm_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_glm_ds['spec001_mr'],
-                                                                     flash_count_da=fp_glm_ds['flash_count'])
-    """
+    fname_pattern = utils.generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=True)
+    regrid_daily_file_list.extend(regrid_dir_path.glob(fname_pattern) for regrid_dir_path in regrid_daily_dir_list)
+    # create a dataset merging all the regrid hourly files
+    if not dry_run:
+        return xr.open_mfdataset(regrid_daily_file_list)  # <?> utiliser dask ???
 
 
+def get_weighted_flash_count(spec001_mr_da, flash_count_da):
+    """
+
+    :param spec001_mr_da:
+    :param flash_count_da:
+    :return:
+    """
+    return (spec001_mr_da * flash_count_da).sum(['latitude', 'longitude']) / 3600
+
+def get_weighted_fp_sat_ds(fp_path, sat_ds, sum_height=True, load=False, chunks='auto',
+                           max_chunk_size=1e8, assign_releases_position_coords=False):
+    """
+
+    @param fp_path:
+    @param sat_ds:
+    @param sum_height:
+    @param load:
+    @param chunks:
+    @param max_chunk_size:
+    @param assign_releases_position_coords:
+    @return:
+    """
+    # check fp_path and get fp_da
+    fp_path = utils.check_file_exists_with_suffix(fp_path, file_suffix='.nc')
+    fp_da = get_fp_out_da(fpout_path=fp_path, sum_height=sum_height, load=load,
+                          chunks=chunks, max_chunk_size=max_chunk_size,
+                          assign_releases_position_coords=assign_releases_position_coords)
+    # in case sat_ds is a path to satellite .nc file
+    if isinstance(sat_ds, str) or isinstance(sat_ds, pathlib.PurePath):
+        sat_ds = xr.open_dataset(sat_ds)
+    elif not isinstance(sat_ds, xr.Dataset):
+        raise TypeError(
+            f'Invalid sat_ds ({sat_ds}). Expecting <xarray.Dataset> or path (<str> or <pathlib.Path>) to satellite data file')
+    # merge fp da and sat ds
+    fp_sat_ds = xr.merge([fp_da, sat_ds])
+    # only keep the first 7 days after release
+    fp_sat_ds = fp_sat_ds.sortby(fp_sat_ds.time, ascending=False)
+    seven_days = np.timedelta64(7, 'D')
+    end_date = fp_sat_ds.time.max() - seven_days
+    fp_sat_ds = fp_sat_ds.where(fp_sat_ds['time'] >= end_date, drop=True)
+    # get weighted flash count
+    fp_sat_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_sat_ds['spec001_mr'],
+                                                                 flash_count_da=fp_sat_ds['flash_count'])
+    return fp_sat_ds
+
+'''
 if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser()
 
     group = parser.add_mutually_exclusive_group()  # soit fpout, soit start et end date
@@ -293,4 +346,5 @@ if __name__ == "__main__":
             glm_ds_between_start_end_date = xr.open_mfdataset(regrid_daily_file_list)  # <?> utiliser dask ???
             fp_glm_ds = get_fp_glm_ds(args.fpout_path, glm_ds_between_start_end_date, load_fp_da=args.load_fpout)
             fp_glm_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_glm_ds['spec001_mr'],
-                                                                         flash_count_da=fp_glm_ds['flash_count'])
+                                                                         flash_count_da=fp_glm_ds['flash_count']) 
+'''
