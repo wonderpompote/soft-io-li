@@ -21,7 +21,7 @@ def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_r
                                     data_vars_to_regrid_dict=cts.DEFAULT_GLM_DATA_VARS_TO_REGRID,
                                     lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                     lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
-                                    result_dir_path=None, old_glm_filename=False):
+                                    result_dir_path=None, naming_convention=None):
     """
     Pre-process GLM hourly data file to correspond to a specific grid resolution
     @param pre_regrid_file_url: <pathlib.Path> or <str>
@@ -34,11 +34,12 @@ def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_r
     @param lon_min: <float> (default)
     @param lon_max: <float> (default)
     @param result_dir_path: <pathlib.Path> or <str> mostly for testing, directory in which resulting file should be stored, if None --> use default path
-    @param old_glm_filename: <bool> if file to regrid uses the old file notation (used by macc)
+    @param old_glm_notation: <bool> if file to regrid uses the old file notation (GLM_array_DDD_HH1-HH2.nc for files or GLM_array(_05deg)_DDD for dirs)
+    @param macc_glm_dirname: <bool> if directory to regrid uses the old file notation (OR_GLM-L2-LCFA_Gxx_sYYYYDDD)
     @return:
     """
     # STEP 1: recup pre-regrid file start date (year, day, hour) --> avec GLMPathParser / <sat>PathParser
-    pre_regrid_glmparser = GLMPathParser(file_url=pre_regrid_file_url, regrid=False, old_glm_filename=old_glm_filename)
+    pre_regrid_glmparser = GLMPathParser(file_url=pre_regrid_file_url, regrid=False, naming_convention=naming_convention)
     pre_regrid_file_date = pre_regrid_glmparser.get_start_date_pdTimestamp(ignore_missing_start_hour=False)
 
     # STEP 2: create result nc file path
@@ -124,7 +125,7 @@ def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_r
 
 def regrid_sat_files(path_list, sat_name, grid_resolution=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
-                     result_dir_path=None, old_glm_filename=False):
+                     result_dir_path=None, naming_convention=None):
     """
     Funciton to regrid a list of hourly satellite data files to a specific grid resolution
     @param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or directories to regrid
@@ -134,7 +135,7 @@ def regrid_sat_files(path_list, sat_name, grid_resolution=cts.GRID_RESOLUTION,
     @param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
     @param overwrite: <bool> overwrite file if it already exists
     @param result_dir_path: <pathlib.Path> or <str> mostly for testing, directory in which resulting file should be stored, if None --> use default path
-    @param old_glm_filename: <bool> if file to regrid uses the old file notation (used by macc)
+    @param old_glm_filename: <bool> if file to regrid uses the old file notation (GLM_array_DDD)
     @return:
     """
     # if path_list contains paths to directories --> get list of files in each directory
@@ -146,11 +147,11 @@ def regrid_sat_files(path_list, sat_name, grid_resolution=cts.GRID_RESOLUTION,
             path_list.extend(dir_path.glob(filename_pattern))
     for pre_regrid_file_url in path_list:
         if sat_name == cts.GOES_SATELLITE:
+            print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
             generate_glm_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url, grid_resolution=grid_resolution,
-                                            grid_res_str=grid_res_str,
+                                            grid_res_str=grid_res_str, naming_convention=naming_convention,
                                             data_vars_to_regrid_dict=cts.DEFAULT_GLM_DATA_VARS_TO_REGRID,
-                                            overwrite=overwrite, result_dir_path=result_dir_path,
-                                            old_glm_filename=old_glm_filename)
+                                            overwrite=overwrite, result_dir_path=result_dir_path)
         else:
             raise ValueError(
                 f'{sat_name} satellite data not yet supported. Supported satellite data so far: GOES (GLM) )')

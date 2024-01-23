@@ -3,9 +3,14 @@ import pandas as pd
 import pathlib
 
 
+# naming conventions
+OLD_GLM_NOTATION = 'OLD'  # GLM_array(_05deg)_DDD for dirs and # GLM_array(_xxdeg)_DDD_HH1-HH2.nc for files
+OLD_GLM_PRE_REGRID_TEMP_FILENAME = 'OLD_TEMP'  # GLM_array_DDD_temp_HH.nc
+OLD_GLM_MACC_PRE_REGRID_DIRNAME = 'MACC_DIR'  # OR_GLM-L2-LCFA_Gxx_sYYYYDDD
+
 class GLMPathParser:
     """
-    expecting url of the form:
+    expecting url of the form (default notation):
         FILES:
         - OR_GLM-L2-LCFA_G16_sYYYYDDDHHMMSSS_eYYYYDDDHHMMSSS_cYYYYDDDHHMMSSS.nc (raw 20sec)
         - OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc (raw hourly)
@@ -17,7 +22,7 @@ class GLMPathParser:
     """
 
     def __init__(self, file_url, regrid, hourly=True, year=None, day_of_year=None, start_hour=None, end_hour=None,
-                 regrid_res=None, old_glm_filename=False, macc_glm_dirname=False, satellite_version=None, directory=False):
+                 regrid_res_str=None, satellite_version=None, directory=False, naming_convention=None):
         """
 
         @param file_url: str or pathlib object
@@ -27,19 +32,21 @@ class GLMPathParser:
         @param day_of_year: <int> or <str>
         @param start_hour: <int> or <str>
         @param end_hour: <int> or <str>
-        @param regrid_res: <str> usually '05deg'
-        @param old_glm_filename: <bool>
+        @param regrid_res_str: <str> usually '05deg'
         @param satellite_version: <str>
+        @param directory: <bool>
+        @param naming_convention: <str>, Describes the file/directory naming convention. Supported values: 'OLD', 'OLD_TEMP', 'MACC_DIR' or None (if default notation)
         """
         self.url = pathlib.Path(file_url)  # pathlib.Path object
         self.hourly = hourly
         self.regrid = regrid
-        self.regrid_res = regrid_res
+        self.regrid_res = regrid_res_str
         self.satellite_version = satellite_version
         # file/dir name related attributes
         self.directory = directory
-        self.old_glm_filename = old_glm_filename
-        self.macc_glm_dirname = macc_glm_dirname
+        if naming_convention not in {OLD_GLM_NOTATION, OLD_GLM_PRE_REGRID_TEMP_FILENAME, OLD_GLM_MACC_PRE_REGRID_DIRNAME, None}:
+            raise ValueError(f'Naming convention {naming_convention} NOT supported. Expecting {OLD_GLM_NOTATION}, {OLD_GLM_PRE_REGRID_TEMP_FILENAME}, {OLD_GLM_MACC_PRE_REGRID_DIRNAME} or None')
+        self.naming_convention = naming_convention
         # date attributes
         self.year = int(year) if year is not None else year
         self.day_of_year = int(day_of_year) if day_of_year is not None else day_of_year
@@ -64,14 +71,14 @@ class GLMPathParser:
         filename_split = filename.split('_')
         # if directory
         if self.directory:
-            if self.old_glm_filename: # GLM_array(_05deg)_DDD
+            if self.naming_convention == OLD_GLM_NOTATION: # GLM_array(_05deg)_DDD
                 date = {
                     "year": None,
                     "day_of_year": int(filename_split[-1]),
                     "start_hour": None,
                     "end_hour": None
                 }
-            elif self.macc_glm_dirname: # OR_GLM-L2-LCFA_Gxx_sYYYYDDD
+            elif self.naming_convention == OLD_GLM_MACC_PRE_REGRID_DIRNAME: # OR_GLM-L2-LCFA_Gxx_sYYYYDDD
                 date = {
                     "year": filename_split[-1][1:5], # YYYY part of sYYYYDDD
                     "day_of_year": filename_split[-1][5:8], # DDD part of sYYYYDDD
@@ -97,7 +104,7 @@ class GLMPathParser:
                 "start_hour": int(start_date[8:10]), # HH part of sYYYYDDDHHMMSSS
                 "end_hour": None
             }
-        elif self.old_glm_filename:  # GLM_array(_xxdeg)_DDD_HH1-HH2.nc
+        elif self.naming_convention == OLD_GLM_NOTATION:  # GLM_array(_xxdeg)_DDD_HH1-HH2.nc
             # if old_glm_filename --> year = 2018
             hour_split = filename_split[-1].split('-')
             date = {
@@ -105,6 +112,14 @@ class GLMPathParser:
                 "day_of_year": int(filename_split[-2]),
                 "start_hour": int(hour_split[0]),
                 "end_hour": int(hour_split[1])
+            }
+        elif self.naming_convention == OLD_GLM_PRE_REGRID_TEMP_FILENAME: # GLM_array_DDD_temp_HH.nc
+            # if old_glm_filename --> year = 2018
+            date = {
+                "year": 2018,
+                "day_of_year": int(filename_split[-3]),
+                "start_hour": int(filename_split[-1]),
+                "end_hour": int(filename_split[-1]) + 1
             }
         else:  # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc or xxdeg_OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc
             hour_split = filename_split[-1].split('-')
@@ -127,7 +142,7 @@ class GLMPathParser:
     def extract_regrid_res(self):
         if 'deg' in self.url.stem:
             filename_split = self.url.stem.split('_')
-            if self.old_glm_filename: # GLM_array_xxdeg_DDD_HH1-HH2.nc
+            if self.naming_convention == OLD_GLM_NOTATION: # GLM_array_xxdeg_DDD_HH1-HH2.nc
                 self.regrid_res = filename_split[-3]
             else: # xxdeg_OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc
                 self.regrid_res = filename_split[0]
@@ -137,7 +152,7 @@ class GLMPathParser:
     def extract_satellite(self):
         filename = self.url.stem
         filename_split = filename.split('_')
-        if self.old_glm_filename:
+        if self.naming_convention == OLD_GLM_NOTATION or self.naming_convention == OLD_GLM_PRE_REGRID_TEMP_FILENAME:
             # old_glm_filename --> usually only for 05-2018 or 06-2018 files so 'G16' satellite
             self.satellite_version = 'G16'
         elif self.directory:

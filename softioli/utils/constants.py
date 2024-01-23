@@ -7,7 +7,7 @@ DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
 SAT_VALUE_ERROR = f'satellite not supported yet. Only GOES satellite supported for now' # TODO: update when other satellites OK
 
 REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/regrid_hourly_glm/')
-PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/test-glm/pre_regrid_hourly_glm/') #TODO modif après fin des tests pathlib.Path('/o3p/patj/glm/pre_regrid_hourly_glm/')
+PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/pre_regrid_hourly_glm/')
 
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
 GOES_SATELLITE = 'GOES'
@@ -48,7 +48,6 @@ GRID_RESOLUTION = 0.5
 YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 DDD_pattern = "[0-3][0-6][0-9]" # day of year
 HH_pattern = "[0-2][0-9]" # hour
-
 
 ############ old version
 # "original" GLM files

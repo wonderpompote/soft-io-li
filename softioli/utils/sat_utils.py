@@ -22,6 +22,24 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_R
     else:
         return filename_pattern
 
+def generate_sat_dirname_pattern(sat_name, regrid, regrid_res=cts.GRID_RESOLUTION_STR):
+    """
+    Generate directory name pattern for a specific satellite and regrid resolution (to be used with pathlib glob function)
+    :param sat_name: <str>
+    :param regrid: <bool>
+    :param regrid_res: <str>
+    :return: <str> directory name pattern for the satellite
+    """
+    if sat_name == cts.GOES_SATELLITE:
+        # OR_GLM-L2-LCFA_Gxx_YYYY_DDD
+        dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}'
+    else:
+        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES"')
+    if regrid:
+        return f'{regrid_res}_{dirname_pattern}'
+    else:
+        return dirname_pattern
+
 
 def generate_sat_dir_path(date, satellite, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
     """
