@@ -13,6 +13,8 @@ import xarray as xr
 
 from .utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_hourly_filename_pattern
 from .utils import constants as cts
+from .utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
+    attrs_to_keep
 from .utils import xarray_pandas_utils as xr_pd_utils
 
 
@@ -39,11 +41,12 @@ def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_r
     @return:
     """
     # STEP 1: recup pre-regrid file start date (year, day, hour) --> avec GLMPathParser / <sat>PathParser
-    pre_regrid_glmparser = GLMPathParser(file_url=pre_regrid_file_url, regrid=False, naming_convention=naming_convention)
+    pre_regrid_glmparser = GLMPathParser(file_url=pre_regrid_file_url, regrid=False,
+                                         naming_convention=naming_convention)
     pre_regrid_file_date = pre_regrid_glmparser.get_start_date_pdTimestamp(ignore_missing_start_hour=False)
 
     # STEP 2: create result nc file path
-    result_dir_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, satellite=cts.GOES_SATELLITE,
+    result_dir_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, satellite=cts.GOES_SATELLITE_GLM,
                                                     sat_version=pre_regrid_glmparser.satellite_version, regrid=True,
                                                     regrid_res=grid_res_str, dir_path=result_dir_path)
 
@@ -86,7 +89,7 @@ def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_r
             })
 
             # for each operation on each data variable
-            for data_var in data_vars_to_regrid_dict:
+            '''for data_var in data_vars_to_regrid_dict:
                 for op in data_vars_to_regrid_dict[data_var]['operation']:
                     # only keep interesting variable and coords
                     _ds = _ds_assigncoords_lonlat[data_var] \
@@ -105,7 +108,7 @@ def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_r
                     else:
                         raise ValueError(f'Unexpected operation name ({op}, operations supported: "histogram", "count"')
                     # merge op resulting ds with result ds --> puts nans for missing latitude and longitude values
-                    target_ds = xr.merge([op_result_ds, target_ds], combine_attrs='no_conflicts')
+                    target_ds = xr.merge([op_result_ds, target_ds], combine_attrs='no_conflicts')'''
 
         # STEP 5: ajoute pre-regrid date + attribute regrid_file_creation_date au result ds
         target_ds = target_ds.expand_dims({'time': [pre_regrid_file_date]})
@@ -121,16 +124,102 @@ def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_r
 
     else:  # file already exists so no need to create it again
         print(f"{result_dir_path} already exists")
+        print(f"{result_dir_path} already exists")
 
 
-def regrid_sat_files(path_list, sat_name, grid_resolution=cts.GRID_RESOLUTION,
+def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, grid_res_str, overwrite,
+                                              lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
+                                              lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
+                                              result_dir_path=None, naming_convention=None):
+    if not sat_name in cts.SAT_SETTINGS:
+        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
+    if sat_name == cts.GOES_SATELLITE_GLM:
+        SatPathParser = GLMPathParser
+
+    # get pre-regrid file start date (year, day, hour) with <sat>PathParser
+    pre_regrid_path_parsed = SatPathParser(file_url=pre_regrid_file_url, regrid=False,
+                                           naming_convention=naming_convention)
+    pre_regrid_file_date = pre_regrid_path_parsed.get_start_date_pdTimestamp(ignore_missing_start_hour=False)
+    # create result nc file path
+    result_dir_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, satellite=sat_name, regrid=True,
+                                                    sat_version=pre_regrid_path_parsed.satellite_version,
+                                                    regrid_res=grid_res_str, dir_path=result_dir_path)
+    # if directory/ies containing result nc file path does NOT exist --> create it/them
+    if not result_dir_path.parent.exists():
+        result_dir_path.parent.mkdir(parents=True)
+        print(f"Creating directory {result_dir_path.parent}")
+
+    # check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
+    if (not result_dir_path.exists()) or (result_dir_path.exists() and overwrite):
+        # generate empty dataset with correctly gridded lat et lon
+        target_ds = xr.Dataset(
+            coords={
+                'latitude': np.arange(lat_min, lat_max + grid_res, grid_res),
+                'longitude': np.arange(lon_min, lon_max + grid_res, grid_res)
+            },
+            attrs={'grid_resolution': f'{grid_res}° x {grid_res}°'}
+        )
+        #       STEP 4.2: open pre-regrid glm file
+        with xr.open_dataset(pre_regrid_file_url) as lightning_sat_ds:
+            # assign new longitude and latitude coords with chosen grid resolution using nearest method
+            _ds_assigncoords_lonlat = lightning_sat_ds.assign_coords({
+                'latitude': target_ds.latitude.sel(latitude=lightning_sat_ds[SAT_SETTINGS[sat_name][raw_lat_cname]],
+                                                   method='nearest'),
+                'longitude': target_ds.longitude.sel(longitude=lightning_sat_ds[SAT_SETTINGS[sat_name][raw_lon_cname]],
+                                                     method='nearest')
+            })
+            # keep several attributes from the original sat file
+            new_attrs = {}
+            for attr in SAT_SETTINGS[sat_name][attrs_to_keep]:
+                if attr == "processing_level":
+                    new_attrs[f'pre_regrid_data_{attr}'] = lightning_sat_ds.attrs.get(attr, '')
+                else:
+                    new_attrs[attr] = lightning_sat_ds.attrs.get(attr, '')
+            target_ds.assign_attrs(new_attrs)
+            # apply operations (count + hist) on flash energy and flash area variables
+            flash_energy, flash_area = SAT_SETTINGS[sat_name][flash_energy_varname], SAT_SETTINGS[sat_name][flash_area_varname]
+            # only keep relevant variables and coords
+            _ds = _ds_assigncoords_lonlat[[flash_energy, flash_area]] \
+                .reset_coords(names=['latitude', 'longitude'], drop=False) \
+                .reset_coords(drop=True)
+            # flash count
+            count_ds = xr_pd_utils.count_using_pandas(_ds[flash_energy], data_var_name=flash_energy, res_var_name='flash_count')
+            # flash energy histogram
+            _ds['flash_energy_log'] = np.log10(_ds_assigncoords_lonlat[flash_energy])
+            flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(_ds['flash_energy_log'], data_var_name=flash_energy,
+                                                                  min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
+                                                                  step=cts.f_en_hist_step, res_var_name='flash_energy_log_hist')
+            # flash area histogram
+            _ds['flash_area_log'] = np.log10(_ds_assigncoords_lonlat[flash_area])
+            flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(_ds['flash_area_log_log'], data_var_name=flash_area,
+                                                                  min_bin_edge=cts.f_en_min_bin,
+                                                                  max_bin_edge=cts.f_en_max_bin,
+                                                                  step=cts.f_en_hist_step,
+                                                                  res_var_name='flash_area_log_hist')
+            # merge count and hist ds with target ds
+            target_ds = xr.merge([count_ds, flash_en_hist_ds, flash_area_hist_ds, target_ds],combine_attrs='no_conflicts')
+        # add pre-regrid file date to regrid date + add regrid file creation date attr
+        target_ds = target_ds.expand_dims({'time': [pre_regrid_file_date]})
+        target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()
+        # TODO: réduire units de l'heure pour prendre moins de place (pas besoin de nanoseconds en soit)
+        target_ds.to_netcdf(
+            path=result_dir_path, mode='w',
+            encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
+        )
+        print(f"Created netcdf file {result_dir_path.name}")
+
+    else:  # file already exists so no need to create it again
+        print(f"{result_dir_path} already exists")
+
+
+def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
                      result_dir_path=None, naming_convention=None):
     """
     Funciton to regrid a list of hourly satellite data files to a specific grid resolution
     @param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or directories to regrid
-    @param sat_name: <str> name of the satellite (only 'GOES' supported for now)
-    @param grid_resolution: <float> grid resolution
+    @param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
+    @param grid_res: <float> grid resolution
     @param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
     @param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
     @param overwrite: <bool> overwrite file if it already exists
@@ -146,12 +235,12 @@ def regrid_sat_files(path_list, sat_name, grid_resolution=cts.GRID_RESOLUTION,
         for dir_path in _d_path_list:
             path_list.extend(dir_path.glob(filename_pattern))
     for pre_regrid_file_url in path_list:
-        if sat_name == cts.GOES_SATELLITE:
+        if sat_name == cts.GOES_SATELLITE_GLM:
             print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
-            generate_glm_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url, grid_resolution=grid_resolution,
-                                            grid_res_str=grid_res_str, naming_convention=naming_convention,
-                                            data_vars_to_regrid_dict=cts.DEFAULT_GLM_DATA_VARS_TO_REGRID,
-                                            overwrite=overwrite, result_dir_path=result_dir_path)
+            generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url, sat_name=sat_name,
+                                                      grid_res=grid_res, grid_res_str=grid_res_str,
+                                                      overwrite=overwrite, result_dir_path=result_dir_path,
+                                                      naming_convention=naming_convention)
         else:
             raise ValueError(
-                f'{sat_name} satellite data not yet supported. Supported satellite data so far: GOES (GLM) )')
+                f'{sat_name} satellite data not yet supported. Supported satellite data so far: GOES_GLM')

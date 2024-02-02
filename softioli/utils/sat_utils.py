@@ -12,11 +12,11 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_R
     :param regrid_res: <str>
     :return: <str> filename pattern for the satellite
     """
-    if sat_name == cts.GOES_SATELLITE:
+    if sat_name == cts.GOES_SATELLITE_GLM:
         # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
         filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
     else:
-        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES"')
+        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
     if regrid:
         return f'{regrid_res}_{filename_pattern}'
     else:
@@ -30,11 +30,11 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res=cts.GRID_RESOLUTIO
     :param regrid_res: <str>
     :return: <str> directory name pattern for the satellite
     """
-    if sat_name == cts.GOES_SATELLITE:
+    if sat_name == cts.GOES_SATELLITE_GLM:
         # OR_GLM-L2-LCFA_Gxx_YYYY_DDD
         dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}'
     else:
-        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES"')
+        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
     if regrid:
         return f'{regrid_res}_{dirname_pattern}'
     else:
@@ -54,7 +54,7 @@ def generate_sat_dir_path(date, satellite, regrid, regrid_res_str=cts.GRID_RESOL
     # check date
     date = date_to_pd_timestamp(date)
     # now that we have the pandas.Timestamp we can generate the path
-    if satellite == cts.GOES_SATELLITE:
+    if satellite == cts.GOES_SATELLITE_GLM:
         if regrid:
             return pathlib.Path(
                 f'{cts.REGRID_GLM_ROOT_DIR}/{date.year}/{regrid_res_str}_{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
@@ -84,7 +84,7 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
         dir_path = str_to_path(dir_path)
         if not dir_path.exists():
             dir_path.mkdir()
-    if satellite == cts.GOES_SATELLITE:
+    if satellite == cts.GOES_SATELLITE_GLM:
         filename = f'{cts.GLM_PATH_PREFIX}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date.hour + 1):02d}.nc'
         if regrid:
             return dir_path / pathlib.Path(f'{regrid_res}_{filename}')
@@ -106,7 +106,7 @@ def get_list_of_dates_from_list_of_sat_path(path_list, directory, satellite, reg
     @return: <list> [ <pd.Timestamp> or <str>, ... ] list of all the dates as pd.Timestamps or str
     """
     date_list = []
-    if satellite == cts.GOES_SATELLITE:
+    if satellite == cts.GOES_SATELLITE_GLM:
         for p in path_list:
             date = GLMPathParser(p, regrid=regrid, directory=directory) \
                         .get_start_date_pdTimestamp(ignore_missing_start_hour=True)

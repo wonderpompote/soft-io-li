@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('-g', '--glm_path',
                         help='Path to 7-day GLM netcdf file (deprecated)', type=pathlib.Path)
     parser.add_argument('-s', '--sat_name', help='Name of the satellite (only \'GOES\' supported for now',
-                        default=cts.GOES_SATELLITE)
+                        default=cts.GOES_SATELLITE_GLM)
     # dry run --> fp_out and glm_out NOT loaded into memory and weighted flash count NOT calculated
     parser.add_argument('--dry_run', action='store_true',
                         help='dry run (fp_out and glm_out NOT loaded into memory and weighted flash count NOT calculated)')

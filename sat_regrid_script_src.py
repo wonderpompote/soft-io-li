@@ -85,5 +85,5 @@ if __name__ == '__main__':
     else:
         naming_convention = None
 
-    regrid_sat_files(path_list=sorted(args.file_list), sat_name=cts.GOES_SATELLITE,
+    regrid_sat_files(path_list=sorted(args.file_list), sat_name=cts.GOES_SATELLITE_GLM,
                      overwrite=False, result_dir_path=args.res_path, naming_convention=naming_convention)

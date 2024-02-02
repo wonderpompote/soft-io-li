@@ -4,15 +4,44 @@ import socket
 # constants part 3 new version
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
 
-SAT_VALUE_ERROR = f'satellite not supported yet. Only GOES satellite supported for now' # TODO: update when other satellites OK
+SAT_VALUE_ERROR = f'satellite not supported yet. Only "GOES_GLM" satellite for now' # TODO: update when other satellites OK
 
 REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/regrid_hourly_glm/')
 PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/pre_regrid_hourly_glm/')
 
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
-GOES_SATELLITE = 'GOES'
+GOES_SATELLITE_GLM = 'GOES'
 Gxx_PATTERN = 'G1[6-7]' # TODO: update if newer versions available
 
+# sat settings dict keys
+flash_energy_varname = "flash_energy_varname"
+flash_area_varname = "flash_area_varname"
+raw_lat_cname = "pre_regrid_lat_coordname"
+raw_lon_cname = "pre_regrid_lon_coordname"
+attrs_to_keep = "attrs_to_keep"
+
+# hist parameters
+f_en_min_bin = -15 # log
+f_en_max_bin = -10
+f_en_hist_step = 0.1
+f_ar_min_bin = 1.5 # log
+f_ar_max_bin = 4.5
+f_ar_hist_step = 0.1
+
+# TODO: complete with other satellite data
+SAT_SETTINGS = {
+    GOES_SATELLITE_GLM: {
+        flash_energy_varname: "flash_energy",
+        flash_area_varname: "flash_area",
+        raw_lat_cname: "flash_lat", # latitude coordinate name in pre regrid dataset
+        raw_lon_cname: "flash_lon", # longitude coordinate name in pre regrid dataset
+        attrs_to_keep: ['production_site', 'orbital_slot', 'platform_ID', 'instrument_type', 'instrument_ID',
+                        'spatial_resolution', 'processing_level']
+    }
+    # <OTHER_SATELLITE>: { ... }
+}
+
+# TODO: POUBEEELLLE
 DEFAULT_GLM_DATA_VARS_TO_REGRID = {
     "flash_energy": {
         "operation": ['histogram', 'count'],

@@ -29,7 +29,7 @@ STEP 5:
 
 
 <!> améliorations:
-- pour l'instant indique cts.GOES_SATELLITE en dur quand doit passer satellite argument dans les fonction
+- pour l'instant indique cts.GOES_SATELLITE_GLM en dur quand doit passer satellite argument dans les fonction
     ---> faudra que ce soit un param pour que plus tard on puisse utiliser avec d'autres satellites
 """
 import argparse
@@ -117,7 +117,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     # list of daily directories containing the hourly satellite data files between start and end date
     regrid_daily_dir_list = generate_sat_dir_list_between_start_end_date(start_date=start_date, end_date=end_date,
                                                                          satellite=sat_name, regrid=True)
-    if sat_name == cts.GOES_SATELLITE:
+    if sat_name == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -151,7 +151,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
             print()
             ##########################################
             sat_regrid.regrid_sat_files(path_list=dir_to_regrid_list, sat_name=sat_name,
-                                        grid_resolution=grid_resolution, dir_list=True,
+                                        grid_res=grid_resolution, dir_list=True,
                                         grid_res_str=grid_res_str, overwrite=overwrite, old_glm_filename=False)
             ##########################################
             return
