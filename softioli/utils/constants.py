@@ -4,13 +4,14 @@ import socket
 # constants part 3 new version
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
 
-SAT_VALUE_ERROR = f'satellite not supported yet. Only "GOES_GLM" satellite for now' # TODO: update when other satellites OK
+# TODO: update when other satellites OK
+SAT_VALUE_ERROR = f'satellite not supported yet. Only "GOES_GLM" satellite for now'
 
 REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/regrid_hourly_glm/')
 PRE_REGRID_GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm/pre_regrid_hourly_glm/')
 
+GOES_SATELLITE_GLM = 'GOES_GLM'
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
-GOES_SATELLITE_GLM = 'GOES'
 Gxx_PATTERN = 'G1[6-7]' # TODO: update if newer versions available
 
 # sat settings dict keys
@@ -39,31 +40,6 @@ SAT_SETTINGS = {
                         'spatial_resolution', 'processing_level']
     }
     # <OTHER_SATELLITE>: { ... }
-}
-
-# TODO: POUBEEELLLE
-DEFAULT_GLM_DATA_VARS_TO_REGRID = {
-    "flash_energy": {
-        "operation": ['histogram', 'count'],
-        "histogram": {
-            "min_bin_edge": -15,
-            "max_bin_edge": -10,
-            "step": 0.1,
-            "res_var_name": "flash_energy_log_hist"
-        },
-        "count": {
-            "res_var_name": "flash_count"
-        }
-    },
-    "flash_area": {
-        "operation": ['histogram'],
-        "histogram": {
-            "min_bin_edge": 1.5,
-            "max_bin_edge": 4.5,
-            "step": 0.1,
-            "res_var_name": "flash_area_log_hist"
-        }
-    }
 }
 
 FPOUT_LAT_MIN = -89.75

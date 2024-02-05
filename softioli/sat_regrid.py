@@ -1,12 +1,3 @@
-"""
-Regrid hourly satellite files to match FLEXPART output grid (usually 0.5° x 0.5°)
-
-Satellite data supported:
-- GLM (GOES-E and GOES-W)
-
-Main goal: given a list of pre-regrid hourly nc files
---> regrid each of them and store them in regrid_hourly_<sat_name> directory
-"""
 from datetime import datetime
 import numpy as np
 import xarray as xr
@@ -18,119 +9,28 @@ from .utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_a
 from .utils import xarray_pandas_utils as xr_pd_utils
 
 
-# TODO: <!!> qaund autre satellites voir si on peut pas généraliser cette fonction au lieu d'en faire plusieurs ?
-def generate_glm_hourly_regrid_file(pre_regrid_file_url, grid_resolution, grid_res_str, overwrite,
-                                    data_vars_to_regrid_dict=cts.DEFAULT_GLM_DATA_VARS_TO_REGRID,
-                                    lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
-                                    lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
-                                    result_dir_path=None, naming_convention=None):
-    """
-    Pre-process GLM hourly data file to correspond to a specific grid resolution
-    @param pre_regrid_file_url: <pathlib.Path> or <str>
-    @param grid_resolution: <float>
-    @param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
-    @param overwrite: <bool> overwrite file if it already exists
-    @param data_vars_to_regrid_dict: <dict> dictionary with the parameters for each operation on a data variable (default)
-    @param lat_min: <float> (default)
-    @param lat_max: <float> (default)
-    @param lon_min: <float> (default)
-    @param lon_max: <float> (default)
-    @param result_dir_path: <pathlib.Path> or <str> mostly for testing, directory in which resulting file should be stored, if None --> use default path
-    @param old_glm_notation: <bool> if file to regrid uses the old file notation (GLM_array_DDD_HH1-HH2.nc for files or GLM_array(_05deg)_DDD for dirs)
-    @param macc_glm_dirname: <bool> if directory to regrid uses the old file notation (OR_GLM-L2-LCFA_Gxx_sYYYYDDD)
-    @return:
-    """
-    # STEP 1: recup pre-regrid file start date (year, day, hour) --> avec GLMPathParser / <sat>PathParser
-    pre_regrid_glmparser = GLMPathParser(file_url=pre_regrid_file_url, regrid=False,
-                                         naming_convention=naming_convention)
-    pre_regrid_file_date = pre_regrid_glmparser.get_start_date_pdTimestamp(ignore_missing_start_hour=False)
-
-    # STEP 2: create result nc file path
-    result_dir_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, satellite=cts.GOES_SATELLITE_GLM,
-                                                    sat_version=pre_regrid_glmparser.satellite_version, regrid=True,
-                                                    regrid_res=grid_res_str, dir_path=result_dir_path)
-
-    # STEP 3: if directory/ies containing result nc file path does NOT exist --> create it/them
-    # if directory that will contain nc file does not exist -> create it
-    if not result_dir_path.parent.exists():
-        result_dir_path.parent.mkdir(parents=True)
-        print(f"Creating directory {result_dir_path.parent}")
-
-    # STEP 4: check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
-    if (not result_dir_path.exists()) or (result_dir_path.exists() and overwrite):
-        #       STEP 4.1: generate empty dataset with correctly gridded lat et lon
-        target_ds = xr.Dataset(
-            coords={
-                'latitude': np.arange(lat_min, lat_max + grid_resolution, grid_resolution),
-                'longitude': np.arange(lon_min, lon_max + grid_resolution, grid_resolution)
-            },
-            attrs={
-                'grid_resolution': f'{grid_resolution}° x {grid_resolution}°'
-            }
-        )
-
-        #       STEP 4.2: open pre-regrid glm file
-        with xr.open_dataset(pre_regrid_file_url) as glm_ds:
-            #       STEP 4.2.1: assign_coords de target ds au pre-regrid ds
-            # assign new longitude and latitude coords with chosen grid resolution using nearest method
-            _ds_assigncoords_lonlat = glm_ds.assign_coords({
-                'latitude': target_ds.latitude.sel(latitude=glm_ds.flash_lat, method='nearest'),
-                'longitude': target_ds.longitude.sel(longitude=glm_ds.flash_lon, method='nearest')
-            })
-            #           STEP 4.2.2: keep several attributes from the original glm file
-            target_ds = target_ds.assign_attrs({
-                'production_site': glm_ds.attrs.get('production_site', ''),
-                'orbital_slot': glm_ds.attrs.get('orbital_slot', ''),
-                'platform_ID': glm_ds.attrs.get('platform_ID', ''),
-                'instrument_type': glm_ds.attrs.get('instrument_type', ''),
-                'instrument_ID': glm_ds.attrs.get('instrument_ID', ''),
-                'spatial_resolution': glm_ds.attrs.get('spatial_resolution', ''),
-                'glm_data_procesing_level': glm_ds.attrs.get('processing_level', '')
-            })
-
-            # for each operation on each data variable
-            '''for data_var in data_vars_to_regrid_dict:
-                for op in data_vars_to_regrid_dict[data_var]['operation']:
-                    # only keep interesting variable and coords
-                    _ds = _ds_assigncoords_lonlat[data_var] \
-                        .reset_coords(names=['latitude', 'longitude'], drop=False) \
-                        .reset_coords(drop=True)
-                    # histogram
-                    if op.lower() == "histogram":
-                        hist_params = data_vars_to_regrid_dict[data_var]['histogram']
-                        _ds[f'log_{data_var}'] = np.log10(_ds[data_var])
-                        # --> call histogram function
-                        op_result_ds = xr_pd_utils.histogram_using_pandas(_ds, f'log_{data_var}', hist_params)
-                    # count
-                    elif op.lower() == 'count':
-                        op_result_ds = xr_pd_utils.count_using_pandas(_ds, data_var,
-                                                                      data_vars_to_regrid_dict[data_var]['count'])
-                    else:
-                        raise ValueError(f'Unexpected operation name ({op}, operations supported: "histogram", "count"')
-                    # merge op resulting ds with result ds --> puts nans for missing latitude and longitude values
-                    target_ds = xr.merge([op_result_ds, target_ds], combine_attrs='no_conflicts')'''
-
-        # STEP 5: ajoute pre-regrid date + attribute regrid_file_creation_date au result ds
-        target_ds = target_ds.expand_dims({'time': [pre_regrid_file_date]})
-        target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()
-
-        # STEP 6: result ds to_netcdf (<!> modifier encoding de la date, ça prend de la palce pour rien)
-        # TODO: réduire units de l'heure pour prendre moins de place (pas besoin de nanoseconds en soit)
-        target_ds.to_netcdf(
-            path=result_dir_path, mode='w',
-            encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
-        )
-        print(f"Created netcdf file {result_dir_path.name}")
-
-    else:  # file already exists so no need to create it again
-        print(f"{result_dir_path} already exists")
-        print(f"{result_dir_path} already exists")
-
-
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, grid_res_str, overwrite,
                                               lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                               lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
                                               result_dir_path=None, naming_convention=None):
+    """
+    Pre-process lightning satellite hourly data file to regrid it to specific resolution and obtain
+    the following information for each grid cell:
+        - 'flash_count': number of lightning flashes occurences
+        - 'flash_energy_log_hist': histogram of the flash energy values (log10)
+        - 'flash_area_log_hist': histogram of the flash area values (log10)
+    :param pre_regrid_file_url: <pathlib.Path> or <str>
+    :param sat_name: <str> satellite name (supported so far: 'GOES_GLM')
+    :param grid_res: <float> grid resolution (default: 0.5°)
+    :param grid_res_str: <str> grid resolution str (default: '05deg')
+    :param overwrite: <bool> overwrite file if it already exists
+    :param lat_min: <float>
+    :param lat_max: <float>
+    :param lon_min: <float>
+    :param lon_max: <float>
+    :param result_dir_path: <str> or <pathlib.Path>
+    :param naming_convention: <str> pre-regrid file naming convention (useful if using old files)
+    """
     if not sat_name in cts.SAT_SETTINGS:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
     if sat_name == cts.GOES_SATELLITE_GLM:
@@ -150,7 +50,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
         print(f"Creating directory {result_dir_path.parent}")
 
     # check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
-    if (not result_dir_path.exists()) or (result_dir_path.exists() and overwrite):
+    if not result_dir_path.exists() or (result_dir_path.exists() and overwrite):
         # generate empty dataset with correctly gridded lat et lon
         target_ds = xr.Dataset(
             coords={
@@ -177,27 +77,29 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                     new_attrs[attr] = lightning_sat_ds.attrs.get(attr, '')
             target_ds.assign_attrs(new_attrs)
             # apply operations (count + hist) on flash energy and flash area variables
-            flash_energy, flash_area = SAT_SETTINGS[sat_name][flash_energy_varname], SAT_SETTINGS[sat_name][flash_area_varname]
+            flash_energy = SAT_SETTINGS[sat_name][flash_energy_varname]
+            flash_area = SAT_SETTINGS[sat_name][flash_area_varname]
             # only keep relevant variables and coords
             _ds = _ds_assigncoords_lonlat[[flash_energy, flash_area]] \
                 .reset_coords(names=['latitude', 'longitude'], drop=False) \
                 .reset_coords(drop=True)
             # flash count
-            count_ds = xr_pd_utils.count_using_pandas(_ds[flash_energy], data_var_name=flash_energy, res_var_name='flash_count')
+            count_ds = xr_pd_utils.count_using_pandas(_ds[[flash_energy, 'latitude', 'longitude']],
+                                                      data_var_name=flash_energy, res_var_name='flash_count')
             # flash energy histogram
-            _ds['flash_energy_log'] = np.log10(_ds_assigncoords_lonlat[flash_energy])
-            flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(_ds['flash_energy_log'], data_var_name=flash_energy,
-                                                                  min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
-                                                                  step=cts.f_en_hist_step, res_var_name='flash_energy_log_hist')
+            _ds['flash_energy_log'] = np.log10(_ds[flash_energy])
+            flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
+                                    _ds[['flash_energy_log', 'latitude', 'longitude']], data_var_name='flash_energy_log',
+                                    min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
+                                    step=cts.f_en_hist_step, res_var_name='flash_energy_log_hist')
             # flash area histogram
-            _ds['flash_area_log'] = np.log10(_ds_assigncoords_lonlat[flash_area])
-            flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(_ds['flash_area_log_log'], data_var_name=flash_area,
-                                                                  min_bin_edge=cts.f_en_min_bin,
-                                                                  max_bin_edge=cts.f_en_max_bin,
-                                                                  step=cts.f_en_hist_step,
-                                                                  res_var_name='flash_area_log_hist')
+            _ds['flash_area_log'] = np.log10(_ds[flash_area])
+            flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
+                                    _ds[['flash_area_log', 'latitude', 'longitude']], data_var_name='flash_area_log',
+                                    min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
+                                    step=cts.f_en_hist_step, res_var_name='flash_area_log_hist')
             # merge count and hist ds with target ds
-            target_ds = xr.merge([count_ds, flash_en_hist_ds, flash_area_hist_ds, target_ds],combine_attrs='no_conflicts')
+            target_ds = xr.merge([count_ds, flash_en_hist_ds, flash_area_hist_ds, target_ds], combine_attrs='no_conflicts')
         # add pre-regrid file date to regrid date + add regrid file creation date attr
         target_ds = target_ds.expand_dims({'time': [pre_regrid_file_date]})
         target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()

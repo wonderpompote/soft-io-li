@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # nargs donc -f file1 file2 file3 ... PAS -f file1 -f file2 -f file3 ... (ça c'est quand action='append')
     parser.add_argument('-f', '--file-list', required=True, help='List of GLM files to regrid', nargs='+', type=pathlib.Path)
-    parser.add_argument('-s', '--sat-name', help='satellite name (supported satellite so far: "GOES"', default='GOES')
+    parser.add_argument('-s', '--sat-name', help='satellite name, supported satellites so far: "GOES_GLM" (default value)', default='GOES_GLM')
     parser.add_argument('--res-path', help='result netcdf file path (mostly used when testing)')
     parser.add_argument('--tests', help='test mode (using default test result path if --res-path arg was forgotten', action='store_true')
     parser.add_argument('--old-glm-filename', help='old GLM name (GLM_array_DDD_HH1-HH2.nc for file or GLM_array(_05deg)_DDD for dir)', action='store_true')
