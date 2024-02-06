@@ -32,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--old-temp-glm-filename', help='old temp GLM name (GLM_array_DDD_temp_HH.nc)', action='store_true')
     parser.add_argument('--macc-glm-dirname', help='macc glm dirname (OR_GLM-L2-LCFA_Gxx_sYYYYDDD)', action='store_true')
     parser.add_argument('--parent-dir', help='indicates if directory path passed with -f is a parent directory containing the subdirectories we need to go through to find the glm files', action='store_true')
+    parser.add_argument('--overwrite', '-o', action='store_true', help='indicates if regrid file should be overwritten if it already exists', default=False)
 
     args = parser.parse_args()
 
@@ -86,4 +87,4 @@ if __name__ == '__main__':
         naming_convention = None
 
     regrid_sat_files(path_list=sorted(args.file_list), sat_name=cts.GOES_SATELLITE_GLM,
-                     overwrite=False, result_dir_path=args.res_path, naming_convention=naming_convention)
+                     overwrite=args.overwrite, result_dir_path=args.res_path, naming_convention=naming_convention)

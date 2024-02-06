@@ -69,13 +69,15 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                                                      method='nearest')
             })
             # keep several attributes from the original sat file
+            # TODO: update conditions (processing_level) if attribute names are different for other satellites
             new_attrs = {}
             for attr in SAT_SETTINGS[sat_name][attrs_to_keep]:
                 if attr == "processing_level":
                     new_attrs[f'pre_regrid_data_{attr}'] = lightning_sat_ds.attrs.get(attr, '')
                 else:
                     new_attrs[attr] = lightning_sat_ds.attrs.get(attr, '')
-            target_ds.assign_attrs(new_attrs)
+            new_attrs['pre_regrid_satellite_file'] = pre_regrid_path_parsed.url.name
+            target_ds = target_ds.assign_attrs(new_attrs)
             # apply operations (count + hist) on flash energy and flash area variables
             flash_energy = SAT_SETTINGS[sat_name][flash_energy_varname]
             flash_area = SAT_SETTINGS[sat_name][flash_area_varname]
@@ -83,21 +85,29 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
             _ds = _ds_assigncoords_lonlat[[flash_energy, flash_area]] \
                 .reset_coords(names=['latitude', 'longitude'], drop=False) \
                 .reset_coords(drop=True)
-            # flash count
+            # flash count <!> result = xarray.Dataset
             count_ds = xr_pd_utils.count_using_pandas(_ds[[flash_energy, 'latitude', 'longitude']],
                                                       data_var_name=flash_energy, res_var_name='flash_count')
-            # flash energy histogram
+            count_ds['flash_count'].attrs['long_name'] = 'Number of flash occurrences'
+            # flash energy histogram <!> result = xarray.DataArray
             _ds['flash_energy_log'] = np.log10(_ds[flash_energy])
             flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
                                     _ds[['flash_energy_log', 'latitude', 'longitude']], data_var_name='flash_energy_log',
                                     min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
                                     step=cts.f_en_hist_step, res_var_name='flash_energy_log_hist')
+            flash_en_hist_ds['flash_energy_log_hist'].attrs['long_name'] = 'Number of flash occurrences in log10(flash_energy) bin'
+            flash_en_hist_ds['flash_energy_log_hist'].attrs[
+                'comment'] = 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
             # flash area histogram
             _ds['flash_area_log'] = np.log10(_ds[flash_area])
             flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
                                     _ds[['flash_area_log', 'latitude', 'longitude']], data_var_name='flash_area_log',
                                     min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
                                     step=cts.f_en_hist_step, res_var_name='flash_area_log_hist')
+            flash_area_hist_ds['flash_area_log_hist'].attrs[
+                'long_name'] = 'Number of flash occurrences in log10(flash_area) bin'
+            flash_area_hist_ds['flash_area_log_hist'].attrs[
+                'comment'] = 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
             # merge count and hist ds with target ds
             target_ds = xr.merge([count_ds, flash_en_hist_ds, flash_area_hist_ds, target_ds], combine_attrs='no_conflicts')
         # add pre-regrid file date to regrid date + add regrid file creation date attr
@@ -108,7 +118,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
             path=result_dir_path, mode='w',
             encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
         )
-        print(f"Created netcdf file {result_dir_path.name}")
+        print(f"Created netcdf file {result_dir_path}")
 
     else:  # file already exists so no need to create it again
         print(f"{result_dir_path} already exists")
@@ -146,3 +156,11 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         else:
             raise ValueError(
                 f'{sat_name} satellite data not yet supported. Supported satellite data so far: GOES_GLM')
+
+
+"""
+Examples:
+- test on single pre_regrid GLM file:
+python sat_regrid_script_src.py --logname <logname> -f <pre_regrid_file_path> --res-path <res_path> --overwrite
+- regrid ALL pre_regrid hourly GLM files in /o3p/macc/glm
+"""

@@ -29,7 +29,7 @@ f_ar_min_bin = 1.5 # log
 f_ar_max_bin = 4.5
 f_ar_hist_step = 0.1
 
-# TODO: complete with other satellite data
+# TODO: complete with other satellite data + add dataset_name (mais là pas OK parce que nom fichier 20sec, PAS hourly)
 SAT_SETTINGS = {
     GOES_SATELLITE_GLM: {
         flash_energy_varname: "flash_energy",

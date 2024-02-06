@@ -8,7 +8,7 @@ def histogram_using_pandas(_ds, data_var_name, min_bin_edge, max_bin_edge, step,
     @param _ds: <xarray.Dataset> containing the histogram variable
     @param data_var_name: <str> name of the histogram variable
     @param hist_params: <dict> histogram parameters (min, max, step, result_var_name)
-    @return: <xarray.DataAray> histogram
+    @return: <xarray.Dataset>
     """
     if groupby_dims is None:
         groupby_dims = ['latitude', 'longitude']
@@ -42,7 +42,7 @@ def histogram_using_pandas(_ds, data_var_name, min_bin_edge, max_bin_edge, step,
     # swap dims to have hist bin as dim instead of edges + drop edges
     _da_hist = _da_hist.swap_dims({f'{data_var_name}_edges': f'{data_var_name}_bin'}) \
         .drop_vars(f'{data_var_name}_edges')
-    return _da_hist
+    return _da_hist.to_dataset()
 
 
 def count_using_pandas(_ds, data_var_name, groupby_dims=None, res_var_name=None):
