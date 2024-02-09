@@ -15,40 +15,60 @@ from softioli.utils import generate_sat_hourly_file_path, get_list_of_sat_files
 from softioli import constants as cts
 
 
-def add_attrs_lightning_sat_file(sat_ds, sat_name, sat_version, regrid, regrid_res_str, res_path):
+def add_attrs_lightning_sat_file(sat_ds, sat_name, sat_version, regrid, regrid_res_str, grid_res, res_path):
     # flash_count attrs
-    sat_ds['flash_count'].attrs['long_name'] = 'Number of flash occurrences'
-    logger().debug('Adding flash_count long_name attribute')
+    if (not 'long_name' in sat_ds['flash_count'].attrs) or \
+            not f'{grid_res}° x {grid_res}° x 1h grid cell' in sat_ds['flash_count'].attrs['long_name']:
+        sat_ds['flash_count'].attrs['long_name'] = f'Number of flash occurrences in a {grid_res}° x {grid_res}° x 1h grid cell'
+        logger().debug('Adding flash_count long_name attribute')
+
     # flash area hist attrs
-    sat_ds['flash_area_log_hist'].attrs.update({
-        'long_name': 'Number of flash occurrences in log10(flash_area) bin',
-        'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
-    })
-    sat_ds['log_flash_area_bin'].attrs.update({
-        'long_name': 'log10(flash_area) bins',
-        'comment': '1.5 <= bin <= 4.5, bin_step = 0.1'
-    })
-    logger().debug('Adding flash_area_log_hist long_name and comment attributes')
-    logger().debug('Adding log_flash_area_bin long_name and comment attributes')
+    if not 'long_name' in sat_ds['flash_area_log_hist'].attrs or \
+            not f'{grid_res}° x {grid_res}° x 1h grid cell' in sat_ds['flash_area_log_hist'].attrs['long_name']:
+        sat_ds['flash_area_log_hist'].attrs.update({
+            'long_name': f'Number of flash occurrences in log10(flash_energy) bin in a {grid_res}° x {grid_res}° x 1h grid cell' })
+        logger().debug('Adding flash_area_log_hist long_name attribute')
+    if not 'comment' in sat_ds['flash_area_log_hist'].attrs:
+        sat_ds['flash_area_log_hist'].attrs.update({
+            'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1' })
+        logger().debug('Adding flash_area_log_hist comment attribute')
+    if not 'long_name' in sat_ds['log_flash_area_bin'].attrs:
+        sat_ds['log_flash_area_bin'].attrs.update({
+            'long_name': 'log10(flash_area) bins' })
+        logger().debug('Adding log_flash_area_bin long_name attribute')
+    if not 'comment' in sat_ds['log_flash_area_bin'].attrs:
+        sat_ds['log_flash_area_bin'].attrs.update({
+            'comment': '1.5 <= bin <= 4.5, bin_step = 0.1' })
+        logger().debug('Adding log_flash_area_bin comment attribute')
+
     # flash energy hist attrs
-    sat_ds['flash_energy_log_hist'].attrs.update({
-        'long_name': 'Number of flash occurrences in log10(flash_energy) bin',
-        'comment': 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
-    })
-    sat_ds['log_flash_energy_bin'].attrs.update({
-        'long_name': 'log10(flash_energy) bins',
-        'comment': '-15 <= bin <= -10, bin_step = 0.1'
-    })
-    logger().debug('Adding flash_energy_log_hist long_name and comment attributes')
-    logger().debug('Adding log_flash_energy_bin long_name and comment attributes')
+    if not 'long_name' in sat_ds['flash_energy_log_hist'].attrs or \
+            not f'{grid_res}° x {grid_res}° x 1h grid cell' in sat_ds['flash_energy_log_hist'].attrs['long_name']:
+        sat_ds['flash_area_log_hist'].attrs.update({
+            'long_name': f'Number of flash occurrences in log10(flash_energy) bin in a {grid_res}° x {grid_res}° x 1h grid cell' })
+        logger().debug('Adding flash_energy_log_hist long_name attribute')
+    if not 'comment' in sat_ds['flash_energy_log_hist'].attrs:
+        sat_ds['flash_area_log_hist'].attrs.update({
+            'comment': 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1' })
+        logger().debug('Adding flash_energy_log_hist comment attribute')
+    if not 'long_name' in sat_ds['log_flash_energy_bin'].attrs:
+        sat_ds['log_flash_energy_bin'].attrs.update({
+            'long_name': 'log10(flash_energy) bins' })
+        logger().debug('Adding log_flash_energy_bin long_name attribute')
+    if not 'comment' in sat_ds['log_flash_energy_bin'].attrs:
+        sat_ds['log_flash_energy_bin'].attrs.update({
+            'comment': '-15 <= bin <= -10, bin_step = 0.1' })
+        logger().debug('Adding log_flash_energy_bin comment attribute')
 
-    pre_regrid_filename = generate_sat_hourly_file_path(date=sat_ds.time.values[0],
-                                                        satellite=sat_name, sat_version=sat_version,
-                                                        regrid=regrid, regrid_res_str=regrid_res_str,
-                                                        dir_path=res_path).name
+    # pre-regrid file attribute
+    if not 'pre_regrid_satellite_file' in sat_ds.attrs:
+        pre_regrid_filename = generate_sat_hourly_file_path(date=sat_ds.time.values[0],
+                                                            satellite=sat_name, sat_version=sat_version,
+                                                            regrid=regrid, regrid_res_str=regrid_res_str,
+                                                            dir_path=res_path).name
 
-    sat_ds.attrs['pre_regrid_satellite_file'] = pre_regrid_filename
-    logger().debug('Adding pre_regrid_satellite_file attribute')
+        sat_ds.attrs['pre_regrid_satellite_file'] = pre_regrid_filename
+        logger().debug('Adding pre_regrid_satellite_file attribute')
 
     return sat_ds
 
@@ -85,8 +105,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--regrid', help='indicates if files are regridded, default=True', action='store_true',
                         default=True)
-    parser.add_argument('--regrid-res', help='grid resolution (str), default = "05deg"',
+    parser.add_argument('--regrid-res-str', help='grid resolution (str), default = "05deg"',
                         default=cts.GRID_RESOLUTION_STR)
+    parser.add_argument('--regrid-res', help='grid resolution (float), default = 0.5',
+                        default=cts.GRID_RESOLUTION)
     """parser.add_argument('--overwrite', '-o', action='store_true',
                         help='indicates if regrid file should be overwritten if it already exists', default=False)"""
 
@@ -111,7 +133,7 @@ if __name__ == '__main__':
     # recup list of satellite data files
     list_of_files = get_list_of_sat_files(sat_dir_path=args.dir_list, parent_dir=args.parent_dir,
                                           sat_name=args.sat_name, regrid=args.regrid,
-                                          regrid_res_str=args.regrid_res)
+                                          regrid_res_str=args.regrid_res_str)
 
     print(f'List of files:\n{short_list_repr(list_of_files)}')
     logger().info(f'List of files:\n{short_list_repr(list_of_files)}')
@@ -122,8 +144,8 @@ if __name__ == '__main__':
 
         # add attributes
         sat_ds = add_attrs_lightning_sat_file(sat_ds, sat_name=args.sat_name, sat_version=args.sat_version,
-                                              regrid=args.regrid, regrid_res_str=args.regrid_res,
-                                              res_path=args.res_path)
+                                              regrid=args.regrid, regrid_res_str=args.regrid_res_str,
+                                              res_path=args.res_path, grid_res=args.regrid_res)
         if args.tests:
             res_dir_path = args.res_path
         else:

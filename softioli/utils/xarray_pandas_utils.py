@@ -38,6 +38,7 @@ def histogram_using_pandas(_ds, data_var_name, min_bin_edge, max_bin_edge, step,
     _da_hist = _da_hist.assign_coords({
         f'{data_var_name}_bin': _da_hist[f'{data_var_name}_edges'] - step / 2
     })
+    _da_hist[f'{data_var_name}_bin'].attrs['comment'] = f'{min_bin_edge} <= bin <= {max_bin_edge}, bin_step = {step}'
 
     # swap dims to have hist bin as dim instead of edges + drop edges
     _da_hist = _da_hist.swap_dims({f'{data_var_name}_edges': f'{data_var_name}_bin'}) \

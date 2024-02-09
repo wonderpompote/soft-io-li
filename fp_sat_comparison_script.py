@@ -21,9 +21,10 @@ if __name__ == '__main__':
     default_logdir = pathlib.Path(cts.DEFAULT_LOGDIR, 'fp_sat_comparison_script')
     parser.add_argument('-l', '--logdir', default=default_logdir, help=f'log directory; default is {default_logdir}',
                         type=pathlib.Path)
-    parser.add_argument('--logname', help='Log file prefix, resulting log file will be of the form "YYYY-MM-DD_HHmm_<log_file_prefix>.log" with YYYY: year, MM: month, DD: day, HH: hour, mm: minutes',
-                        default='fp_sat_comp')
-    parser.add_argument('--loglevel', help='logging level, default= logging.INFO', default=logging.INFO, type=int)
+    parser.add_argument('--logname', default='add_regrid_attrs',
+                        help='Log file prefix, resulting log file will be of the form "YYYY-MM-DD_HHmm_<log_file_prefix>.log" with YYYY: year, MM: month, DD: day, HH: hour, mm: minutes')
+    parser.add_argument('--loglevel', default=logging.DEBUG, type=int,
+                        help='logging level, default=logging.DEBUG(10) - other values: INFO=10, WARNING=30, ERROR=40, CRITICAL=50')
 
     group = parser.add_mutually_exclusive_group()  # soit fpout, soit start et end date
 

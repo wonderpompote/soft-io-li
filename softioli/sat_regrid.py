@@ -57,7 +57,8 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                 'latitude': np.arange(lat_min, lat_max + grid_res, grid_res),
                 'longitude': np.arange(lon_min, lon_max + grid_res, grid_res)
             },
-            attrs={'grid_resolution': f'{grid_res}° x {grid_res}°'}
+            attrs={'grid_resolution': f'{grid_res}° x {grid_res}°',
+                   'pre_regrid_satellite_file': pre_regrid_path_parsed.url.name}
         )
         #       STEP 4.2: open pre-regrid glm file
         with xr.open_dataset(pre_regrid_file_url) as lightning_sat_ds:
@@ -88,26 +89,27 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
             # flash count <!> result = xarray.Dataset
             count_ds = xr_pd_utils.count_using_pandas(_ds[[flash_energy, 'latitude', 'longitude']],
                                                       data_var_name=flash_energy, res_var_name='flash_count')
-            count_ds['flash_count'].attrs['long_name'] = 'Number of flash occurrences'
+            count_ds['flash_count'].attrs['long_name'] = f'Number of flash occurrences in a {grid_res}° x {grid_res}° x 1h grid cell'
             # flash energy histogram <!> result = xarray.DataArray
             _ds['flash_energy_log'] = np.log10(_ds[flash_energy])
             flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
                                     _ds[['flash_energy_log', 'latitude', 'longitude']], data_var_name='flash_energy_log',
                                     min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
                                     step=cts.f_en_hist_step, res_var_name='flash_energy_log_hist')
-            flash_en_hist_ds['flash_energy_log_hist'].attrs['long_name'] = 'Number of flash occurrences in log10(flash_energy) bin'
-            flash_en_hist_ds['flash_energy_log_hist'].attrs[
-                'comment'] = 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
+            flash_en_hist_ds['flash_energy_log_hist'].attrs.update({
+                'long_name': f'Number of flash occurrences in log10(flash_energy) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
+                'comment': 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
+            })
             # flash area histogram
             _ds['flash_area_log'] = np.log10(_ds[flash_area])
             flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
                                     _ds[['flash_area_log', 'latitude', 'longitude']], data_var_name='flash_area_log',
                                     min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
                                     step=cts.f_en_hist_step, res_var_name='flash_area_log_hist')
-            flash_area_hist_ds['flash_area_log_hist'].attrs[
-                'long_name'] = 'Number of flash occurrences in log10(flash_area) bin'
-            flash_area_hist_ds['flash_area_log_hist'].attrs[
-                'comment'] = 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
+            flash_area_hist_ds['flash_area_log_hist'].attrs.update({
+                'long_name': f'Number of flash occurrences in log10(flash_area) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
+                'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
+            })
             # merge count and hist ds with target ds
             target_ds = xr.merge([count_ds, flash_en_hist_ds, flash_area_hist_ds, target_ds], combine_attrs='no_conflicts')
         # add pre-regrid file date to regrid date + add regrid file creation date attr
@@ -128,7 +130,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
                      result_dir_path=None, naming_convention=None):
     """
-    Funciton to regrid a list of hourly satellite data files to a specific grid resolution
+    Function to regrid a list of hourly satellite data files to a specific grid resolution
     @param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or directories to regrid
     @param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
     @param grid_res: <float> grid resolution
