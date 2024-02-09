@@ -10,7 +10,7 @@ from common.utils import timestamp_now_formatted, short_list_repr
 """ <!> depuis src/ faire $ python -m scripts.<nom_script> sinon ça marche pas à cause des imports jsp quoi"""
 from softioli import regrid_sat_files
 from softioli import constants as cts
-from softioli.utils import generate_sat_dirname_pattern, generate_sat_hourly_filename_pattern, OLD_GLM_NOTATION, OLD_GLM_PRE_REGRID_TEMP_FILENAME, OLD_GLM_MACC_PRE_REGRID_DIRNAME
+from softioli.utils import generate_sat_dirname_pattern, generate_sat_hourly_filename_pattern, OLD_GLM_NOTATION, OLD_GLM_PRE_REGRID_TEMP_FILENAME
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--logname',
                         help='Log file prefix, resulting log file will be of the form "YYYY-MM-DD_HHmm_<log_file_prefix>.log" with YYYY: year, MM: month, DD: day, HH: hour, mm: minutes',
                         default='sat_regrid')
-    parser.add_argument('--loglevel', help='logging level, default= logging.INFO', default=logging.DEBUG, type=int)
+    parser.add_argument('--loglevel', help='logging level, default=logging.DEBUG(10) - other values: INFO=10, WARNING=30, ERROR=40, CRITICAL=50', default=logging.DEBUG, type=int)
 
     # nargs donc -f file1 file2 file3 ... PAS -f file1 -f file2 -f file3 ... (ça c'est quand action='append')
     parser.add_argument('-f', '--file-list', required=True, help='List of GLM files to regrid', nargs='+', type=pathlib.Path)
@@ -88,3 +88,4 @@ if __name__ == '__main__':
 
     regrid_sat_files(path_list=sorted(args.file_list), sat_name=cts.GOES_SATELLITE_GLM,
                      overwrite=args.overwrite, result_dir_path=args.res_path, naming_convention=naming_convention)
+

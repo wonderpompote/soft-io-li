@@ -43,7 +43,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     # create result nc file path
     result_dir_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, satellite=sat_name, regrid=True,
                                                     sat_version=pre_regrid_path_parsed.satellite_version,
-                                                    regrid_res=grid_res_str, dir_path=result_dir_path)
+                                                    regrid_res_str=grid_res_str, dir_path=result_dir_path)
     # if directory/ies containing result nc file path does NOT exist --> create it/them
     if not result_dir_path.parent.exists():
         result_dir_path.parent.mkdir(parents=True)

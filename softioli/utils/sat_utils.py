@@ -4,12 +4,13 @@ from .utils_functions import date_to_pd_timestamp, str_to_path
 from . import constants as cts
 from . import GLMPathParser
 
-def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_RESOLUTION_STR):
+
+def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
     """
     Generate filename pattern for a specific satellite and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str>
     :param regrid: <bool>
-    :param regrid_res: <str>
+    :param regrid_res_str: <str>
     :return: <str> filename pattern for the satellite
     """
     if sat_name == cts.GOES_SATELLITE_GLM:
@@ -18,25 +19,26 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res=cts.GRID_R
     else:
         raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
     if regrid:
-        return f'{regrid_res}_{filename_pattern}'
+        return f'{regrid_res_str}_{filename_pattern}'
     else:
         return filename_pattern
 
-def generate_sat_dirname_pattern(sat_name, regrid, regrid_res=cts.GRID_RESOLUTION_STR):
+
+def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
     """
     Generate directory name pattern for a specific satellite and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str>
     :param regrid: <bool>
-    :param regrid_res: <str>
+    :param regrid_res_str: <str>
     :return: <str> directory name pattern for the satellite
     """
     if sat_name == cts.GOES_SATELLITE_GLM:
-        # OR_GLM-L2-LCFA_Gxx_YYYY_DDD
-        dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}'
+        # OR_GLM-L2-LCFA_YYYY_DDD
+        dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.YYYY_pattern}_{cts.DDD_pattern}'
     else:
         raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
     if regrid:
-        return f'{regrid_res}_{dirname_pattern}'
+        return f'{regrid_res_str}_{dirname_pattern}'
     else:
         return dirname_pattern
 
@@ -65,7 +67,8 @@ def generate_sat_dir_path(date, satellite, regrid, regrid_res_str=cts.GRID_RESOL
         raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
 
 
-def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_res=cts.GRID_RESOLUTION_STR, dir_path=None):
+def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR,
+                                  dir_path=None):
     """
     Generate absolute path to a satellite hourly file (regridded or not)
     <!> The path does not necessarily point to an existing file, it might point to a file that has yet to be created
@@ -73,21 +76,21 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
     :param satellite: <str> satellite name
     :param sat_version: <str> satellite version e.g.: 'G16' for GOES satellite
     :param regrid: <bool> indicates if the file is regridded
-    :param regrid_res: <str> regrid resolution (if regrid == True)
+    :param regrid_res_str: <str> regrid resolution (if regrid == True)
     :param dir_path: <str> or <pathlib.Path> mostly used for testing purposes, if == None the default directory path is used
     :return: <pathlib.Path> object pointing to satellite hourly data file
     """
     date = date_to_pd_timestamp(date)
     if dir_path is None:
-        dir_path = generate_sat_dir_path(date=date, satellite=satellite, regrid=regrid, regrid_res_str=regrid_res)
-    else: # mostly used for testing purposes
+        dir_path = generate_sat_dir_path(date=date, satellite=satellite, regrid=regrid, regrid_res_str=regrid_res_str)
+    else:  # mostly used for testing purposes
         dir_path = str_to_path(dir_path)
         if not dir_path.exists():
             dir_path.mkdir()
     if satellite == cts.GOES_SATELLITE_GLM:
         filename = f'{cts.GLM_PATH_PREFIX}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date.hour + 1):02d}.nc'
         if regrid:
-            return dir_path / pathlib.Path(f'{regrid_res}_{filename}')
+            return dir_path / pathlib.Path(f'{regrid_res_str}_{filename}')
         else:
             return dir_path / pathlib.Path(filename)
     else:
@@ -107,13 +110,51 @@ def get_list_of_dates_from_list_of_sat_path(path_list, directory, satellite, reg
     """
     date_list = []
     if satellite == cts.GOES_SATELLITE_GLM:
-        for p in path_list:
-            date = GLMPathParser(p, regrid=regrid, directory=directory) \
-                        .get_start_date_pdTimestamp(ignore_missing_start_hour=True)
-            if date_str:
-                date = date.strftime(date_format)
-            date_list.append(date)
+        SatPathParser = GLMPathParser
     else:
         raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
+    for p in path_list:
+        date = SatPathParser(p, regrid=regrid, directory=directory) \
+            .get_start_date_pdTimestamp(ignore_missing_start_hour=True)
+        if date_str:
+            date = date.strftime(date_format)
+        date_list.append(date)
 
     return date_list
+
+
+def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
+    """
+    Function returning a list of all satellite data files in a given directory (or in the subdirectories of a parent directory)
+    @param sat_dir_path: <list> [ <pathlib.Path>, ... ] or <pathlib.Path> or <str>
+    @param parent_dir: <bool> indicates if sat_dir_path points to a parent directory
+    @param sat_name: <str> satellite name (supported so far: 'GOES_GLM')
+    @param regrid: <bool> indicates if sat files to be listed are regridded
+    @param regrid_res_str: <str> grid resolution if regrid=True
+    @return: <list> [ <pathlib.Path>, ... ]
+    """
+    # check if sat_dir_path is a single path (puts it in list, easier to loop through)
+    if isinstance(sat_dir_path, (pathlib.PurePath, str)):
+        sat_dir_path = [str_to_path(sat_dir_path)]
+    # if not single path AND not list --> TypeError
+    elif not isinstance(sat_dir_path, list):
+        raise TypeError('Expecting list of pathlib.Path (or str) objects or single pathlib.Path (or str) object')
+
+    # if parent directory --> get path of all subdirectories containing sat files
+    if parent_dir:
+        dirname_pattern = generate_sat_dirname_pattern(sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str)
+        dir_list = []
+        for parent_dir_path in sat_dir_path:
+            # check that parent_dir_path is a pathlib.Path object (needed for glob function)
+            parent_dir_path = str_to_path(parent_dir_path)
+            dir_list.extend(parent_dir_path.glob(dirname_pattern))
+        sat_dir_path = dir_list
+    # get list of files
+    filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str)
+    file_list = []
+    for dir_path in sat_dir_path:
+        if not parent_dir: # if not parent dir, check if dir_path is a pathlib object
+            dir_path = str_to_path(dir_path)
+        file_list.extend(dir_path.glob(filename_pattern))
+
+    return sorted(file_list)
