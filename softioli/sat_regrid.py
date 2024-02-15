@@ -138,19 +138,22 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     :param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
     :param overwrite: <bool> overwrite file if it already exists
     :param result_dir_path: <pathlib.Path> or <str> mostly for testing, directory in which resulting file should be stored, if None --> use default path
-    :param naming_convention: <str> file or directory naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD', 'MACC_DIR', None (default)
+    :param naming_convention: <str> file or directory naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD' or None (default)
     :return:
     """
     # if path_list contains paths to directories --> get list of files in each directory
     if dir_list:
-        _d_path_list = sorted(path_list)  # store path_list temporarily in another list
-        path_list = []
         dirname_pattern = generate_sat_dirname_pattern(sat_name=sat_name, regrid=False,
                                                        naming_convention=naming_convention)
         filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=False,
                                                                 naming_convention=naming_convention)
-        for dir_path in _d_path_list.glob(dirname_pattern):
-            path_list.extend(dir_path.glob(filename_pattern))
+        # Get list of files in subdirectories
+        path_list[:] = [
+            file_path
+            for parent_path in sorted(path_list)
+            for dir_path in parent_path.glob(dirname_pattern)
+            for file_path in dir_path.glob(filename_pattern)
+        ]
     for pre_regrid_file_url in path_list:
         if sat_name == cts.GOES_SATELLITE_GLM:
             print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
@@ -162,11 +165,3 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         else:
             raise ValueError(
                 f'{sat_name} satellite data not yet supported. Supported satellite data so far: GOES_GLM')
-
-
-"""
-Examples:
-- test on single pre_regrid GLM file:
-python sat_regrid_script_src.py --logname <logname> -f <pre_regrid_file_path> --res-path <res_path> --overwrite
-- regrid ALL pre_regrid hourly GLM files in /o3p/macc/glm
-"""

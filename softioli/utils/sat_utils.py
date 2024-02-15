@@ -2,7 +2,7 @@ import pathlib
 
 from .utils_functions import date_to_pd_timestamp, str_to_path
 from . import constants as cts
-from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_FILENAME, OLD_GLM_NOTATION, OLD_GLM_MACC_PRE_REGRID_DIRNAME
+from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 
 
 def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None):
@@ -15,18 +15,21 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GR
     :return: <str> filename pattern for the satellite
     """
     if sat_name == cts.GOES_SATELLITE_GLM:
-        if naming_convention is None: # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
+        if naming_convention is None:
+            # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
             filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
-        elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_FILENAME: # GLM_array_DDD_temp_HH.nc
+        elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
+            # GLM_array_DDD_temp_HH.nc
             filename_pattern = f'GLM_array_{cts.DDD_pattern}_temp_{cts.HH_pattern}.nc'
-        elif naming_convention == OLD_GLM_NOTATION: # GLM_array(_xxdeg)_DDD_HH1-HH2.nc
+        elif naming_convention == OLD_GLM_NOTATION:
+            # GLM_array(_xxdeg)_DDD_HH1-HH2.nc
             if regrid:
                 regrid_pattern = f'{regrid_res_str}_'
             else:
                 regrid_pattern = ''
             filename_pattern = f'GLM_array_{regrid_pattern}{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
         else:
-            raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_FILENAME}", "{OLD_GLM_NOTATION}" or None')
+            raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
     else:
         raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
 
@@ -42,22 +45,25 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
     :param sat_name: <str>
     :param regrid: <bool>
     :param regrid_res_str: <str>
-    :param naming_convention: <str> file naming convention (mostly for backward compatibility). Supported values: 'OLD', 'MACC_DIR', None (default)
+    :param naming_convention: <str> file naming convention (mostly for backward compatibility). Supported values: 'OLD', 'OLD_TEMP', None (default)
     :return: <str> directory name pattern for the satellite
     """
     if sat_name == cts.GOES_SATELLITE_GLM:
-        if naming_convention is None: # OR_GLM-L2-LCFA_YYYY_DDD
+        if naming_convention is None:
+            # OR_GLM-L2-LCFA_YYYY_DDD
             dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.YYYY_pattern}_{cts.DDD_pattern}'
-        elif naming_convention == OLD_GLM_MACC_PRE_REGRID_DIRNAME: #OR_GLM-L2-LCFA_Gxx_sYYYYDDD
+        elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
+            #OR_GLM-L2-LCFA_Gxx_sYYYYDDD
             dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_s{cts.YYYY_pattern}{cts.DDD_pattern}'
-        elif naming_convention == OLD_GLM_NOTATION: # GLM_array(_05deg)_DDD
+        elif naming_convention == OLD_GLM_NOTATION:
+            # GLM_array(_05deg)_DDD
             if regrid:
                 regrid_pattern = f'{regrid_res_str}_'
             else:
                 regrid_pattern = ''
             dirname_pattern = f'GLM_array_{regrid_pattern}{cts.DDD_pattern}'
         else:
-            raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_MACC_PRE_REGRID_DIRNAME}", "{OLD_GLM_NOTATION}" or None')
+            raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
     else:
         raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
 

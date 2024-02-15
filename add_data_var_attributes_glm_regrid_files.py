@@ -61,10 +61,10 @@ def add_attrs_lightning_sat_file(sat_ds, sat_name, sat_version, regrid, regrid_r
         logger().debug('Adding log_flash_energy_bin comment attribute')
 
     # pre-regrid file attribute
-    if not 'pre_regrid_satellite_file' in sat_ds.attrs:
+    if (not 'pre_regrid_satellite_file' in sat_ds.attrs) or ('05deg' in sat_ds.attrs['pre_regrid_satellite_file']):
         pre_regrid_filename = generate_sat_hourly_file_path(date=sat_ds.time.values[0],
                                                             satellite=sat_name, sat_version=sat_version,
-                                                            regrid=regrid, regrid_res_str=regrid_res_str,
+                                                            regrid=False, regrid_res_str=regrid_res_str,
                                                             dir_path=res_path).name
 
         sat_ds.attrs['pre_regrid_satellite_file'] = pre_regrid_filename
