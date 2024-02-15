@@ -51,7 +51,7 @@ GRID_RESOLUTION_STR = '05deg'
 GRID_RESOLUTION = 0.5
 
 YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
-DDD_pattern = "[0-3][0-6][0-9]" # day of year
+DDD_pattern = "[0-3][0-9][0-9]" # day of year
 HH_pattern = "[0-2][0-9]" # hour
 
 ############ old version

@@ -2,7 +2,7 @@ from datetime import datetime
 import numpy as np
 import xarray as xr
 
-from .utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_hourly_filename_pattern
+from .utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_hourly_filename_pattern, generate_sat_dirname_pattern
 from .utils import constants as cts
 from .utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
@@ -29,7 +29,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     :param lon_min: <float>
     :param lon_max: <float>
     :param result_dir_path: <str> or <pathlib.Path>
-    :param naming_convention: <str> pre-regrid file naming convention (useful if using old files)
+    :param naming_convention: <str> pre-regrid file naming convention (useful for backward compatibility). Supported values: 'OLD_TEMP', 'OLD', None (default)
     """
     if not sat_name in cts.SAT_SETTINGS:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -131,27 +131,31 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      result_dir_path=None, naming_convention=None):
     """
     Function to regrid a list of hourly satellite data files to a specific grid resolution
-    @param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or directories to regrid
-    @param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
-    @param grid_res: <float> grid resolution
-    @param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
-    @param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
-    @param overwrite: <bool> overwrite file if it already exists
-    @param result_dir_path: <pathlib.Path> or <str> mostly for testing, directory in which resulting file should be stored, if None --> use default path
-    @param old_glm_filename: <bool> if file to regrid uses the old file notation (GLM_array_DDD)
-    @return:
+    :param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or directories to regrid
+    :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
+    :param grid_res: <float> grid resolution
+    :param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
+    :param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
+    :param overwrite: <bool> overwrite file if it already exists
+    :param result_dir_path: <pathlib.Path> or <str> mostly for testing, directory in which resulting file should be stored, if None --> use default path
+    :param naming_convention: <str> file or directory naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD', 'MACC_DIR', None (default)
+    :return:
     """
     # if path_list contains paths to directories --> get list of files in each directory
     if dir_list:
         _d_path_list = sorted(path_list)  # store path_list temporarily in another list
         path_list = []
-        filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=False)
-        for dir_path in _d_path_list:
+        dirname_pattern = generate_sat_dirname_pattern(sat_name=sat_name, regrid=False,
+                                                       naming_convention=naming_convention)
+        filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=False,
+                                                                naming_convention=naming_convention)
+        for dir_path in _d_path_list.glob(dirname_pattern):
             path_list.extend(dir_path.glob(filename_pattern))
     for pre_regrid_file_url in path_list:
         if sat_name == cts.GOES_SATELLITE_GLM:
             print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
-            generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url, sat_name=sat_name,
+            generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url,
+                                                      sat_name=sat_name,
                                                       grid_res=grid_res, grid_res_str=grid_res_str,
                                                       overwrite=overwrite, result_dir_path=result_dir_path,
                                                       naming_convention=naming_convention)

@@ -1,3 +1,7 @@
+"""
+
+"""
+
 import argparse
 import logging
 import pathlib
@@ -24,10 +28,17 @@ if __name__ == '__main__':
     parser.add_argument('--loglevel', help='logging level, default=logging.DEBUG(10) - other values: INFO=10, WARNING=30, ERROR=40, CRITICAL=50', default=logging.DEBUG, type=int)
 
     # nargs donc -f file1 file2 file3 ... PAS -f file1 -f file2 -f file3 ... (ça c'est quand action='append')
-    parser.add_argument('-f', '--file-list', required=True, help='List of GLM files to regrid', nargs='+', type=pathlib.Path)
+    parser.add_argument('-f', '--file-list', required=True, help='List of GLM files to regrid (or directories)', nargs='+', type=pathlib.Path)
     parser.add_argument('-s', '--sat-name', help='satellite name, supported satellites so far: "GOES_GLM" (default value)', default='GOES_GLM')
+
+    parser.add_argument('--regrid-res-str', help='grid resolution (str), default = "05deg"',
+                        default=cts.GRID_RESOLUTION_STR)
+    parser.add_argument('--regrid-res', help='grid resolution (float), default = 0.5',
+                        default=cts.GRID_RESOLUTION)
+
     parser.add_argument('--res-path', help='result netcdf file path (mostly used when testing)')
     parser.add_argument('--tests', help='test mode (using default test result path if --res-path arg was forgotten', action='store_true')
+
     parser.add_argument('--old-glm-filename', help='old GLM name (GLM_array_DDD_HH1-HH2.nc for file or GLM_array(_05deg)_DDD for dir)', action='store_true')
     parser.add_argument('--old-temp-glm-filename', help='old temp GLM name (GLM_array_DDD_temp_HH.nc)', action='store_true')
     parser.add_argument('--macc-glm-dirname', help='macc glm dirname (OR_GLM-L2-LCFA_Gxx_sYYYYDDD)', action='store_true')
@@ -45,7 +56,7 @@ if __name__ == '__main__':
     common.log.start_logging(logfile, logging_level=args.loglevel)
 
     if args.tests and args.res_path is None:
-        args.res_path = pathlib.Path('/o3p/patj/test-glm/new_regrid_tests_01-24/')
+        args.res_path = pathlib.Path(f'/o3p/patj/test-glm/new_regrid_tests_{timenow.split("_")[0][-5:]}/') # recup MM-DD de timenow
     if args.macc_glm_dirname and not (args.old_glm_filename or args.old_temp_glm_filename): # if macc_glm_dirname --> files ALWAYS have old_glm_filename notation
         raise ValueError(f'macc_glm_dirname True but NOT old_glm_filename nor old_temp_glm_filename')
 
@@ -55,7 +66,7 @@ if __name__ == '__main__':
     logger().info(f'Running: {cmd_line}')
     logger().debug(f'Arguments passed : {args}')
 
-    if args.parent_dir:
+    """if args.parent_dir:
         # get list of directories containing sat data files
         if args.macc_glm_dirname:
             dirname_pattern = 'OR_GLM-L2-LCFA_G1[6-7]_s[0-2][0-9][0-9][0-9][0-3][0-6][0-9]'
@@ -77,7 +88,7 @@ if __name__ == '__main__':
         for dir_path in dir_list:
             args.file_list.extend(dir_path.glob(filename_pattern))
         logger().debug(f'List of data files: {short_list_repr(args.file_list)}')
-        print(f'\nList of data files: {short_list_repr(sorted(args.file_list))}')
+        print(f'\nList of data files: {short_list_repr(sorted(args.file_list))}')"""
 
     if args.old_glm_filename:
         naming_convention = OLD_GLM_NOTATION
@@ -86,6 +97,7 @@ if __name__ == '__main__':
     else:
         naming_convention = None
 
-    regrid_sat_files(path_list=sorted(args.file_list), sat_name=cts.GOES_SATELLITE_GLM,
+    regrid_sat_files(path_list=sorted(args.file_list), sat_name=args.sat_name,
+                     grid_res=args.regrid_res, grid_res_str=args.regrid_res_str,
+                     dir_list=args.parent_dir,
                      overwrite=args.overwrite, result_dir_path=args.res_path, naming_convention=naming_convention)
-
