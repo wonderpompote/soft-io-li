@@ -1,4 +1,5 @@
 import pathlib
+from re import fullmatch
 
 from .utils_functions import date_to_pd_timestamp, str_to_path
 from . import constants as cts
@@ -7,7 +8,7 @@ from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 
 def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None):
     """
-    Generate filename pattern for a specific satellite and regrid resolution (to be used with pathlib glob function)
+    Generate filename pattern for a specific satellite, naming convention and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
     :param regrid: <bool>
     :param regrid_res_str: <str> grid resolution str (to be added to the resulting filename)
@@ -73,28 +74,30 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
         return dirname_pattern
 
 
-def generate_sat_dir_path(date, satellite, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
+def generate_sat_dir_path(date, sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, target_dir=None):
     """
-    Generate the path to the directory containing the satellite data for a specific date (regridded or not)
+    Generate the absolute path to the directory containing the satellite data for a specific date (regridded or not)
     <!> The path does not necessarily point to an existing directory, if it does not exist it will need to be created and filled with the correct data files
     :param date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime> or <GLMPathParser>
-    :param satellite: <str> satellite name
+    :param sat_name: <str> satellite name
     :param regrid: <bool> indicates if the directory contains regridded files
     :param regrid_res_str: <str> regrid resolution (if regrid == True)
+    :param target_dir: <str> or <pathlib.Path> root directory path (if different from default (/o3p/patj/glm), mostly used for testing)
     :return: <pathlib.Path> object pointing to satellite data directory for a specific date
     """
     # check date
     date = date_to_pd_timestamp(date)
     # now that we have the pandas.Timestamp we can generate the path
-    if satellite == cts.GOES_SATELLITE_GLM:
+    if sat_name == cts.GOES_SATELLITE_GLM:
+        root_dir_path = target_dir if target_dir is not None else cts.GLM_ROOT_DIR
         if regrid:
             return pathlib.Path(
-                f'{cts.REGRID_GLM_ROOT_DIR}/{date.year}/{regrid_res_str}_{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
+                f'{root_dir_path}/{cts.REGRID_GLM_DIRNAME}/{date.year}/{regrid_res_str}_{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
         else:
             return pathlib.Path(
-                f'{cts.PRE_REGRID_GLM_ROOT_DIR}/{date.year}/{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
+                f'{root_dir_path}/{cts.PRE_REGRID_GLM_DIRNAME}/{date.year}/{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
     else:
-        raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
+        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
 
 def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR,
@@ -111,12 +114,10 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
     :return: <pathlib.Path> object pointing to satellite hourly data file
     """
     date = date_to_pd_timestamp(date)
-    if dir_path is None:
-        dir_path = generate_sat_dir_path(date=date, satellite=satellite, regrid=regrid, regrid_res_str=regrid_res_str)
-    else:  # mostly used for testing purposes
-        dir_path = str_to_path(dir_path)
-        if not dir_path.exists():
-            dir_path.mkdir()
+    dir_path = generate_sat_dir_path(date=date, sat_name=satellite, regrid=regrid, regrid_res_str=regrid_res_str,
+                                     target_dir=dir_path)
+    if not dir_path.exists():
+        dir_path.mkdir(parents=True)
     if satellite == cts.GOES_SATELLITE_GLM:
         filename = f'{cts.GLM_PATH_PREFIX}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date.hour + 1):02d}.nc'
         if regrid:

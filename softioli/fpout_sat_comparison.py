@@ -63,7 +63,7 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
     end_date = utils.date_to_pd_timestamp(end_date)
     dir_list = [
         utils.generate_sat_dir_path(
-            date=start_date + pd.Timedelta(i, 'D'), satellite=satellite,
+            date=start_date + pd.Timedelta(i, 'D'), sat_name=satellite,
             regrid=regrid, regrid_res_str=regrid_res_str
         )
         for i in range((end_date - start_date).days + 1)
@@ -127,7 +127,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
         utils.generate_sat_dir_path(
             date=SatPathParser(regrid_dir_path, directory=True, regrid=True) \
                         .get_start_date_pdTimestamp(ignore_missing_start_hour=True),
-            satellite=sat_name,
+            sat_name=sat_name,
             regrid=False
         )
         for regrid_dir_path in regrid_daily_dir_list if not regrid_dir_path.exists()

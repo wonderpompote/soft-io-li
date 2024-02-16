@@ -46,7 +46,7 @@ class GLMPathParser(SatPathParser):
         self.directory = directory
         if naming_convention not in {OLD_GLM_NOTATION, OLD_GLM_PRE_REGRID_TEMP_NOTATION, None}:
             raise ValueError(
-                f'Naming convention {naming_convention} NOT supported. Expecting {OLD_GLM_NOTATION}, {OLD_GLM_PRE_REGRID_TEMP_NOTATION} or None')
+                f'Naming convention {naming_convention} NOT supported. Expecting "{OLD_GLM_NOTATION}", "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}" or None')
         else:
             self.naming_convention = naming_convention
         # date attributes

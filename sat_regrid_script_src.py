@@ -66,7 +66,30 @@ if __name__ == '__main__':
     logger().info(f'Running: {cmd_line}')
     logger().debug(f'Arguments passed : {args}')
 
-    """if args.parent_dir:
+    if args.old_glm_filename:
+        naming_convention = OLD_GLM_NOTATION
+    elif args.old_temp_glm_filename:
+        naming_convention = OLD_GLM_PRE_REGRID_TEMP_NOTATION
+    else:
+        naming_convention = None
+
+    regrid_sat_files(path_list=sorted(args.file_list), sat_name=args.sat_name,
+                     grid_res=args.regrid_res, grid_res_str=args.regrid_res_str,
+                     dir_list=args.parent_dir,
+                     overwrite=args.overwrite, result_dir_path=args.res_path, naming_convention=naming_convention)
+
+"""
+Examples: (??)
+- test on single pre_regrid GLM file:
+python sat_regrid_script_src.py --logname <logname> -f <pre_regrid_file_path> --res-path <res_path> --overwrite
+- regrid ALL pre_regrid hourly GLM files in /o3p/macc/glm
+
+- tests parent dir
+python sat_regrid_script_src.py --logname new_tests_regrid_dir_parent -f /o3p/macc/glm/ --parent-dir --tests --old-temp-glm-filename
+"""
+
+""" ---- POUBELLE ----
+if args.parent_dir:
         # get list of directories containing sat data files
         if args.macc_glm_dirname:
             dirname_pattern = 'OR_GLM-L2-LCFA_G1[6-7]_s[0-2][0-9][0-9][0-9][0-3][0-6][0-9]'
@@ -88,26 +111,5 @@ if __name__ == '__main__':
         for dir_path in dir_list:
             args.file_list.extend(dir_path.glob(filename_pattern))
         logger().debug(f'List of data files: {short_list_repr(args.file_list)}')
-        print(f'\nList of data files: {short_list_repr(sorted(args.file_list))}')"""
-
-    if args.old_glm_filename:
-        naming_convention = OLD_GLM_NOTATION
-    elif args.old_temp_glm_filename:
-        naming_convention = OLD_GLM_PRE_REGRID_TEMP_NOTATION
-    else:
-        naming_convention = None
-
-    regrid_sat_files(path_list=sorted(args.file_list), sat_name=args.sat_name,
-                     grid_res=args.regrid_res, grid_res_str=args.regrid_res_str,
-                     dir_list=args.parent_dir,
-                     overwrite=args.overwrite, result_dir_path=args.res_path, naming_convention=naming_convention)
-
-"""
-Examples: (??)
-- test on single pre_regrid GLM file:
-python sat_regrid_script_src.py --logname <logname> -f <pre_regrid_file_path> --res-path <res_path> --overwrite
-- regrid ALL pre_regrid hourly GLM files in /o3p/macc/glm
-
-- tests parent dir
-python sat_regrid_script_src.py --logname new_tests_regrid_dir_parent -f /o3p/macc/glm/ --parent-dir --tests --old-temp-glm-filename
+        print(f'\nList of data files: {short_list_repr(sorted(args.file_list))}')
 """
