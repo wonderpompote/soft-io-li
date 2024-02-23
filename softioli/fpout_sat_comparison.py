@@ -1,36 +1,6 @@
 """
-STEP 1:
-- verif fp out file (amélioration: faire avec methodes fpsim de pawel)
-STEP 2:
-- check if we have all GLM files *
-STEP 3:
-- retrieve all REGRID glm files into one dataset
-STEP 4:
-- recup flash count pondéré
-STEP 5:
-- mettre trucs dans la bdd iagos ou jsp trop quoi
-
-* CHECK IF WE HAVE ALL FILES:
-- recup liste de dossiers journaliers entre start et end date
-    --> si manque des dossiers on stock la liste des dossiers manquants dans une liste (faudra récup la date à partir de ça)
-        --> regarde si dossiers manquants (noms SANS 05deg devant) sont dans "raw"
-            si NON:
-            --> va chercher sur icare les fichiers manquants
-            --> concat en fichiers horaires
-        --> regrid fichiers horaires
-- recup liste des fichiers dont on a besoin:
-    - if start_date:
-        --> tous les fichiers >= start_time
-    - if end_date:
-        --> tous les fichiers <= end_time
-    - else:
-        --> tous les fichiers du dossier
-- merge tous les fichiers avec xr.open_mfdataset
-
-
-<!> améliorations:
-- pour l'instant indique cts.GOES_SATELLITE_GLM en dur quand doit passer satellite argument dans les fonction
-    ---> faudra que ce soit un param pour que plus tard on puisse utiliser avec d'autres satellites
+UPGRADES: gérer pour aller chercher les données satellites de PLUSIEURS satellites et les merge dans UN seul sat_ds!
+Faut que je connaisse la zone couverte par FP out et que je lance get_sat_ds sur plusieurs sat
 """
 import argparse
 from datetime import datetime
@@ -101,6 +71,7 @@ def get_fp_out_da(fpout_path, sum_height=True, load=False, chunks='auto', max_ch
 
 
 # TODO: suppr dry_run une fois que les tests sont finis
+# TODO: pour avoir un sat_ds avec PLUSIEURS sources sat --> sat_name = list, for loop et ensuite je merge tout ?
 def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, overwrite=False, dry_run=False):
     """
@@ -168,7 +139,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     fname_pattern = utils.generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=True)
     regrid_daily_file_list.extend(regrid_dir_path.glob(fname_pattern) for regrid_dir_path in regrid_daily_dir_list)
     ##########################################
-    print(f'Regrid daily file list: {short_list_repr(sorted(regrid_daily_file_list))}')
+    print(f'Regrid daily file list: [ {regrid_daily_file_list[:2]},\t...\t, {regrid_daily_file_list[-1:]}')
     print()
     ##########################################
     # create a dataset merging all the regrid hourly files
@@ -185,12 +156,13 @@ def get_weighted_flash_count(spec001_mr_da, flash_count_da):
     """
     return (spec001_mr_da * flash_count_da).sum(['latitude', 'longitude']) / 3600
 
-def get_weighted_fp_sat_ds(fp_path, sat_ds, sum_height=True, load=False, chunks='auto',
+#TODO: <!> prendre 7 days from RELSTART !! NOT min date en fait --> du coup recup closest heure AVANT relstart je suppose ?
+def get_weighted_fp_sat_ds(fp_da, sat_ds, sum_height=True, load=False, chunks='auto',
                            max_chunk_size=1e8, assign_releases_position_coords=False):
     """
 
-    @param fp_path:
-    @param sat_ds:
+    @param fp_da: <xarray.DataArray> or <pathlib.Path> (or <str>) path to existing fp out netcdf file
+    @param sat_ds: <xarray.Dataset>
     @param sum_height:
     @param load:
     @param chunks:
@@ -198,17 +170,19 @@ def get_weighted_fp_sat_ds(fp_path, sat_ds, sum_height=True, load=False, chunks=
     @param assign_releases_position_coords:
     @return:
     """
-    # check fp_path and get fp_da
-    fp_path = utils.check_file_exists_with_suffix(fp_path, file_suffix='.nc')
-    fp_da = get_fp_out_da(fpout_path=fp_path, sum_height=sum_height, load=load,
-                          chunks=chunks, max_chunk_size=max_chunk_size,
-                          assign_releases_position_coords=assign_releases_position_coords)
-    # in case sat_ds is a path to satellite .nc file
-    if isinstance(sat_ds, str) or isinstance(sat_ds, pathlib.PurePath):
-        sat_ds = xr.open_dataset(sat_ds)
-    elif not isinstance(sat_ds, xr.Dataset):
+    # if passed fp_out path instead of dataArray/dataset
+    if not isinstance(fp_da, xr.DataArray):
+        # check fp_path and get fp_da
+        if utils.check_file_exists_with_suffix(fp_da, file_suffix='.nc'):
+            fp_da = get_fp_out_da(fpout_path=fp_da, sum_height=sum_height, load=load,
+                                  chunks=chunks, max_chunk_size=max_chunk_size,
+                                  assign_releases_position_coords=assign_releases_position_coords)
+        else:
+            raise TypeError(
+            f'Invalid fp_da ({fp_da}). Expecting <xarray.Dataset> or path (<str> or <pathlib.Path>) to existing FLEXPART output file')
+    if not isinstance(sat_ds, xr.Dataset):
         raise TypeError(
-            f'Invalid sat_ds ({sat_ds}). Expecting <xarray.Dataset> or path (<str> or <pathlib.Path>) to satellite data file')
+            f'Invalid sat_ds ({sat_ds}). Expecting <xarray.Dataset> object')
     # merge fp da and sat ds
     fp_sat_ds = xr.merge([fp_da, sat_ds])
     # only keep the first 7 days after release
@@ -220,3 +194,14 @@ def get_weighted_fp_sat_ds(fp_path, sat_ds, sum_height=True, load=False, chunks=
     fp_sat_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_sat_ds['spec001_mr'],
                                                                  flash_count_da=fp_sat_ds['flash_count'])
     return fp_sat_ds
+
+# TODO: fp_sat_comp function qui prend juste fp_path (list or not) as input and computes the weighted flash_count (and fichier intermédiaure etc., à voir)
+# TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout
+def fpout_sat_comparison(fp_path, file_list=False, sum_height=True, load=False, chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False):
+    # step1: verif si fp_path file exists
+    # step2: recup start + end date
+    # step2bis: recup liste des sat_name des zones couvertes
+    # step3: get sat_ds
+    # setp4: get weighted fp_sat_ds
+    # step5: générer le fichier intermédiaire
+    pass
