@@ -86,6 +86,7 @@ if __name__ == '__main__':
     logger.info('<!> only running get_satellite_ds function NOT get_weighted_ds <!>')
     sat_ds = fs_comp.get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=args.sat_name, dry_run=args.dry_run)
 
-    fp_sat_ds = fs_comp.get_weighted_fp_sat_ds(fp_da=fp_da, sat_ds=sat_ds)
+    #fp_sat_ds = fs_comp.get_weighted_fp_sat_ds(fp_da=fp_da, sat_ds=sat_ds)
+    # write fp_sat_ds qqpart pour que j'aille y jeter un oeil
 
 
