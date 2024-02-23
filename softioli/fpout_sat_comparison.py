@@ -39,6 +39,7 @@ import pandas as pd
 import pathlib
 import xarray as xr
 
+from common.utils import short_list_repr
 import fpout
 
 from . import utils
@@ -153,9 +154,6 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
             sat_regrid.regrid_sat_files(path_list=dir_to_regrid_list, sat_name=sat_name,
                                         grid_res=grid_resolution, dir_list=True,
                                         grid_res_str=grid_res_str, overwrite=overwrite, old_glm_filename=False)
-            ##########################################
-            return
-            ##########################################
         # if we still have missing pre-regrid directories --> FileNotFoundError
         if missing_raw_daily_dir_list - dir_to_regrid_list:
             # get the missing dates from the remaining missing directory paths to display them in the error message
@@ -169,6 +167,10 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     regrid_daily_file_list = []
     fname_pattern = utils.generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=True)
     regrid_daily_file_list.extend(regrid_dir_path.glob(fname_pattern) for regrid_dir_path in regrid_daily_dir_list)
+    ##########################################
+    print(f'Regrid daily file list: {short_list_repr(sorted(regrid_daily_file_list))}')
+    print()
+    ##########################################
     # create a dataset merging all the regrid hourly files
     if not dry_run:
         return xr.open_mfdataset(regrid_daily_file_list)  # <?> utiliser dask ???
