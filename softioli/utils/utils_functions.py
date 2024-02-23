@@ -95,35 +95,19 @@ def date_to_pd_timestamp(date_to_check):
         return date_to_check
 
 
-
-
-###################### used by the old version of GLM regrid ####################################
-def get_np_datetime64_from_string(year, day_of_year, hour=0, mins=0, secs=0, month=None, day=None):
+#TODO update with new fp out notation
+def get_fp_out_nc_file_list(parent_dir_path, old_fp_dirname=True):
     """
-    Function to generate a np datetime64 object with specific year, day of year (or day + month), hour, min and sec
-    from a string using datetime.strptime (for now only way to get date from a day of year string)
-    Expecting str or int values
-    Used to get the date (taken from the glm nc filename) that will be added to the target 0.5deg glm dataset
-    :param year: year
-    :param day_of_year: day of the year
-    :param hour: hour, default = 0
-    :param mins: minutes, default = 0
-    :param secs: seconds, default = 0
-    :param month: month number (given if day_of_year is unknown and put to 0 or None)
-    :param day: day of the month (given if day_of_year is unknown and put to 0 or None)
-    :return: <numpy.datetime64>
+    Function to get a list of all flexpart output netcdf files available in parent_dir_path
+    @param parent_dir_path: <str> or <pathlib.Path>
+    @param old_fp_dirname: <bool> indicates if using fp dirname notation used by macc
+    @return: <list> [ <pathlib.Path>, ... ]
     """
-    # if day_of_year, month and day are all None raise exception
-    if all(d is None for d in [day_of_year, month, day]) or all(d == 0 for d in [day_of_year, month, day]):
-        raise ValueError(f'Day of year or month and day values required')
-    if day_of_year is not None or day_of_year != 0:
-        # if day_of_year AND month and day are all not None, raise warning and use day_of_year
-        if all(d is not None for d in [month, day]):
-            warnings.warn('Expecting day of the year OR month and day values, not both. Day of year value will be used',
-                          Warning)
-        date_iso_str = datetime.strptime(f'{year}-{day_of_year}-{hour}-{mins}-{secs}', '%Y-%j-%H-%M-%S').isoformat()
-    elif day_of_year is None and all(d is not None for d in [month, day]):
-        date_iso_str = datetime.strptime(f'{year}-{day_of_year}-{hour}-{mins}-{secs}', '%Y-%j-%H-%M-%S').isoformat()
+    parent_dir_path = str_to_path(parent_dir_path)
+    if old_fp_dirname:
+        fp_out_flight_dir_pattern = "flight_2018_0[0-3][0-9]_1h_05deg/10j_100k_output/"
+        fp_file_pattern = "grid_time_*.nc"
     else:
-        raise TypeError('Day_of_year value equal to None and month or day value missing')
-    return np.datetime64(date_iso_str)
+        #TODO insert real pattern when fp notation has been decided
+        raise ValueError('Only old fp dirname accepted for now')
+    return parent_dir_path.glob(f"{fp_out_flight_dir_pattern}/{fp_file_pattern}")

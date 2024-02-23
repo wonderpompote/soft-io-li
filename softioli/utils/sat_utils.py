@@ -1,4 +1,5 @@
 import pathlib
+from pandas import Timedelta
 from re import fullmatch
 
 from .utils_functions import date_to_pd_timestamp, str_to_path
@@ -119,7 +120,7 @@ def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_r
     if not dir_path.exists():
         dir_path.mkdir(parents=True)
     if satellite == cts.GOES_SATELLITE_GLM:
-        filename = f'{cts.GLM_PATH_PREFIX}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date.hour + 1):02d}.nc'
+        filename = f'{cts.GLM_PATH_PREFIX}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
         if regrid:
             return dir_path / pathlib.Path(f'{regrid_res_str}_{filename}')
         else:

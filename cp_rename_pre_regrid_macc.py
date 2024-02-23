@@ -138,6 +138,5 @@ if __name__ == '__main__':
 Tests dans un dossier tests:
 python cp_rename_pre_regrid_macc.py -p /o3p/macc/glm/ --parent-dir -n OLD_TEMP --res-path /o3p/patj/test-glm/cp_rename_macc_pre_regrid
 Lancer sur tous les fichiers dans /o3p/macc/glm
-python cp_rename_pre_regrid_macc.py -p /o3p/macc/glm/ --parent-dir -n OLD_TEMP 
-
+python cp_rename_pre_regrid_macc.py -p /o3p/macc/glm/ --parent-dir -n OLD_TEMP qqq
 """
