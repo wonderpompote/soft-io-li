@@ -17,6 +17,7 @@ def str_to_path(path_to_convert):
     else:
         raise TypeError('Expecting str or pathlib object')
 
+# TODO: supprimer ! elle est dans fpout_sat_comparison (get_fpout_da)
 def get_fp_da(fp_path, sum_height=True, load=False, chunks='auto', max_chunk_size=1e8,
               assign_releases_position_coords=False):
     if not str_to_path(fp_path).exists():

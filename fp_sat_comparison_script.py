@@ -28,7 +28,7 @@ if __name__ == '__main__':
     group.add_argument('-f', '--fpout-path', help='Path to flexpart output netcdf file', type=pathlib.Path)
     # optional arguments for fp out
     parser.add_argument('--sum-height', action='store_true', help='sum fp out values over altitude (default=True)', default=True)
-    parser.add_argument('--load_fpout', action='store_true', help='load fp_out dataArray into memory (default=False)', default=False)
+    parser.add_argument('--load-fpout', action='store_true', help='load fp_out dataArray into memory (default=False)', default=False)
     # soit fpout, soit start et end date (for testing purposes !)
     group.add_argument('--start-date', type=pd.Timestamp,
                        help='Start date (test mode only) <!> format: YYYY-MM-DD (YYYY: year, MM: month, DD: day)')
@@ -46,6 +46,8 @@ if __name__ == '__main__':
 
     if args.dry_run:
         args.load_fpout = False
+    elif not args.dry_run and not args.test and not args.load_fpout:
+        args.load_fpout = True # au cas ou j'oublie de mettre load=True
 
     if not args.logdir.exists():
         args.logdir.mkdir(parents=True)
@@ -67,7 +69,7 @@ if __name__ == '__main__':
         if not utils.check_file_exists_with_suffix(args.fpout_path):
             raise ValueError(f'Incorrect fpout_path, {args.fpout_path} does not exist')
         else:
-            fp_da = utils.get_fp_da(args.fpout_path)
+            fp_da = fs_comp.get_fp_out_da(args.fpout_path, sum_height=args.sum_height, load=args.load_fpout)
             start_date, end_date = pd.Timestamp(fp_da.time.min().values), pd.Timestamp(fp_da.time.max().values)
 
     else:
@@ -83,10 +85,15 @@ if __name__ == '__main__':
     print(f'start_date : {start_date} ({start_date.year}-{start_date.dayofyear}) \tend_date: {end_date} ({end_date.year}-{end_date.dayofyear})')
     """ ######################## PRINTY PRINT ######################## """
 
-    logger.info('<!> only running get_satellite_ds function NOT get_weighted_ds <!>')
+    logger().info('<!> only running get_satellite_ds function NOT get_weighted_ds <!>')
     sat_ds = fs_comp.get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=args.sat_name, dry_run=args.dry_run)
+
+    print(sat_ds)
+    logger().debug(f'sat_ds:\n{sat_ds}')
+
+    sat_ds.to_netcdf(f'/o3p/patj/test-glm/sat_ds_tests_fpout_sat_comp/{timenow}_sat_ds.nc')
+    logger().debug(f'writing sat_ds to /o3p/patj/test-glm/sat_ds_tests_fpout_sat_comp/ {timenow}_sat_ds.nc')
 
     #fp_sat_ds = fs_comp.get_weighted_fp_sat_ds(fp_da=fp_da, sat_ds=sat_ds)
     # write fp_sat_ds qqpart pour que j'aille y jeter un oeil
-
 

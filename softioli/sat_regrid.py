@@ -143,15 +143,13 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     """
     # if path_list contains paths to directories --> get list of files in each directory
     if dir_list:
-        dirname_pattern = generate_sat_dirname_pattern(sat_name=sat_name, regrid=False,
-                                                       naming_convention=naming_convention)
         filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=False,
                                                                 naming_convention=naming_convention)
         # Get list of files in subdirectories
         path_list[:] = [
             file_path
-            for parent_path in sorted(path_list)
-            for dir_path in parent_path.glob(dirname_pattern)
+            
+            for dir_path in sorted(path_list)
             for file_path in dir_path.glob(filename_pattern)
         ]
     for pre_regrid_file_url in path_list:
