@@ -59,7 +59,7 @@ DDD_pattern = "[0-3][0-9][0-9]" # day of year
 HH_pattern = "[0-2][0-9]" # hour
 
 ############ old version
-# "original" GLM files
+"""# "original" GLM files
 OG_GLM_FILES_PATH = '/o3p/macc/glm'
 GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s" # OR_GLM-L2-LCFA_G16_sYYYYDDD
 GLM_HOURLY_FILE_NAME = "GLM_array_" # GLM_array_DDD_HH1-HH2.nc
@@ -85,4 +85,4 @@ FLASH_AREA_BINS = 30
 FLASH_AREA_LOG10_RANGE = [1.5, 4.5] # <!> log10
 
 # miscellaneous
-DUMMY_VALUE = -999
+DUMMY_VALUE = -999"""

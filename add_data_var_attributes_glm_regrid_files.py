@@ -131,14 +131,14 @@ if __name__ == '__main__':
     logger().debug(f'Arguments passed : {args}')
 
     # recup list of satellite data files
-    list_of_files = get_list_of_sat_files(sat_dir_path=args.dir_list, parent_dir=args.parent_dir,
-                                          sat_name=args.sat_name, regrid=args.regrid,
-                                          regrid_res_str=args.regrid_res_str)
+    file_list = get_list_of_sat_files(sat_dir_path=args.dir_list, parent_dir=args.parent_dir,
+                                      sat_name=args.sat_name, regrid=args.regrid,
+                                      regrid_res_str=args.regrid_res_str)
 
-    print(f'List of files:\n{short_list_repr(list_of_files)}')
-    logger().info(f'List of files:\n{short_list_repr(list_of_files)}')
+    print(f'List of files:\n{short_list_repr(file_list)}')
+    logger().info(f'List of files:\n{short_list_repr(file_list)}')
 
-    for sat_file_path in list_of_files:
+    for sat_file_path in file_list:
         logger().debug(f'sat_file_path: {sat_file_path}')
         sat_ds = xr.open_dataset(sat_file_path)
 
