@@ -228,19 +228,21 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
 
 # TODO: add check dir_list contient que des pathlib.PurePath objects (?)
 def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sat_name, regrid):
+    if sat_name == cts.GOES_SATELLITE_GLM:
+        SatPathParser = GLMPathParser
+    else:
+        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
     start_date, end_date = utils.date_to_pd_timestamp(start_date), utils.date_to_pd_timestamp(end_date)
     file_list = []
-    fir_list = sorted(dir_list)
+    dir_list = sorted(dir_list)
     fname_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=regrid)
-    # get files >= start date
-    start_fname_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=regrid, YYYY=start_date.year, DDD=start_date.dayofyear, start_HH=start_date.hour)
     for file in dir_list[0].glob(fname_pattern):
-        if file.name >= start_fname_pattern:
+        fparser = GLMPathParser(file_url=file, regrid=regrid)
+        if fparser.start_hour >= start_date.hour:
             file_list.append(file)
-    # get files <= end_date
-    end_fname_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=regrid, YYYY=end_date.year, DDD=end_date.dayofyear, start_HH=end_date.hour)
     for file in dir_list[-1].glob(fname_pattern):
-        if file.name <= end_fname_pattern:
+        fparser = GLMPathParser(file_url=file, regrid=regrid)
+        if fparser.start_hour <= end_date.hour:
             file_list.append(file)
     # for the days: start_day < day < end_day --> get all files matching generic filename pattern
     for dir_path in dir_list[1:-1]:
