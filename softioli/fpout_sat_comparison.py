@@ -111,7 +111,8 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     # TODO: PROBLEM !!!! CA PREND TOUTES LES HEURES, MAIS FAUT PAS CA POUR START ET END DAY
     regrid_daily_file_list = []
     regrid_daily_dir_list = sorted(regrid_daily_dir_list)
-
+    fname_pattern = utils.generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=True)
+    start_filename_pattern = utils.generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=True, year=start_date.year)
     for regrid_dir_path in regrid_daily_dir_list:
         if regrid_dir_path == regrid_daily_dir_list[0]:
             regrid_daily_file_list.extend(regrid_dir_path.glob(fname_pattern))
