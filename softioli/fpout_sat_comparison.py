@@ -2,11 +2,7 @@
 UPGRADES: gérer pour aller chercher les données satellites de PLUSIEURS satellites et les merge dans UN seul sat_ds!
 Faut que je connaisse la zone couverte par FP out et que je lance get_sat_ds sur plusieurs sat
 """
-import argparse
-from datetime import datetime
 import numpy as np
-import pandas as pd
-import pathlib
 import xarray as xr
 
 from common.utils import short_list_repr
@@ -16,30 +12,7 @@ from . import utils
 from .utils import constants as cts
 from .utils import GLMPathParser
 from . import sat_regrid
-
-
-def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
-                                                 regrid_res_str=cts.GRID_RESOLUTION_STR):
-    """
-    Generate list (iter) of daily directory path containing satellite data between start and end date
-    :param start_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
-    :param end_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
-    :param satellite: <str> satellite name
-    :param regrid: <bool> indicates if the directory contains regridded files
-    :param regrid_res_str: <str> regrid resolution
-    :return: <list>
-    """
-    # make sure the dates are pd.Timestamps
-    start_date = utils.date_to_pd_timestamp(start_date)
-    end_date = utils.date_to_pd_timestamp(end_date)
-    dir_list = [
-        utils.generate_sat_dir_path(
-            date=start_date + pd.Timedelta(i, 'D'), sat_name=satellite,
-            regrid=regrid, regrid_res_str=regrid_res_str
-        )
-        for i in range((end_date - start_date).days + 1)
-    ]
-    return dir_list
+from .utils.sat_utils import generate_sat_dir_list_between_start_end_date
 
 
 # TODO: dask !!
@@ -135,17 +108,20 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
             raise FileNotFoundError(f'The GLM files for the following dates are missing: {sorted(missing_dates)}\nPlease download '
                                     f'them from the ICARE server and try again')
     # get list of satellite data files between start and end date
+    # TODO: PROBLEM !!!! CA PREND TOUTES LES HEURES, MAIS FAUT PAS CA POUR START ET END DAY
     regrid_daily_file_list = []
-    fname_pattern = utils.generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=True)
+    regrid_daily_dir_list = sorted(regrid_daily_dir_list)
+
     for regrid_dir_path in regrid_daily_dir_list:
+        if regrid_dir_path == regrid_daily_dir_list[0]:
+            regrid_daily_file_list.extend(regrid_dir_path.glob(fname_pattern))
         regrid_daily_file_list.extend(regrid_dir_path.glob(fname_pattern))
     ##########################################
-    print(f'Regrid daily file list: {list(regrid_daily_file_list)}')
+    print(f'Regrid daily file list: {short_list_repr(regrid_daily_file_list)}')
     print()
     ##########################################
     # create a dataset merging all the regrid hourly files
-    if not dry_run:
-        return xr.open_mfdataset(regrid_daily_file_list, concat_dim='time')  #TODO: <?> utiliser dask: ajouter parallel=True
+    return xr.open_mfdataset(regrid_daily_file_list, combine_attrs='drop_conflicts')  #TODO: <?> utiliser dask: ajouter parallel=True
 
 
 def get_weighted_flash_count(spec001_mr_da, flash_count_da):

@@ -46,15 +46,15 @@ if __name__ == '__main__':
 
     if args.dry_run:
         args.load_fpout = False
-    elif not args.dry_run and not args.test and not args.load_fpout:
-        args.load_fpout = True # au cas ou j'oublie de mettre load=True
+    """elif not args.dry_run and not args.test and not args.load_fpout:
+        args.load_fpout = True # au cas ou j'oublie de mettre load=True"""
 
     if not args.logdir.exists():
         args.logdir.mkdir(parents=True)
 
     print(args)
 
-    timenow = timestamp_now_formatted("%Y-%m-%d_%H%M")
+    timenow = timestamp_now_formatted("%Y-%m-%d_%H%M", tz='CET')
     logfile = str(pathlib.Path(default_logdir, f'{timenow}_{args.logname}.log'))
     # TODO: convert logging level str to logging level value (genre DEBUG == logging.DEBUG == 10)
     common.log.start_logging(logfile, logging_level=args.loglevel)
@@ -91,9 +91,12 @@ if __name__ == '__main__':
     print(sat_ds)
     logger().debug(f'sat_ds:\n{sat_ds}')
 
-    sat_ds.to_netcdf(f'/o3p/patj/test-glm/sat_ds_tests_fpout_sat_comp/{timenow}_sat_ds.nc')
-    logger().debug(f'writing sat_ds to /o3p/patj/test-glm/sat_ds_tests_fpout_sat_comp/ {timenow}_sat_ds.nc')
-
-    #fp_sat_ds = fs_comp.get_weighted_fp_sat_ds(fp_da=fp_da, sat_ds=sat_ds)
-    # write fp_sat_ds qqpart pour que j'aille y jeter un oeil
+    sat_ds.to_netcdf(f'/o3p/patj/test-glm/fpout_sat_comp_tests/{timenow}_sat_ds_WRONG-START-END-HOUR.nc')
+    logger().debug(f'writing sat_ds to /o3p/patj/test-glm/fpout_sat_comp_tests/{timenow}_sat_ds_WRONG-START-END-HOUR.nc')
+    print('----------------------')
+    logger().debug('----------------------')
+    
+    fp_sat_ds = fs_comp.get_weighted_fp_sat_ds(fp_da=fp_da, sat_ds=sat_ds)
+    fp_sat_ds.to_netcdf(f'/o3p/patj/test-glm/fpout_sat_comp_tests/{timenow}_fp_sat_ds_WRONG-START-END-HOUR.nc')
+    logger().debug(f'writing fp_sat_ds to /o3p/patj/test-glm/fpout_sat_comp_tests/{timenow}_fp_sat_ds_WRONG-START-END-HOUR.nc')
 

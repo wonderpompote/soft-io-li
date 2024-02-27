@@ -1,35 +1,43 @@
 import pathlib
+
+import pandas as pd
 from pandas import Timedelta
 from re import fullmatch
 
 from .utils_functions import date_to_pd_timestamp, str_to_path
 from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
+from .. import utils
 
 
-def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None):
+def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None,
+                                         YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern):
     """
     Generate filename pattern for a specific satellite, naming convention and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
     :param regrid: <bool>
     :param regrid_res_str: <str> grid resolution str (to be added to the resulting filename)
     :param naming_convention: <str> file naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD', None (default)
+    :param YYYY: <str> or <int> year
+    :param DDD: <str> or <int> day of the year
+    :param start_HH: <str> or <int> start hour
+    :param end_HH:  <str> or <int> end hour
     :return: <str> filename pattern for the satellite
     """
     if sat_name == cts.GOES_SATELLITE_GLM:
         if naming_convention is None:
             # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
-            filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{cts.YYYY_pattern}_{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
+            filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{YYYY}_{DDD}_{start_HH}-{end_HH}.nc'
         elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
             # GLM_array_DDD_temp_HH.nc
-            filename_pattern = f'GLM_array_{cts.DDD_pattern}_temp_{cts.HH_pattern}.nc'
+            filename_pattern = f'GLM_array_{DDD}_temp_{start_HH}.nc'
         elif naming_convention == OLD_GLM_NOTATION:
             # GLM_array(_xxdeg)_DDD_HH1-HH2.nc
             if regrid:
                 regrid_pattern = f'{regrid_res_str}_'
             else:
                 regrid_pattern = ''
-            filename_pattern = f'GLM_array_{regrid_pattern}{cts.DDD_pattern}_{cts.HH_pattern}-{cts.HH_pattern}.nc'
+            filename_pattern = f'GLM_array_{regrid_pattern}{DDD}_{start_HH}-{end_HH}.nc'
         else:
             raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
     else:
@@ -155,6 +163,7 @@ def get_list_of_dates_from_list_of_sat_path(path_list, directory, satellite, reg
     return date_list
 
 
+# TODO: jsp si ça me sert vraiment dans le code au final
 def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
     """
     Function returning a list of all satellite data files in a given directory (or in the subdirectories of a parent directory)
@@ -190,3 +199,53 @@ def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res
         file_list.extend(dir_path.glob(filename_pattern))
 
     return sorted(file_list)
+
+
+def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
+                                                 regrid_res_str=cts.GRID_RESOLUTION_STR):
+    """
+    Generate list (iter) of daily directory path containing satellite data between start and end date
+    <!> does not necessarily generate directory paths <!>
+    :param start_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
+    :param end_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
+    :param satellite: <str> satellite name
+    :param regrid: <bool> indicates if the directory contains regridded files
+    :param regrid_res_str: <str> regrid resolution
+    :return: <list>
+    """
+    # make sure the dates are pd.Timestamps
+    start_date = utils.date_to_pd_timestamp(start_date)
+    end_date = utils.date_to_pd_timestamp(end_date)
+    dir_list = [
+        utils.generate_sat_dir_path(
+            date=start_date + pd.Timedelta(i, 'D'), sat_name=satellite,
+            regrid=regrid, regrid_res_str=regrid_res_str
+        )
+        for i in range((end_date - start_date).days + 1)
+    ]
+    return dir_list
+
+
+def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
+                                                 regrid_res_str=cts.GRID_RESOLUTION_STR):
+    """
+    Generate list (iter) of hourly  path containing hsatellite data between start and end date
+    <!> does not necessarily generate directory paths <!>
+    :param start_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
+    :param end_date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime>
+    :param satellite: <str> satellite name
+    :param regrid: <bool> indicates if the directory contains regridded files
+    :param regrid_res_str: <str> regrid resolution
+    :return: <list>
+    """
+    # make sure the dates are pd.Timestamps
+    start_date = utils.date_to_pd_timestamp(start_date)
+    end_date = utils.date_to_pd_timestamp(end_date)
+    dir_list = [
+        utils.generate_sat_dir_path(
+            date=start_date + pd.Timedelta(i, 'D'), sat_name=satellite,
+            regrid=regrid, regrid_res_str=regrid_res_str
+        )
+        for i in range((end_date - start_date).days + 1)
+    ]
+    return dir_list

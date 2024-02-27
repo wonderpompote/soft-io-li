@@ -13,10 +13,10 @@ from softioli.utils import get_list_of_sat_files
 
 
 def rename_regrid_ds_vars_dims(regrid_ds, file_path):
-    if 'log_flash_area_bin' in regrid_ds.dims:
-        regrid_ds = regrid_ds.rename_dims({'log_flash_area_bin': 'flash_area_log_bin'})
-    if 'log_flash_energy_bin' in regrid_ds.dims:
-        regrid_ds = regrid_ds.rename_dims({'log_flash_energy_bin': 'flash_energy_log_bin'})
+    if 'log_flash_area_bin' in regrid_ds.coords:
+        regrid_ds = regrid_ds.rename({'log_flash_area_bin': 'flash_area_log_bin'})
+    if 'log_flash_energy_bin' in regrid_ds.coords:
+        regrid_ds = regrid_ds.rename({'log_flash_energy_bin': 'flash_energy_log_bin'})
     # rename "old" sat_file_path temporarily to avoid weird permission errors
     temp_file_path = file_path.rename(pathlib.Path(f'{file_path.parent}/temp_{file_path.name}'))
     logger().debug(f'temp_file_path: {temp_file_path}')
@@ -32,7 +32,7 @@ def rename_regrid_ds_vars_dims(regrid_ds, file_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    default_logdir = pathlib.Path(cts.DEFAULT_LOGDIR, 'rename_regrid_variables')
+    default_logdir = pathlib.Path(cts.DEFAULT_LOGDIR, 'rename_regrid_dims')
     parser.add_argument('-l', '--logdir', default=default_logdir, help=f'log directory; default is {default_logdir}',
                         type=pathlib.Path)
     parser.add_argument('--logname',
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # logs
     if not args.logdir.exists():
         args.logdir.mkdir(parents=True)
-    timenow = timestamp_now_formatted("%Y-%m-%d_%H%M")
+    timenow = timestamp_now_formatted("%Y-%m-%d_%H%M", tz="CET")
     logfile = str(pathlib.Path(default_logdir, f'{timenow}_{args.logname}.log'))
     common.log.start_logging(logfile, logging_level=args.loglevel)
 
@@ -83,5 +83,5 @@ if __name__ == '__main__':
     for file_path in file_list:
         logger().debug(f'sat_file_path: {file_path}')
         with xr.open_dataset(file_path) as regrid_ds:
-            if 'flash_area_log_bin' not in regrid_ds.dims or 'flash_energy_log_bin' not in regrid_ds.dims:
+            if 'flash_area_log_bin' not in regrid_ds.coords or 'flash_energy_log_bin' not in regrid_ds.coords:
                 rename_regrid_ds_vars_dims(regrid_ds, file_path)

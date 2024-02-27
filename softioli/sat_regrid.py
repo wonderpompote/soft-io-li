@@ -104,8 +104,8 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
             _ds['flash_area_log'] = np.log10(_ds[flash_area])
             flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
                                     _ds[['flash_area_log', 'latitude', 'longitude']], data_var_name='flash_area_log',
-                                    min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
-                                    step=cts.f_en_hist_step, res_var_name='flash_area_log_hist')
+                                    min_bin_edge=cts.f_ar_min_bin, max_bin_edge=cts.f_ar_max_bin,
+                                    step=cts.f_ar_hist_step, res_var_name='flash_area_log_hist')
             flash_area_hist_ds['flash_area_log_hist'].attrs.update({
                 'long_name': f'Number of flash occurrences in log10(flash_area) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
                 'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
