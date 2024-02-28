@@ -3,6 +3,7 @@ UPGRADES: gérer pour aller chercher les données satellites de PLUSIEURS satell
 Faut que je connaisse la zone couverte par FP out et que je lance get_sat_ds sur plusieurs sat
 """
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 from common.utils import short_list_repr
@@ -41,6 +42,31 @@ def get_fp_out_da(fpout_path, sum_height=True, load=False, chunks='auto', max_ch
     if load:
         fp_da.load()
     return fp_da
+
+def get_fp_out_da_7days(fpout_path, sum_height=True, load=False, chunks='auto', max_chunk_size=1e8,
+                  assign_releases_position_coords=False):
+    """
+
+    @param fpout_path:
+    @param sum_height:
+    @param load:
+    @param chunks:
+    @param max_chunk_size:
+    @param assign_releases_position_coords:
+    @return:
+    """
+    if not utils.str_to_path(fpout_path).exists():
+        raise ValueError(f'fp_path {fpout_path} does NOT exist')
+    fp_ds = fpout.open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
+                                  assign_releases_position_coords=assign_releases_position_coords)
+    # fp simulation start date (ietime here because backwards)
+    ietime = pd.Timestamp(f"{fp_ds.attrs['iedate']}{fp_ds.attrs['ietime']}")
+    # fp release start dates (RELEND because backwards) --> get nearest hour before start
+    release_start_dates = (ietime + fp_ds.RELEND.load()).dt.ceil('h')
+    # recup dates fin 7 days
+    end_dates = release_start_dates - np.timedelta64(7, 'D')
+    # apply where
+    # load et cie
 
 
 # TODO: suppr dry_run une fois que les tests sont finis
@@ -144,7 +170,7 @@ def get_weighted_fp_sat_ds(fp_da, sat_ds, sum_height=True, load=False, chunks='a
     # if passed fp_out path instead of dataArray/dataset
     if not isinstance(fp_da, xr.DataArray):
         # check fp_path and get fp_da
-        if utils.check_file_exists_with_suffix(fp_da, file_suffix='.nc'):
+        if utils.str_to_path(fp_da).exists():
             fp_da = get_fp_out_da(fpout_path=fp_da, sum_height=sum_height, load=load,
                                   chunks=chunks, max_chunk_size=max_chunk_size,
                                   assign_releases_position_coords=assign_releases_position_coords)
@@ -170,9 +196,14 @@ def get_weighted_fp_sat_ds(fp_da, sat_ds, sum_height=True, load=False, chunks='a
 # TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout
 def fpout_sat_comparison(fp_path, file_list=False, sum_height=True, load=False, chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False):
     # step1: verif si fp_path file exists
-    # step2: recup start + end date
-    # step2bis: recup liste des sat_name des zones couvertes
-    # step3: get sat_ds
-    # setp4: get weighted fp_sat_ds
-    # step5: générer le fichier intermédiaire
+    if not utils.str_to_path(fp_path).exists():
+        raise FileNotFoundError(f'Expecting existing fp out file! {fp_path} does NOT exist')
+    # step2: recup fp_da sur 7 JOURS avec les 7j pour chaque releases, PAS depuis début fichier
+
+    # TODO: step3: recup liste des sat_name des zones couvertes
+    # <!!!!> POUR CHAQUE RELEASE <!!!!>
+    #   step3: recup start + end date
+    #   step4: get sat_ds (passer pointspec en attribut et l'ajouter en dim du fichier retourné)
+    # setp5: get weighted fp_sat_ds (j'imagine qu'il gère tout seul le produit avec juste les trucs qui ont la même dimension pointspec)
+    # step6: générer le fichier intermédiaire
     pass

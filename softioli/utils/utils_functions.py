@@ -59,21 +59,6 @@ def get_fp_glm_ds(fp_da, glm_da, sum_height=True, load_fp_da=False):
     return fp_glm_ds
 
 
-def check_file_exists_with_suffix(path, file_suffix='.nc'):
-    """
-    Function to check is a given path points to existing file with specific file_suffix
-    :param path: <str> or <pathlib.Path>
-    :param file_suffix: '.nc' by default
-    :return: <bool>
-    """
-    if not isinstance(path, pathlib.PurePath):
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-        else:
-            raise TypeError(f'Expecting <str> or <pathlib.PurePath> object, not {type(path)}')
-    return path.exists() and path.suffix == file_suffix
-
-
 def date_to_pd_timestamp(date_to_check):
     """
     Function to convert date or GLMPathParser to pandas.Timestamp object

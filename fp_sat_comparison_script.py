@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     # check FP OUT path if NOT dry run
     if not args.test:
-        if not utils.check_file_exists_with_suffix(args.fpout_path):
+        if not utils.str_to_path(args.fpout_path).exists():
             raise ValueError(f'Incorrect fpout_path, {args.fpout_path} does not exist')
         else:
             fp_da = fs_comp.get_fp_out_da(args.fpout_path, sum_height=args.sum_height, load=args.load_fpout)
