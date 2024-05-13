@@ -1,7 +1,15 @@
 import pathlib
-import socket
 
-# constants part 3 new version
+#----- part 1 -----
+IAGOSv3_CAT_PATH = pathlib.Path('/o3p/iagos/catalogues_v3/iagos_L2.parquet')
+IAGOSv3_PV_PATH = pathlib.Path('/o3p/iagos/iagosv3/L4/')
+IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
+
+PV_varname = 'PV'
+airpress_varname = 'air_press_AC'
+
+
+#----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
 
 # TODO: update when other satellites OK
