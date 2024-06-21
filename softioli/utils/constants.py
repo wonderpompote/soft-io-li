@@ -4,9 +4,35 @@ import pathlib
 IAGOSv3_CAT_PATH = pathlib.Path('/o3p/iagos/catalogues_v3/iagos_L2.parquet')
 IAGOSv3_PV_PATH = pathlib.Path('/o3p/iagos/iagosv3/L4/')
 IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
+IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'
 
-PV_varname = 'PV'
-airpress_varname = 'air_press_AC'
+IAGOS = 'IAGOS'
+CARIBIC = 'CARIBIC'
+CORE = 'CORE'
+MOZAIC ='MOZAIC'
+
+PV_VARNAME = 'PV'
+AIRPRESS_VARNAME = 'air_press_AC'
+CO_VARNAME = 'CO_P1'
+O3_VARNAME = 'O3_P1'
+
+CORE_NO_VARNAME = 'NO_P2b'
+CORE_NO2_VARNAME = 'NO2_P2b'
+CORE_NOx_VARNAME = 'NOx_P2b'
+
+CARIBIC_CO_VARNAME = 'CO_PC1' #TODO: store caribic suffix instead ?
+CARIBIC_O3_VARNAME = 'O3_PC1'
+CARIBIC_NO_VARNAME = 'NO_PC2'
+CARIBIC_NO2_VARNAME = 'NO2_PC2'
+CARIBIC_NOx_VARNAME = 'NOx_PC'
+NOx_PLUME_ID_VARNAME = 'NOx_plume_id'
+
+WINDOW_SIZE = {
+    f'{IAGOS}-{CORE}': 25, # 25 * 4sec intervals
+    f'{IAGOS}-{CARIBIC}': 10 # 10 * 10sec intervals
+}
+
+FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 
 
 #----- part 3 -----

@@ -42,30 +42,62 @@ POUR CHAQUE VOL:
         --> write plume info qqpart
 
 """
-import pandas as pd
+import xarray as xr
 
 from utils import constants as cts
-import utils
+from utils import iagos_utils
 
-def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None):
-    if not utils.str_to_path(iagos_cat_path).exists():
-        raise ValueError(f"Invalid IAGOS catalogue path, {iagos_cat_path} does NOT exist!")
-    df_cat = pd.read_parquet(iagos_cat_path)
-    # get all NO2 data variable names
-    NO2_vars = [varname for varname in df_cat if varname.startswith("data_vars_") and ("NO2") in varname]
-    # get all NOx flights (flights with NO2 variables > 0)
-    NOx_flights = df_cat.loc[(df_cat[NO2_vars] > 0).any(axis='columns')]
-    # if we only want flights between two flight ids or specific flights in a given list
-    if flight_id_list is not None:
-        NOx_flights = NOx_flights.loc[flight_id_list]
-    elif start_flight_id is not None or end_flight_id is not None:
-        NOx_flights = NOx_flights.loc[start_flight_id, end_flight_id]
-        # TODO: recup flights from several programs instead of just one (passe une liste)
-    # if we only want flights from one specific program
-    if flight_type is not None:
-        if flight_type in ['CARIBIC', 'CORE', 'MOZAIC']:
-            flight_type = f'IAGOS-{flight_type}'
-        elif flight_type not in ['IAGOS-CARIBIC', 'IAGOS-CORE', 'IAGOS-MOZAIC']:
-            raise ValueError(
-                f"Invalid IAGOS program type ({flight_type}), expecting any of the following: ['IAGOS-CARIBIC', 'CARIBIC', 'IAGOS-CORE', 'CORE', 'IAGOS-MOZAIC', 'MOZAIC']")
-        NOx_flights = NOx_flights.loc[NOx_flights.attrs_program == flight_type]
+
+# TODO: gérer window size et tout quand c'est du CARIBIC! 25 datapoints CORE != 25 datapoints CARIBIC
+def get_flight_ds(flight_path, print_debug=False):
+    # return flight ds with PV and only valid data
+    if isinstance(flight_path, xr.Dataset):
+        ds = flight_path  # in case we give the dataset directly instead of the path
+    else:
+        ds = xr.open_dataset(flight_path)
+    ds = iagos_utils.get_valid_data(var_list=iagos_utils.get_var_list(flight_program=ds.attrs['program']), ds=ds,
+                                    print_debug=print_debug)
+    ds = iagos_utils.get_PV(ds=ds, print_debug=print_debug)
+
+    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], smoothed=False, filtered=False)
+    # if CARIBIC flight --> calculate NOx variable from NO and NO2 measurements
+    if ds.attrs['program'] == f'{cts.IAGOS}-{cts.CARIBIC}':
+        ds[NOx_varname] = ds[cts.CARIBIC_NO_VARNAME] + ds[cts.CARIBIC_NO2_VARNAME]
+    # smooth NOx timeseries (rolling mean with window size = min plume length)
+    NOx_smoothed_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], smoothed=True,
+                                                       filtered=False)
+    ds[NOx_smoothed_varname] = ds[NOx_varname] \
+        .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs['program']], min_periods=1) \
+        .mean()
+    # add regions to each data point
+    # TODO: ajouter les régions --> faire une fonction qui va dans quoi?
+    # apply filters
+    # TODO: mettre en place filtrage CO et NOx par région et par mois
+
+    return ds
+
+
+def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
+                     print_debug=False):
+    # get NOx flights url (L2 files)
+    NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
+                                                                 start_flight_id=start_flight_id,
+                                                                 end_flight_id=end_flight_id, flight_type=flight_type,
+                                                                 flight_id_list=flight_id_list)
+
+    for flight_path in NOx_flights_url:
+        flight_ds = get_flight_ds(flight_path=flight_path, print_debug=print_debug)
+    # STEP 2:
+    # --> open flight into xarray dataset et applique tous les fitres
+    #       OK--> open IAGOS netcdf file
+    #       OK--> only keep values with validity flag == 0 (good)moiraine
+    #       OK--> get PV
+    #       OK--> smooth NOx values (je le fais tout le temps je pense, au pire option not_smoothed)
+    #       --> ajoute les régions
+    #       --> applique les filtres
+    #           --> cruise
+    #           --> tropo
+    #           --> assign geo-regions to each data point #TODO: <!!>
+    #           --> filtre CO #TODO: <!!> en fonction de la région et saisoooon (CO_q3_ds pour chaque region et saison)
+    #           --> filtre NOx #TODO: <!!> en fonction de la région et saisoooon (NOx_q3_ds pour chaque region et saison)
+    #       --> find plumes function

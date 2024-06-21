@@ -1,3 +1,5 @@
+#TODO: est-ce que j'ai vraiment besoin de tous ces trucs ??
+
 # FP output lower-left corner (voir si je laisse ça là jsp trop)
 OUT_LON_LEFT = -179.5
 OUT_LAT_LOWER = -90.0
