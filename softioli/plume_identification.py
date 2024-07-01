@@ -45,11 +45,12 @@ POUR CHAQUE VOL:
 import xarray as xr
 
 from utils import constants as cts
-from utils import iagos_utils
+from utils import iagos_utils, regions_utils
+from utils.common_coords import GEO_REGIONS
 
 
 # TODO: gérer window size et tout quand c'est du CARIBIC! 25 datapoints CORE != 25 datapoints CARIBIC
-def get_flight_ds(flight_path, print_debug=False):
+def get_flight_ds(flight_path, geo_region_dict=cts., print_debug=False):
     # return flight ds with PV and only valid data
     if isinstance(flight_path, xr.Dataset):
         ds = flight_path  # in case we give the dataset directly instead of the path
@@ -70,9 +71,10 @@ def get_flight_ds(flight_path, print_debug=False):
         .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs['program']], min_periods=1) \
         .mean()
     # add regions to each data point
-    # TODO: ajouter les régions --> faire une fonction qui va dans quoi?
+    ds = regions_utils.assign_geo_region_to_ds(ds=ds, geo_regions_dict=GEO_REGIONS)
     # apply filters
     # TODO: mettre en place filtrage CO et NOx par région et par mois
+
 
     return ds
 

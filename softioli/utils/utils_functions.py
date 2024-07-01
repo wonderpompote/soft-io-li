@@ -36,6 +36,31 @@ def date_to_pd_timestamp(date_to_check):
         return date_to_check
 
 
+def get_lon_varname(ds):
+    ds_dims = ds.dims
+    if 'longitude' in ds_dims:
+        label = 'longitude'
+    elif 'lon' in ds_dims:
+        label = 'lon'
+    else:
+        raise ValueError('neither "longitude" nor "lon" dimension found in ds')
+    return label
+
+def get_lat_varname(ds):
+    ds_dims = ds.dims
+    if 'latitude' in ds_dims:
+        label = 'latitude'
+    elif 'lat' in ds_dims:
+        label = 'lat'
+    else:
+        raise ValueError('neither "latitude" nor "lat" dimension found in ds')
+    return label
+
+
+def get_lon_lat_varnames(ds):
+    return get_lon_varname(ds=ds), get_lat_varname(ds=ds)
+
+
 #TODO update with new fp out notation --> supprimer je crois
 def get_fp_out_nc_file_list(parent_dir_path, old_fp_dirname=True):
     """
