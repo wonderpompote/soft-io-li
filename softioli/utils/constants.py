@@ -7,7 +7,8 @@ IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
 IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'
 
 #TODO: <!> maj quand modifs et voir si on laisse comme ça <?>
-Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_2024-07-01_1712.nc'
+#Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_2024-07-01_1712.nc'
+Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc'
 
 IAGOS = 'IAGOS'
 CARIBIC = 'CARIBIC'
@@ -18,6 +19,7 @@ PV_VARNAME = 'PV'
 AIRPRESS_VARNAME = 'air_press_AC'
 CO_VARNAME = 'CO_P1'
 O3_VARNAME = 'O3_P1'
+NOx_PLUME_ID_VARNAME = 'NOx_plume_id'
 
 CORE_NO_VARNAME = 'NO_P2b'
 CORE_NO2_VARNAME = 'NO2_P2b'

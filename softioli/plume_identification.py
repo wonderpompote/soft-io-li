@@ -42,6 +42,9 @@ POUR CHAQUE VOL:
         --> write plume info qqpart
 
 """
+import numpy as np
+import pandas as pd
+from scipy.ndimage import label
 import xarray as xr
 
 from common.utils import timestamp_now_formatted
@@ -49,6 +52,7 @@ from common.utils import timestamp_now_formatted
 from utils import constants as cts
 from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
+from utils.utils_functions import write_plume_info_to_json_file
 
 
 def get_flight_ds(flight_path, geo_regions_dict=GEO_REGIONS, print_debug=False):
@@ -61,13 +65,13 @@ def get_flight_ds(flight_path, geo_regions_dict=GEO_REGIONS, print_debug=False):
                                     print_debug=print_debug)
     ds = iagos_utils.get_PV(ds=ds, print_debug=print_debug)
 
-    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], smoothed=False, filtered=False)
+    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], tropo=False, smoothed=False, filtered=False)
     # if CARIBIC flight --> calculate NOx variable from NO and NO2 measurements
     if ds.attrs['program'] == f'{cts.IAGOS}-{cts.CARIBIC}':
         ds[NOx_varname] = ds[cts.CARIBIC_NO_VARNAME] + ds[cts.CARIBIC_NO2_VARNAME]
     # smooth NOx timeseries (rolling mean with window size = min plume length)
     NOx_smoothed_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], smoothed=True,
-                                                       filtered=False)
+                                                       tropo=False, filtered=False)
     ds[NOx_smoothed_varname] = ds[NOx_varname] \
         .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs['program']], min_periods=1) \
         .mean()
@@ -91,26 +95,29 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, q3_ds_path, print_
     :param print_debug: <bool> for testing purposes, print debug
     :return: <xarray.Dataset> filtered version of flight ds
     """
-    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs['program'], smoothed=smoothed_data, filtered=False)
+    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs['program'], tropo=False, smoothed=smoothed_data, filtered=False)
 
     # only keep cruise data
     if cruise_only:
         ds = iagos_utils.keep_cruise(ds=ds, NOx_varname=NOx_varname, print_debug=print_debug)
 
+    CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], tropo=False, filtered=False)
+
     # remove stratospheric influence
-    ds = ds.where(ds[cts.PV_VARNAME] < 2)
+    ds = iagos_utils.keep_tropo(ds=ds, var_list=[NOx_varname, CO_varname], print_debug=print_debug)
 
     # get q3_ds for ds month and geo region #TODO <!> mean('year')
     q3_ds = xr.open_dataset(q3_ds_path).mean('year')
 
-    q3_ds_sel = q3_ds.sel(month=ds['UTC_time'].dt.month, geo_region=ds['geo_region'])
-    CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], filtered=False)
+    q3_ds_sel = q3_ds.sel(geo_region=ds['geo_region'], month=ds['UTC_time'].dt.month)
 
     # remove anthropogenic influence
+    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs['program'], tropo=True, smoothed=smoothed_data, filtered=False)
     ds = iagos_utils.remove_CO_excess(ds=ds, CO_q3_da=q3_ds_sel['CO_q3'], NOx_varname=NOx_varname,
                                       CO_varname=CO_varname, print_debug=print_debug)
 
     # remove background influence (keep NOx > q3)
+    CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], tropo=True, filtered=False)
     ds = iagos_utils.keep_NOx_excess(ds=ds, NOx_varname=NOx_varname, NOx_q3_da=q3_ds_sel['NOx_q3'], print_debug=print_debug)
 
     ds = ds.assign_attrs(iagos_utils.get_q3_attrs(ds=ds, q3_ds=q3_ds))
@@ -118,8 +125,68 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, q3_ds_path, print_
     return ds
 
 
+#TODO: min plume length CARIBIC et CORE différent peut-être ?
+def find_plumes(ds, end_of_plume_duration=100, write_plume_info_to_json=False, json_path=None):
+    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], tropo=True, smoothed=True, filtered=True)
+    # get labeled array
+    labeled, ncomponents = label(xr.where(ds[NOx_varname] > 0, True, False))
+    # get start_id (min index of group) and end_id (max index of group) from labeled array
+    start_id = [ np.min(np.nonzero(labeled == i)) for i in range(1, ncomponents+1) ]
+    end_id = [ np.max(np.nonzero(labeled == i)) for i in range(1, ncomponents+1) ]
+    # merge plumes if start_id[i+1] - end_id[i] < 100 seconds (ou 200 ???)
+    id_offset = 0
+    for i in range(len(start_id)-1):
+        # if start next plume - end current plume < end of plume duration
+        if ds['UTC_time'][start_id[i+1-id_offset]] - ds['UTC_time'][end_id[i-id_offset]] < pd.Timedelta(seconds=end_of_plume_duration):
+            # "merge" both plumes (remove index end current plume and index start next plume
+            del start_id[i+1-id_offset], end_id[i-id_offset]
+            id_offset += 1
+    # create new data variable to store plume_id
+    ds[cts.NOx_PLUME_ID_VARNAME] = xr.DataArray(dims=['UTC_time'], coords={"UTC_time": ds.UTC_time})
+    # remove plumes smaller than 25 km (100 seconds) from the list (put their id to -1)
+    plume_id = 1
+    min_plume_length = cts.WINDOW_SIZE[ds.attrs['program']] # min length = smoothing window size
+    #TODO: <!> min length dépend nombre de data points != si CARIBIC
+    for i in range(len(start_id)):
+        # if plume too small (plume_length < min_plume_length) --> plume_id = -1
+        if end_id[i] - start_id[i] < min_plume_length:  # <!> will NOT be 25 data points if CARIBIC
+            ds[cts.NOx_PLUME_ID_VARNAME].isel(UTC_time=slice(start_id[i], end_id[i] + 1)).values[:] = -1
+        else:
+            ds[cts.NOx_PLUME_ID_VARNAME].isel(UTC_time=slice(start_id[i], end_id[i] + 1)).values[:] = plume_id
+            plume_id += 1
+    ds[cts.NOx_PLUME_ID_VARNAME].attrs = {"id_values": '[nan, -1, 1... ]',
+                                 'id_meanings': ['not_a_plume', 'plume_too_small', 'plume_id']}
+
+    if write_plume_info_to_json:
+        plume_info_dict = {}
+        if not (np.isnan(ds[cts.NOx_PLUME_ID_VARNAME].where(ds[cts.NOx_PLUME_ID_VARNAME] > 0)).all()):
+            for plume_id, plume_array in ds[cts.NOx_PLUME_ID_VARNAME].groupby(
+                    ds[cts.NOx_PLUME_ID_VARNAME].where(ds[cts.NOx_PLUME_ID_VARNAME] > 0)):
+                #TODO: faire plus propre pour récup lon et lat varname
+                plume_info_dict[int(plume_id)] = {
+                    'start': str(plume_array.UTC_time[0].values),
+                    'end': str(plume_array.UTC_time[-1].values),
+                    'count': int(plume_array.count()),
+                    'lon_start': str(plume_array.lon[0].values),
+                    'lon_end': str(plume_array.lon[-1].values),
+                    'lat_start': str(plume_array.lat[0].values),
+                    'lat_end': str(plume_array.lat[-1].values),
+                    'geo_region': str(np.unique(plume_array.geo_region))
+                }
+            print(plume_info_dict)
+            #TODO: faire un truc plus propre pour si on a pas donné json_path mais pas le temps là
+            write_plume_info_to_json_file(flight_name=ds.attrs['flight_name'],
+                                          info_name=None, missing_ok=True,
+                                          data={'total_plumes': len(plume_info_dict),
+                                                'info_plumes': plume_info_dict},
+                                          json_path=json_path
+                                          )
+
+    return ds
+
+
 def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
-                     cruise_only=True, print_debug=False):
+                     cruise_only=True, print_debug=False, filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False, plot_flight=False):
     # get NOx flights url (L2 files)
     NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
                                                                  start_flight_id=start_flight_id,
@@ -135,7 +202,23 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
         filtered_flight_ds = apply_LiNOx_plume_filters(ds=flight_ds, cruise_only=cruise_only, smoothed_data=True, q3_ds_path=cts.Q3_DS_PATH, print_debug=print_debug)
 
         timenow = timestamp_now_formatted("%Y-%m-%d_%H%M", tz='CET')
-        filtered_flight_ds.to_netcdf(f'/o3p/patj/SOFT-IO-LI_output/2024-07-02_testsPlumeDetection/{timenow}_filtered-ds_{filtered_flight_ds.attrs["flight_name"]}.nc')
+        if filtered_ds_to_netcdf:
+            filtered_flight_ds.to_netcdf(f'/o3p/patj/SOFT-IO-LI_output/2024-07-02_testsPlumeDetection/{timenow}_filtered-ds_{filtered_flight_ds.attrs["flight_name"]}.nc')
+
+        plume_ds = find_plumes(ds=filtered_flight_ds, write_plume_info_to_json=True,
+                               json_path=f'/o3p/patj/SOFT-IO-LI_output/2024-07-02_testsPlumeDetection/{timenow}_plume_info.json')
+        if plume_ds_to_netcdf:
+            plume_ds.to_netcdf(
+            f'/o3p/patj/SOFT-IO-LI_output/2024-07-02_testsPlumeDetection/{timenow}_plume-ds_{filtered_flight_ds.attrs["flight_name"]}.nc')
+
+        if plot_flight:
+            #TODO: maj plot fonction pour qu'on puisse plotter les q3 même si les valeurs changent:
+            #           --> faut que je stocke les q3 PAS en attributs mais en variables en fait, au moins pour les plot tests
+            #           --> OOOh ou sinon non en fait! est-ce que c'est pas possible de juste dans ma fonction plot créer une nouvelle var parce qu'en soit j'ai en attribut la bvaleur q3 pour chaque saison
+            #               --> du coup je peux reconstituer les variables que je veux là sans avoir besoin de toucher des trucs ailleurs
+            # juste faut voir si possible matplotlib line avec valeurs différentes
+            #iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds)
+            pass
 
 
     # STEP 2:
@@ -157,6 +240,9 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
 
 if __name__ == "__main__":
     # TODO: regarder si OK que si id = int ou si ok quand id = str
-    get_LiNOX_plumes(flight_id_list=['2018060302172202'], print_debug=True)
+    get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702'], print_debug=True,
+                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=True)
 
 # /o3p/iagos/iagosv3/L2/201806/IAGOS_timeseries_2018060302172202_L2_3.1.2.nc4
+#get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702'], print_debug=True,
+#                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=True)

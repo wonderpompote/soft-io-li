@@ -1,3 +1,4 @@
+import numpy as np
 import xarray as xr
 
 from .common_coords import GEO_REGIONS

@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pathlib
 import warnings
@@ -7,7 +9,7 @@ from . import constants as cts
 from .utils_functions import str_to_path, date_to_pd_timestamp
 
 
-def get_NOx_varname(flight_program, smoothed, filtered):
+def get_NOx_varname(flight_program, smoothed, tropo, filtered):
     if flight_program == cts.CORE or flight_program == f'{cts.IAGOS}-{cts.CORE}':
         NOx_varname = cts.CORE_NOx_VARNAME
     elif flight_program == cts.CARIBIC or flight_program == f'{cts.IAGOS}-{cts.CARIBIC}':
@@ -17,18 +19,23 @@ def get_NOx_varname(flight_program, smoothed, filtered):
     # add suffix to NOx varname
     if smoothed:
         NOx_varname = f'{NOx_varname}_smoothed'
+    if tropo:
+        NOx_varname = f'{NOx_varname}_tropo'
     if filtered:
         NOx_varname = f'{NOx_varname}_filtered'
     return NOx_varname
 
-def get_CO_varname(flight_program, filtered):
+
+def get_CO_varname(flight_program, tropo, filtered):
     if flight_program == cts.CORE or flight_program == f'{cts.IAGOS}-{cts.CORE}':
         CO_varname = cts.CO_VARNAME
     elif flight_program == cts.CARIBIC or flight_program == f'{cts.IAGOS}-{cts.CARIBIC}':
         CO_varname = cts.CARIBIC_CO_VARNAME
     else:
         raise KeyError(f'{flight_program} {cts.FLIGHT_PROGRAM_KEYERROR_MSG}')
-    # add suffix to CO varnameif filtered:
+    # add suffix to CO varname
+    if tropo:
+        CO_varname = f'{CO_varname}_tropo'
     if filtered:
         CO_varname = f'{CO_varname}_filtered'
     return CO_varname
@@ -48,6 +55,7 @@ def get_var_list(flight_program):
         raise KeyError(f'{flight_program} {cts.FLIGHT_PROGRAM_KEYERROR_MSG}')
     return var_list
 
+
 def get_valid_data(var_list, ds, valid_data_flag_value=0, print_debug=False):
     """
     Only keep values of the dataset where validity flag is equal to good
@@ -66,7 +74,6 @@ def get_valid_data(var_list, ds, valid_data_flag_value=0, print_debug=False):
             print(f'{varname}.notnull().sum() AFTER val flag filter: {ds[varname].notnull().sum().values}')
             print('---')
     return ds
-
 
 
 # TODO: filtrer par date aussi ??
@@ -119,6 +126,7 @@ def find_PV_file_in_PV_dir(pv_dir_path, flight_name):
     else:  # len == 1
         return pv_file_path[0]
 
+
 def get_PV_file_path(d_time, flight_name):
     d_time = date_to_pd_timestamp(d_time)
     pv_dir_path = pathlib.Path(f'{cts.IAGOSv3_PV_PATH}/{d_time.year}{d_time.month:02d}')
@@ -126,6 +134,7 @@ def get_PV_file_path(d_time, flight_name):
         raise FileNotFoundError(f'Unable to retrieve PV values: directory {pv_dir_path} does NOT exist')
     else:
         return find_PV_file_in_PV_dir(pv_dir_path=pv_dir_path, flight_name=flight_name)
+
 
 def add_PV(ds):
     departure_time = pd.Timestamp(ds.attrs['departure_UTC_time'])
@@ -163,6 +172,17 @@ def keep_cruise(ds, NOx_varname, print_debug=False):
     return ds
 
 
+def keep_tropo(ds, var_list, print_debug=False):
+    for var in var_list:
+        if print_debug:
+            print(f'{var}.notnull().sum() BEFORE PV < 2 filter: {ds[var].notnull().sum().values}')
+        ds[f"{var}_tropo"] = ds[var].where(ds[cts.PV_VARNAME] < 2)
+        if print_debug:
+            print(f'{var}_tropo.notnull().sum() AFTER PV < 2 filter: {ds[f"{var}_tropo"].notnull().sum().values}')
+            print('---')
+    return ds
+
+
 def remove_CO_excess(ds, CO_q3_da, NOx_varname, CO_varname, print_debug=False):
     if print_debug:
         print(
@@ -174,7 +194,7 @@ def remove_CO_excess(ds, CO_q3_da, NOx_varname, CO_varname, print_debug=False):
         print('---')
     return ds
 
-
+#TODO: ajouter des attributs pour qu'on sache à quoi les variables correspondent (noms trop obscurs)
 def keep_NOx_excess(ds, NOx_varname, NOx_q3_da, print_debug=False):
     if print_debug:
         print(
@@ -190,14 +210,167 @@ def keep_NOx_excess(ds, NOx_varname, NOx_q3_da, print_debug=False):
 
 def get_q3_attrs(ds, q3_ds):
     q3_attrs = {}
-    for month in ds.UTC_time.dt.month.groupby(ds.UTC_time.dt.month):
-        month = month[0]
-        for geo_region in ds.geo_region.groupby(ds.geo_region):
-            geo_region = geo_region[0]
-            q3_attrs[f'{month}_{geo_region}_CO_q3'] = int(
-                q3_ds['CO_q3'].sel(month=month, geo_region=geo_region).values)
-            q3_attrs[f'{month}_{geo_region}_NOx_q3'] = int(
-                q3_ds['NOx_q3'].sel(month=month, geo_region=geo_region).values)
+    for month in np.unique(ds.UTC_time.dt.month):
+        for geo_region in np.unique(ds.geo_region):
+            q3_attrs[f'{month}_{geo_region}_CO_q3'] = "{:.3f}".format(float(
+                q3_ds['CO_q3'].sel(month=month, geo_region=geo_region).values))
+            q3_attrs[f'{month}_{geo_region}_NOx_q3'] = "{:.3f}".format(float(
+                q3_ds['NOx_q3'].sel(month=month, geo_region=geo_region).values))
     return q3_attrs
 
 
+params = {'legend.fontsize': 'x-large',
+          'figure.figsize': (20, 5),
+          'axes.labelsize': 'x-large',
+          'axes.titlesize': 'x-large',
+          'xtick.labelsize': 'x-large',
+          'ytick.labelsize': 'x-large'}
+
+
+# TODO: poubelle ensuite, c'est juste pour les tests là (ou alors mettre au propre si je laisse)
+def plot_NOx_CO_PV_RHL_O3(ds, NOx_q3, NOx_smoothed, CO_q3, NOx_plumes=False, NOx_tropo=False, NOx_spike=False,
+                          NOx_spike_id=[],
+                          PV=False, RHL=False, CO=True, O3=False, scatter_NOx_tropo=False, scatter_NOx_excess=False,
+                          params=params, save_fig=False, plot_dirpath=None, show_fig=False, x_axis='UTC_time',
+                          x_lim=None, title=None, fig_name=None):
+    plt.rcParams.update(params)
+    fig, ax1 = plt.subplots()
+
+    if x_axis == 'lon':
+        x_label = 'Longitude (°)'
+    elif x_axis == 'UTC_time':
+        x_label = 'UTC_time'
+    else:
+        raise ValueError(f'Invalid x_axis dimension name ({x_axis})')
+
+    if x_lim is None:
+        ax1.set_xlim([ds[x_axis].min().values, ds[x_axis].max().values])
+    else:
+        ax1.set_xlim(x_lim)
+
+    if NOx_smoothed:
+        NOx_suffix = '_smoothed'
+    else:
+        NOx_suffix = ''
+
+    # PV
+    if PV:
+        ax_PV = ax1.twinx()
+        ax_PV.plot(ds[x_axis], ds['PV'] * 100, color='tab:gray', label='PV * 100')
+        ax_PV.set_ylim([0, 200])
+        ax_PV.get_yaxis().set_ticks([])
+        ax_PV.set_zorder(0)
+
+    flight_program = ds.attrs['program']
+    # CO
+    if CO:
+        """if O3:
+            ax_CO = ax_O3
+        else:"""
+        ax_CO = ax1.twinx()
+        ax_CO.set_ylabel('CO (ppb)')
+        ax_CO.tick_params(axis='y', colors='tab:cyan')
+        CO_varname = get_CO_varname(flight_program=flight_program, tropo=False)
+        CO_plot = ax_CO.plot(ds[x_axis], ds[CO_varname].where(ds['PV'] < 2), color='tab:cyan', label='CO tropo')
+        ax_CO.axhline(y=CO_q3, linestyle='--', color='tab:cyan')
+        ax_CO.set_zorder(1)
+
+    # O3
+    if O3:
+        ax_O3 = ax1.twinx()
+        ax_O3.plot(ds[x_axis], ds['O3_P1'].where(ds['PV'] < 2), label='O3 tropo', color='tab:blue')
+        """if CO:
+            label = 'CO & O3 (ppb)'
+        else:"""
+        label = 'O3 (ppb)'
+        ax_O3.set_ylabel(label)
+        ax_O3.set_ylim([0, ds['O3_P1'].where(ds['PV'] < 2).max().values + 0.05])
+        ax_O3.tick_params(axis='y', colors='tab:blue')
+        ax_O3.set_zorder(1)
+        if CO:
+            ax_O3.spines.right.set_position(("axes", 1.075))
+
+    # RHL
+    if RHL:
+        ax_RHL = ax1.twinx()
+        ax_RHL.plot(ds[x_axis], ds['RHL_P1'].where(ds['PV'] < 2), label='RHL tropo', color='tab:purple')
+        ax_RHL.set_ylabel('RHL')
+        ax_RHL.set_ylim([0, ds['RHL_P1'].max().values + 0.05])
+        ax_RHL.tick_params(axis='y', colors='tab:purple')
+        ax_RHL.set_zorder(0.5)
+        if CO or O3:
+            ax_RHL.spines.right.set_position(("axes", 1.15))
+
+    # NOx
+    # setup NOx axis
+    if NOx_tropo:
+        if scatter_NOx_tropo:
+            ax1.scatter(ds[x_axis], ds[f'NOx_P2b{NOx_suffix}_tropo'], color='tab:green', label='NOx_tropo',
+                        linewidths=0.5)
+        else:
+            ax1.plot(ds[x_axis], ds[f'NOx_P2b{NOx_suffix}_tropo'], color='tab:green', label='NOx_tropo')
+    if not np.isnan(ds[f'NOx_P2b{NOx_suffix}_filtered']).all():
+        if scatter_NOx_excess:
+            NOx_plot = ax1.scatter(ds[x_axis], ds[f'NOx_P2b{NOx_suffix}_filtered'], color='red',
+                                   label=f'NOx{NOx_suffix}_filtered')
+        else:
+            NOx_plot = ax1.plot(ds[x_axis], ds[f'NOx_P2b{NOx_suffix}_filtered'], color='red',
+                                label=f'NOx{NOx_suffix}_filtered')
+        ax1.set_ylim([0, ds[f'NOx_P2b{NOx_suffix}_filtered'].max().values + 0.05])
+
+    if NOx_spike and len(NOx_spike_id) > 0:
+        ax1.scatter(ds[x_axis].isel(UTC_time=NOx_spike_id),
+                    ds[f'NOx_P2b{NOx_suffix}_filtered'].isel(UTC_time=NOx_spike_id), color='lime',
+                    label='aircraft_spike', linewidths=0.75, marker='o', edgecolor='black', s=70)
+
+    if NOx_plumes:
+        if not (np.isnan(ds[cts.NOx_PLUME_ID_VARNAME].where(ds[cts.NOx_PLUME_ID_VARNAME] > 0)).all()):
+            for plume_id in ds[f'NOx_plume_id'].groupby(
+                    ds[f'NOx_plume_id'].where(ds[f'NOx_plume_id'] > 0)).groups.keys():
+                if plume_id % 2 != 0:  # if plume_id is odd
+                    ax1.plot(ds[x_axis],
+                             ds[f'NOx_P2b{NOx_suffix}_filtered'].where(ds[f'NOx_plume_id'] == plume_id),
+                             color='fuchsia')
+                else:
+                    ax1.plot(ds[x_axis],
+                             ds[f'NOx_P2b{NOx_suffix}_filtered'].where(ds[f'NOx_plume_id'] == plume_id),
+                             color='darkorange')
+
+    ax1.set_ylabel('NOx (ppb)')
+    ax1.set_xlabel(x_label)
+    ax1.tick_params(axis='y', colors='red')
+    ax1.axhline(y=NOx_q3, linestyle='--', color='red')
+    ax1.set_zorder(3)
+    ax1.patch.set_visible(False)  # pour que fond soit transparent sinon on voit pas ce qu'il y a derrière
+
+    # legend
+    fig.legend(loc='upper left')
+
+    # title
+    if title is not None:
+        if title.lower() == "default":
+            plt.title(f'vol {ds.attrs["flight_name"]}')
+        else:
+            plt.title(title)
+    # save fig
+    if save_fig:
+        if fig_name is None:
+            fig_name = f'{ds.attrs["flight_name"]}_NOx{NOx_suffix}_'
+            if CO:
+                fig_name += 'CO_'
+            if PV:
+                fig_name += 'PV_'
+            if RHL:
+                fig_name += 'RH_'
+            if O3:
+                fig_name += 'O3_'
+            fig_name += f'over_{x_axis}.png'
+        else:
+            if not '.png' in fig_name:
+                fig_name = f'{fig_name}.png'
+        plt.savefig(f'{plot_dirpath}/{fig_name}')
+        print(f'Saved plot {plot_dirpath}/{fig_name}')
+    # show fig
+    if show_fig:
+        plt.show()
+    plt.close(fig)

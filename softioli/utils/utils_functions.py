@@ -1,7 +1,10 @@
+from copy import deepcopy
 from datetime import datetime
+import json
 import numpy as np
 import pandas as pd
 import pathlib
+from warnings import warn
 
 from .GLMPathParser import GLMPathParser
 
@@ -59,6 +62,36 @@ def get_lat_varname(ds):
 
 def get_lon_lat_varnames(ds):
     return get_lon_varname(ds=ds), get_lat_varname(ds=ds)
+
+
+def write_plume_info_to_json_file(flight_name, info_name, data, json_path, missing_ok=False):
+    if info_name == None:
+        info_dict = data
+    else:
+        info_dict = {info_name: str(data)}
+    json_path = pathlib.Path(json_path)
+    if json_path.exists():
+        with open(json_path, 'r+') as json_file:
+            flight_data_json = json.load(json_file)
+            flight_data_backup = deepcopy(flight_data_json)
+    else:
+        if missing_ok:  # create json file if missing
+            json_path.touch()
+            print(f'Created file {json_path}')
+            flight_data_json = {}
+        else:
+            raise FileNotFoundError(f'{json_path} does not exist')
+
+    try:
+        flight_dict = flight_data_json.setdefault(flight_name, {})
+        flight_dict.update(info_dict)
+        with open(json_path, 'w') as json_file:
+            json.dump(flight_data_json, json_file, indent=4)
+    except Exception as e:
+        warn(
+            f'Error while writing new information to json: Exception: {e}\n"{info_name}": "{data}" not added to {flight_name} dictionary')
+        with open(json_path, 'w') as json_file:
+            json.dump(flight_data_backup, json_file, indent=4)
 
 
 #TODO update with new fp out notation --> supprimer je crois
