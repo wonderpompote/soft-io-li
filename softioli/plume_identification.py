@@ -44,13 +44,14 @@ POUR CHAQUE VOL:
 """
 import xarray as xr
 
+from common.utils import timestamp_now_formatted
+
 from utils import constants as cts
 from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
 
 
-# TODO: gérer window size et tout quand c'est du CARIBIC! 25 datapoints CORE != 25 datapoints CARIBIC
-def get_flight_ds(flight_path, geo_region_dict=cts., print_debug=False):
+def get_flight_ds(flight_path, geo_regions_dict=GEO_REGIONS, print_debug=False):
     # return flight ds with PV and only valid data
     if isinstance(flight_path, xr.Dataset):
         ds = flight_path  # in case we give the dataset directly instead of the path
@@ -71,16 +72,54 @@ def get_flight_ds(flight_path, geo_region_dict=cts., print_debug=False):
         .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs['program']], min_periods=1) \
         .mean()
     # add regions to each data point
-    ds = regions_utils.assign_geo_region_to_ds(ds=ds, geo_regions_dict=GEO_REGIONS)
-    # apply filters
-    # TODO: mettre en place filtrage CO et NOx par région et par mois
+    ds = regions_utils.assign_geo_region_to_ds(ds=ds, geo_regions_dict=geo_regions_dict)
 
+    return ds
+
+
+def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, q3_ds_path, print_debug=False):
+    """
+    Function to apply filters on the NOx timeseries to remove stratospheric, anthropogenic and background influence.
+    If cruise_only = True: only keep data where air pressure < 30000 Pa
+    - Stratospheric influence: remove NOx data where PV > 2
+    - Anthropogenic influence: remove NOx data vhere CO value > CO_q3
+    - Background influence: remove NOx data < NOx_q3 (only keep NOx excess)
+    :param ds: <xarray.Dataset> flight ds
+    :param cruise_only: <bool> if True, only keep data where air pressure < 30000 Pa
+    :param smoothed_data: <bool> if True, apply filters on smoothed NOx timeseries (rolling mean)
+    :param q3_ds_path: <str> or <pathlib.Path> url to q3_ds netcdf file
+    :param print_debug: <bool> for testing purposes, print debug
+    :return: <xarray.Dataset> filtered version of flight ds
+    """
+    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs['program'], smoothed=smoothed_data, filtered=False)
+
+    # only keep cruise data
+    if cruise_only:
+        ds = iagos_utils.keep_cruise(ds=ds, NOx_varname=NOx_varname, print_debug=print_debug)
+
+    # remove stratospheric influence
+    ds = ds.where(ds[cts.PV_VARNAME] < 2)
+
+    # get q3_ds for ds month and geo region #TODO <!> mean('year')
+    q3_ds = xr.open_dataset(q3_ds_path).mean('year')
+
+    q3_ds_sel = q3_ds.sel(month=ds['UTC_time'].dt.month, geo_region=ds['geo_region'])
+    CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], filtered=False)
+
+    # remove anthropogenic influence
+    ds = iagos_utils.remove_CO_excess(ds=ds, CO_q3_da=q3_ds_sel['CO_q3'], NOx_varname=NOx_varname,
+                                      CO_varname=CO_varname, print_debug=print_debug)
+
+    # remove background influence (keep NOx > q3)
+    ds = iagos_utils.keep_NOx_excess(ds=ds, NOx_varname=NOx_varname, NOx_q3_da=q3_ds_sel['NOx_q3'], print_debug=print_debug)
+
+    ds = ds.assign_attrs(iagos_utils.get_q3_attrs(ds=ds, q3_ds=q3_ds))
 
     return ds
 
 
 def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
-                     print_debug=False):
+                     cruise_only=True, print_debug=False):
     # get NOx flights url (L2 files)
     NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
                                                                  start_flight_id=start_flight_id,
@@ -88,18 +127,36 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                                                                  flight_id_list=flight_id_list)
 
     for flight_path in NOx_flights_url:
+        if print_debug:
+            print('##################################################')
+            print(f'flight {flight_path}')
+            print('##################################################')
         flight_ds = get_flight_ds(flight_path=flight_path, print_debug=print_debug)
+        filtered_flight_ds = apply_LiNOx_plume_filters(ds=flight_ds, cruise_only=cruise_only, smoothed_data=True, q3_ds_path=cts.Q3_DS_PATH, print_debug=print_debug)
+
+        timenow = timestamp_now_formatted("%Y-%m-%d_%H%M", tz='CET')
+        filtered_flight_ds.to_netcdf(f'/o3p/patj/SOFT-IO-LI_output/2024-07-02_testsPlumeDetection/{timenow}_filtered-ds_{filtered_flight_ds.attrs["flight_name"]}.nc')
+
+
     # STEP 2:
     # --> open flight into xarray dataset et applique tous les fitres
     #       OK--> open IAGOS netcdf file
     #       OK--> only keep values with validity flag == 0 (good)moiraine
     #       OK--> get PV
     #       OK--> smooth NOx values (je le fais tout le temps je pense, au pire option not_smoothed)
-    #       --> ajoute les régions
-    #       --> applique les filtres
+    #       OK--> ajoute les régions
+    #       OK--> applique les filtres
     #           --> cruise
     #           --> tropo
     #           --> assign geo-regions to each data point #TODO: <!!>
     #           --> filtre CO #TODO: <!!> en fonction de la région et saisoooon (CO_q3_ds pour chaque region et saison)
     #           --> filtre NOx #TODO: <!!> en fonction de la région et saisoooon (NOx_q3_ds pour chaque region et saison)
     #       --> find plumes function
+    #           --> recup les résultats et les stocke qqpart mais jsp où ni sous quelle forme
+
+
+if __name__ == "__main__":
+    # TODO: regarder si OK que si id = int ou si ok quand id = str
+    get_LiNOX_plumes(flight_id_list=['2018060302172202'], print_debug=True)
+
+# /o3p/iagos/iagosv3/L2/201806/IAGOS_timeseries_2018060302172202_L2_3.1.2.nc4

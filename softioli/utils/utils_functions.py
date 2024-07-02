@@ -37,20 +37,20 @@ def date_to_pd_timestamp(date_to_check):
 
 
 def get_lon_varname(ds):
-    ds_dims = ds.dims
-    if 'longitude' in ds_dims:
+    ds_keys = ds.keys()
+    if 'longitude' in ds_keys:
         label = 'longitude'
-    elif 'lon' in ds_dims:
+    elif 'lon' in ds_keys:
         label = 'lon'
     else:
         raise ValueError('neither "longitude" nor "lon" dimension found in ds')
     return label
 
 def get_lat_varname(ds):
-    ds_dims = ds.dims
-    if 'latitude' in ds_dims:
+    ds_keys = ds.keys()
+    if 'latitude' in ds_keys:
         label = 'latitude'
-    elif 'lat' in ds_dims:
+    elif 'lat' in ds_keys:
         label = 'lat'
     else:
         raise ValueError('neither "latitude" nor "lat" dimension found in ds')

@@ -2,12 +2,10 @@ import pathlib
 
 import pandas as pd
 from pandas import Timedelta
-from re import fullmatch
 
 from .utils_functions import date_to_pd_timestamp, str_to_path
 from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
-from .. import utils
 
 
 def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None,
@@ -214,10 +212,10 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
     :return: <list>
     """
     # make sure the dates are pd.Timestamps
-    start_date = utils.date_to_pd_timestamp(start_date)
-    end_date = utils.date_to_pd_timestamp(end_date)
+    start_date = date_to_pd_timestamp(start_date)
+    end_date = date_to_pd_timestamp(end_date)
     dir_list = [
-        utils.generate_sat_dir_path(
+        generate_sat_dir_path(
             date=start_date + pd.Timedelta(i, 'D'), sat_name=satellite,
             regrid=regrid, regrid_res_str=regrid_res_str
         )
@@ -232,7 +230,7 @@ def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sa
         SatPathParser = GLMPathParser
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
-    start_date, end_date = utils.date_to_pd_timestamp(start_date), utils.date_to_pd_timestamp(end_date)
+    start_date, end_date = date_to_pd_timestamp(start_date), date_to_pd_timestamp(end_date)
     file_list = []
     dir_list = sorted(dir_list)
     fname_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=regrid)
