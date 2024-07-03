@@ -39,6 +39,8 @@ WINDOW_SIZE = {
 
 FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 
+NOx_Q3 = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
+NOx_MEDIAN = 0.28299999237060547 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
 
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
