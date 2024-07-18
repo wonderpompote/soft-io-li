@@ -41,6 +41,17 @@ def get_CO_varname(flight_program, tropo, filtered):
     return CO_varname
 
 
+def get_O3_varname(flight_program, tropo):
+    if flight_program in [cts.CORE, f'{cts.IAGOS}-{cts.CORE}', cts.CARIBIC, f'{cts.IAGOS}-{cts.CARIBIC}']:
+        O3_varname = cts.O3_VARNAME
+    else:
+        raise KeyError(f'{flight_program} {cts.FLIGHT_PROGRAM_KEYERROR_MSG}')
+    # add suffix to CO varname
+    if tropo:
+        O3_varname = f'{O3_varname}_tropo'
+    return O3_varname
+
+
 def get_var_list(flight_program):
     """
     Returns list of variables names corresponding to a given flight program (CO, O3, NO, NO2 and NOx)
@@ -207,7 +218,7 @@ def keep_NOx_excess(ds, NOx_varname, NOx_q3, print_debug=False):
         print('---')
     return ds
 
-
+#TODO: poubelle si on fait pas avec les régions
 def get_q3_attrs(ds, q3_ds):
     q3_attrs = {}
     for month in np.unique(ds.UTC_time.dt.month):

@@ -52,7 +52,7 @@ from common.utils import timestamp_now_formatted
 from utils import constants as cts
 from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
-from utils.utils_functions import write_plume_info_to_json_file
+from utils.plume_info_utils import write_plume_info_to_csv_file, generate_root_plume_detection_output_dirpath
 
 
 def get_flight_ds(flight_path, geo_regions_dict=GEO_REGIONS, print_debug=False):
@@ -102,9 +102,10 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
         ds = iagos_utils.keep_cruise(ds=ds, NOx_varname=NOx_varname, print_debug=print_debug)
 
     CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], tropo=False, filtered=False)
+    O3_varname = iagos_utils.get_03_varname(ds.attrs['program'], tropo=False)
 
-    # remove stratospheric influence
-    ds = iagos_utils.keep_tropo(ds=ds, var_list=[NOx_varname, CO_varname], print_debug=print_debug)
+    # remove stratospheric influence #TODO: est-ce qu'on ferait pas un filtre tropo sur tout le ds ? mais peut-être trop
+    ds = iagos_utils.keep_tropo(ds=ds, var_list=[NOx_varname, CO_varname, O3_varname], print_debug=print_debug)
 
     if CO_q3 is not None:
         q3_ds = { 'NOx_q3': cts.NOx_Q3, 'CO_q3': CO_q3 }
@@ -127,8 +128,8 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
     return ds
 
 
-#TODO: min plume length CARIBIC et CORE différent peut-être ?
-def find_plumes(ds, end_of_plume_duration=100, write_plume_info_to_json=False, json_path=None):
+def find_plumes(ds, end_of_plume_duration=100, write_plume_info_to_csv=False, output_dirpath=None,
+                output_date=None, dirname_suffix='', root_output_dirpath=None):
     NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], tropo=True, smoothed=True, filtered=True)
     # get labeled array
     labeled, ncomponents = label(xr.where(ds[NOx_varname] > 0, True, False))
@@ -148,7 +149,6 @@ def find_plumes(ds, end_of_plume_duration=100, write_plume_info_to_json=False, j
     # remove plumes smaller than 25 km (100 seconds) from the list (put their id to -1)
     plume_id = 1
     min_plume_length = cts.WINDOW_SIZE[ds.attrs['program']] # min length = smoothing window size
-    #TODO: <!> min length dépend nombre de data points != si CARIBIC
     for i in range(len(start_id)):
         # if plume too small (plume_length < min_plume_length) --> plume_id = -1
         if end_id[i] - start_id[i] < min_plume_length:
@@ -159,32 +159,13 @@ def find_plumes(ds, end_of_plume_duration=100, write_plume_info_to_json=False, j
     ds[cts.NOx_PLUME_ID_VARNAME].attrs = {"id_values": '[nan, -1, 1... ]',
                                  'id_meanings': ['not_a_plume', 'plume_too_small', 'plume_id']}
 
-    if write_plume_info_to_json:
-        plume_info_dict = {}
-        if not (np.isnan(ds[cts.NOx_PLUME_ID_VARNAME].where(ds[cts.NOx_PLUME_ID_VARNAME] > 0)).all()):
-            for plume_id, plume_array in ds[cts.NOx_PLUME_ID_VARNAME].groupby(
-                    ds[cts.NOx_PLUME_ID_VARNAME].where(ds[cts.NOx_PLUME_ID_VARNAME] > 0)):
-                #TODO: faire plus propre pour récup lon et lat varname
-                plume_info_dict[int(plume_id)] = {
-                    'start': str(plume_array.UTC_time[0].values),
-                    'end': str(plume_array.UTC_time[-1].values),
-                    'count': int(plume_array.count()),
-                    'lon_start': str(plume_array.lon[0].values),
-                    'lon_end': str(plume_array.lon[-1].values),
-                    'lat_start': str(plume_array.lat[0].values),
-                    'lat_end': str(plume_array.lat[-1].values),
-                    'geo_region': str(np.unique(plume_array.geo_region))
-                }
-            print(plume_info_dict)
-            #TODO: faire un truc plus propre pour si on a pas donné json_path mais pas le temps là
-            write_plume_info_to_json_file(flight_name=ds.attrs['flight_name'],
-                                          info_name=None, missing_ok=True,
-                                          data={'total_plumes': len(plume_info_dict),
-                                                'info_plumes': plume_info_dict},
-                                          json_path=json_path
-                                          )
-
+    if write_plume_info_to_csv:
+        if output_dirpath is None:
+            output_dirpath = generate_root_plume_detection_output_dirpath(date=output_date, dirname_suffix=dirname_suffix, root_output_dirpath=root_output_dirpath)
+        write_plume_info_to_csv_file(ds, output_date=output_date, output_dirpath=output_dirpath)
     return ds
+
+
 
 
 def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
@@ -210,7 +191,7 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
         if filtered_ds_to_netcdf:
             filtered_flight_ds.to_netcdf(f'/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/{timenow}_filtered-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
 
-        plume_ds = find_plumes(ds=filtered_flight_ds, write_plume_info_to_json=True,
+        plume_ds = find_plumes(ds=filtered_flight_ds, write_plume_info_to_csv=True,
                                json_path=f'/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/{timenow}_plume_info{file_suffix}.json')
         if plume_ds_to_netcdf:
             plume_ds.to_netcdf(
@@ -238,7 +219,7 @@ if __name__ == "__main__":
     CO_q3 = 120
     get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902'],
                      CO_q3=CO_q3, show_region_names=False,
-                     print_debug=True, save_fig=True, file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3}',
+                     print_debug=True, save_fig=False, file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3}',
                      filtered_ds_to_netcdf=False, plume_ds_to_netcdf=True, plot_flight=True)
 
     """iagos_utils.plot_NOx_CO_PV_RHL_O3(

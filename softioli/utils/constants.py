@@ -1,13 +1,15 @@
 import pathlib
 
+#----- output -----
+OUTPUT_ROOT_DIR = pathlib.Path('/o3p/patj/SOFT-IO-LI_output')
+
 #----- part 1 -----
 IAGOSv3_CAT_PATH = pathlib.Path('/o3p/iagos/catalogues_v3/iagos_L2.parquet')
 IAGOSv3_PV_PATH = pathlib.Path('/o3p/iagos/iagosv3/L4/')
 IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
 IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'
 
-#TODO: <!> maj quand modifs et voir si on laisse comme ça <?>
-#Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_2024-07-01_1712.nc'
+#TODO: je vais pas m'en servir en fait T.T
 Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc'
 
 IAGOS = 'IAGOS'
@@ -39,8 +41,8 @@ WINDOW_SIZE = {
 
 FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 
-NOx_Q3 = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
-NOx_MEDIAN = 0.28299999237060547 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
+NOx_MEDIAN = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
+NOx_Q3 = 0.28299999237060547 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
 
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
