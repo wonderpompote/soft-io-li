@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # logs
     if not args.logdir.exists():
         args.logdir.mkdir(parents=True)
-    timenow = timestamp_now_formatted("%Y-%m-%d_%H%M", tz="CET")
+    timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz="CET")
     logfile = str(pathlib.Path(default_logdir, f'{timenow}_{args.logname}.log'))
     common.log.start_logging(logfile, logging_level=args.loglevel)
 

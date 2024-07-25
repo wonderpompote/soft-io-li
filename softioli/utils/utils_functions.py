@@ -1,12 +1,10 @@
-from copy import deepcopy
 from datetime import datetime
-import json
 import numpy as np
 import pandas as pd
 import pathlib
-from warnings import warn
 
 from .GLMPathParser import GLMPathParser
+from .constants import OUTPUT_ROOT_DIR
 
 def str_to_path(path_to_convert):
     if isinstance(path_to_convert, str):
@@ -64,49 +62,31 @@ def get_lon_lat_varnames(ds):
     return get_lon_varname(ds=ds), get_lat_varname(ds=ds)
 
 
-def write_plume_info_to_json_file(flight_name, info_name, data, json_path, missing_ok=False):
-    if info_name == None:
-        info_dict = data
-    else:
-        info_dict = {info_name: str(data)}
-    json_path = pathlib.Path(json_path)
-    if json_path.exists():
-        with open(json_path, 'r+') as json_file:
-            flight_data_json = json.load(json_file)
-            flight_data_backup = deepcopy(flight_data_json)
-    else:
-        if missing_ok:  # create json file if missing
-            json_path.touch()
-            print(f'Created file {json_path}')
-            flight_data_json = {}
-        else:
-            raise FileNotFoundError(f'{json_path} does not exist')
-
-    try:
-        flight_dict = flight_data_json.setdefault(flight_name, {})
-        flight_dict.update(info_dict)
-        with open(json_path, 'w') as json_file:
-            json.dump(flight_data_json, json_file, indent=4)
-    except Exception as e:
-        warn(
-            f'Error while writing new information to json: Exception: {e}\n"{info_name}": "{data}" not added to {flight_name} dictionary')
-        with open(json_path, 'w') as json_file:
-            json.dump(flight_data_backup, json_file, indent=4)
-
-
-#TODO update with new fp out notation --> supprimer je crois
-def get_fp_out_nc_file_list(parent_dir_path, old_fp_dirname=True):
+def create_root_output_dir(date, dirname_suffix, root_dirpath=OUTPUT_ROOT_DIR):
     """
-    Function to get a list of all flexpart output netcdf files available in parent_dir_path
-    @param parent_dir_path: <str> or <pathlib.Path>
-    @param old_fp_dirname: <bool> indicates if using fp dirname notation used by macc
-    @return: <list> [ <pathlib.Path>, ... ]
+    Returns path to directory in which results should be stored and creates it if directory doesn't exist
+    By default will return: /o3p/patj/SOFT-IO-LI_output/<date>_<output_dirname>
+    @param date: <pd.Timestamp> or <str> expected format: YYYY-MM-DD_HHMM
+    @param dirname_suffix: <str>
+    @param root_dirpath: <pathlib.Path> or <str>
+    @return: <pathlib.Path>
     """
-    parent_dir_path = str_to_path(parent_dir_path)
-    if old_fp_dirname:
-        fp_out_flight_dir_pattern = "flight_2018_0[0-3][0-9]_1h_05deg/10j_100k_output/"
-        fp_file_pattern = "grid_time_*.nc"
-    else:
-        #TODO insert real pattern when fp notation has been decided
-        raise ValueError('Only old fp dirname accepted for now')
-    return parent_dir_path.glob(f"{fp_out_flight_dir_pattern}/{fp_file_pattern}")
+    output_dirpath = pathlib.Path(f'{root_dirpath}/{date}_{dirname_suffix}')
+    if not output_dirpath.exists():
+        output_dirpath.mkdir(parents=True)
+    return output_dirpath
+
+def create_flight_output_dir(output_dirpath, flight_name, dirname_suffix=''):
+    """
+    Returns path to directory in which results for a particular flight should be stored
+    + Creates directory if it doesn't exist
+    By default will return: <root_output_dirname>/<flight>_<dirname>
+    @param output_dirpath: <pathlib.Path> or <str>
+    @param flight_name: <str> or <int>
+    @param dirname_suffix: <str>
+    @return: <pathlib.Path>
+    """
+    flight_output_dirpath = pathlib.Path(f'{output_dirpath}/{flight_name}{dirname_suffix}')
+    if not flight_output_dirpath.exists():
+        flight_output_dirpath.mkdir(parents=True)
+    return flight_output_dirpath

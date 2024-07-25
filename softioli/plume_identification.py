@@ -52,7 +52,8 @@ from common.utils import timestamp_now_formatted
 from utils import constants as cts
 from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
-from utils.plume_info_utils import write_plume_info_to_csv_file, generate_root_plume_detection_output_dirpath
+from utils.plume_info_utils import write_plume_info_to_csv_file
+from utils.utils_functions import create_root_output_dir, create_flight_output_dir
 
 
 def get_flight_ds(flight_path, geo_regions_dict=GEO_REGIONS, print_debug=False):
@@ -102,7 +103,7 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
         ds = iagos_utils.keep_cruise(ds=ds, NOx_varname=NOx_varname, print_debug=print_debug)
 
     CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], tropo=False, filtered=False)
-    O3_varname = iagos_utils.get_03_varname(ds.attrs['program'], tropo=False)
+    O3_varname = iagos_utils.get_O3_varname(ds.attrs['program'], tropo=False)
 
     # remove stratospheric influence #TODO: est-ce qu'on ferait pas un filtre tropo sur tout le ds ? mais peut-être trop
     ds = iagos_utils.keep_tropo(ds=ds, var_list=[NOx_varname, CO_varname, O3_varname], print_debug=print_debug)
@@ -128,9 +129,17 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
     return ds
 
 
-def find_plumes(ds, end_of_plume_duration=100, write_plume_info_to_csv=False, output_dirpath=None,
-                output_date=None, dirname_suffix='', root_output_dirpath=None):
+def find_plumes(ds, flight_output_dirpath, end_of_plume_duration=100, write_plume_info_to_csv=True, filename_suffix=''):
+    """
+
+    @param ds:
+    @param flight_output_dirpath: <pathlib.Path> or <str>
+    @param end_of_plume_duration: <int>
+    @param write_plume_info_to_csv: <bool>
+    @return:
+    """
     NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], tropo=True, smoothed=True, filtered=True)
+
     # get labeled array
     labeled, ncomponents = label(xr.where(ds[NOx_varname] > 0, True, False))
     # get start_id (min index of group) and end_id (max index of group) from labeled array
@@ -159,26 +168,32 @@ def find_plumes(ds, end_of_plume_duration=100, write_plume_info_to_csv=False, ou
     ds[cts.NOx_PLUME_ID_VARNAME].attrs = {"id_values": '[nan, -1, 1... ]',
                                  'id_meanings': ['not_a_plume', 'plume_too_small', 'plume_id']}
 
-    if write_plume_info_to_csv:
-        if output_dirpath is None:
-            output_dirpath = generate_root_plume_detection_output_dirpath(date=output_date, dirname_suffix=dirname_suffix, root_output_dirpath=root_output_dirpath)
-        write_plume_info_to_csv_file(ds, output_date=output_date, output_dirpath=output_dirpath)
+    if write_plume_info_to_csv and flight_output_dirpath is not None:
+        write_plume_info_to_csv_file(ds, output_dirpath=flight_output_dirpath, filename_suffix=filename_suffix)
+
     return ds
 
 
 
 
 def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
-                     cruise_only=True, CO_q3=None, print_debug=False, filtered_ds_to_netcdf=False,
-                     plume_ds_to_netcdf=False, plot_flight=False, save_fig=False, file_suffix='',
-                     show_region_names=False):
+                     cruise_only=True, CO_q3=None, print_debug=False, save_output=True,
+                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+                     plot_flight=False, save_fig=False, show_fig=False, file_suffix='',
+                     show_region_names=False, output_dirname_suffix='', flight_dirname_suffix='',
+                     root_output_dirpath=cts.OUTPUT_ROOT_DIR):
     # get NOx flights url (L2 files)
     NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
                                                                  start_flight_id=start_flight_id,
                                                                  end_flight_id=end_flight_id, flight_type=flight_type,
                                                                  flight_id_list=flight_id_list)
 
-    timenow = timestamp_now_formatted("%Y-%m-%d_%H%M", tz='CET')
+    if save_output:
+        timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
+        output_dirpath = create_root_output_dir(date=timenow, dirname_suffix=output_dirname_suffix,
+                                                root_dirpath=root_output_dirpath)
+    else:
+        output_dirpath = None
 
     for flight_path in NOx_flights_url:
         if print_debug:
@@ -188,14 +203,23 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
         flight_ds = get_flight_ds(flight_path=flight_path, print_debug=print_debug)
         filtered_flight_ds = apply_LiNOx_plume_filters(ds=flight_ds, cruise_only=cruise_only, smoothed_data=True, CO_q3=CO_q3,  q3_ds_path=cts.Q3_DS_PATH, print_debug=print_debug)
 
-        if filtered_ds_to_netcdf:
-            filtered_flight_ds.to_netcdf(f'/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/{timenow}_filtered-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
+        if save_output:
+            flight_output_dirpath = create_flight_output_dir(output_dirpath=output_dirpath,
+                                                         flight_name=filtered_flight_ds.attrs['flight_name'],
+                                                         dirname_suffix=flight_dirname_suffix)
+            if print_debug:
+                print(f'---\nCreated output dirpath {flight_output_dirpath}\n---')
+            if filtered_ds_to_netcdf:
+                filtered_flight_ds.to_netcdf(f'{flight_output_dirpath}/filtered-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
+        else:
+            flight_output_dirpath = None
 
-        plume_ds = find_plumes(ds=filtered_flight_ds, write_plume_info_to_csv=True,
-                               json_path=f'/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/{timenow}_plume_info{file_suffix}.json')
-        if plume_ds_to_netcdf:
+        plume_ds = find_plumes(ds=filtered_flight_ds, flight_output_dirpath=flight_output_dirpath,
+                               write_plume_info_to_csv=True, filename_suffix=file_suffix)
+
+        if save_output and plume_ds_to_netcdf:
             plume_ds.to_netcdf(
-            f'/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/{timenow}_plume-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
+                f'{flight_output_dirpath}/plume-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
 
         if plot_flight: #TODO: for testing purposes, si ça se trouve q3_ds sert à rien en fait
             if CO_q3 is not None:
@@ -207,20 +231,29 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                                               NOx_spike=False, NOx_spike_id=[],
                                               PV=True, RHL=True, CO=True, O3=True,
                                               scatter_NOx_tropo=False, scatter_NOx_excess=False,
-                                              save_fig=save_fig, show_fig=True,
-                                              fig_name=None, fig_name_prefix=f'{timenow}_', fig_name_suffix=file_suffix,
-                                              plot_dirpath='/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/',
+                                              save_fig=save_fig, show_fig=show_fig,
+                                              fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
+                                              plot_dirpath=flight_output_dirpath,
                                               x_axis='UTC_time', x_lim=None, title=None)
+
 
 
 
 if __name__ == "__main__":
     # TODO: regarder si OK que si id = int ou si ok quand id = str
-    CO_q3 = 120
-    get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902'],
-                     CO_q3=CO_q3, show_region_names=False,
-                     print_debug=True, save_fig=False, file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3}',
-                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=True, plot_flight=True)
+    for CO_q3 in [100, 110, 120]:
+        get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902'],
+
+                         CO_q3=CO_q3, show_region_names=False,
+
+                         print_debug=False, save_output=True,
+
+                         output_dirname_suffix='plume_detection',
+                         flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
+                         file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
+
+                         filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+                         plot_flight=True, save_fig=True, show_fig=False)
 
     """iagos_utils.plot_NOx_CO_PV_RHL_O3(
         ds=xr.open_dataset('/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/2024-07-03_1131_plume-ds_2018060508235702.nc'),

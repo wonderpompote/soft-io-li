@@ -369,7 +369,7 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
 
     # title
     if title is None or title.lower() == "default":
-        plt.title(f'flight {ds.attrs["flight_name"]} - {ds.attrs["departure_airport"]} --> {ds.attrs["arrival_airport"]}')
+        plt.title(f'flight {ds.attrs["flight_name"]} - {ds.attrs["departure_airport"]} --> {ds.attrs["arrival_airport"]} - CO_q3: {q3_ds["CO_q3"]} - NOx_q3: {q3_ds["NOx_q3"]:.4f}')
     else:
         plt.title(title)
     # save fig
