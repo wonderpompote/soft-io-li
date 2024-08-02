@@ -1,9 +1,10 @@
+# coding=utf-8
 """
 Main objective:
 - look at each flight in the catalogue, detect if NOx anomalies and store information about the anomaly (date, location, etc.)
 
 A faire annexe:
--réfléchir à l'architecture des fichiers pour récup les résultats FP + garder les infos plume qqpart
+-reflechir a l'architecture des fichiers pour recup les resultats FP + garder les infos plume qqpart
 - Où et comment stocker les infos plume (JSON ou autre)
 
 Main steps:
@@ -42,6 +43,7 @@ POUR CHAQUE VOL:
         --> write plume info qqpart
 
 """
+import argparse
 import numpy as np
 import pandas as pd
 from scipy.ndimage import label
@@ -240,19 +242,42 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
 
 
 if __name__ == "__main__":
+    """parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--flight-id-list', '-fid', nargs='+', help='List of flight ids/names (default = 12aine de vols 2018)', default=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902'])
+
+    mutually_ex_group = parser.add_mutually_exclusive_group(required=True)
+    mutually_ex_group.add_argument('--flight-list', action='store_true',
+                       help='Indicates if a list of flight ids/names will be passed')
+    mutually_ex_group.add_argument('--flight-range', action='store_true',
+                       help='Indicates if start and end flight ids/names will be passed')
+
+    flights_group = parser.add_argument_group('flights info')
+    flights_group.add_argument('-s', '--start-id',
+                        help='Start flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
+    flights_group.add_argument('-e', '--end-id',
+                        help='End flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
+    flights_group.add_argument('--flight-id-list', '-fid', nargs='+', help='List of flight ids/names') 
+
+
+    args = parser.parse_args()
+    
+    flight_id_list = args.flight_id_list"""
+
+    
     # TODO: regarder si OK que si id = int ou si ok quand id = str
     for CO_q3 in [100, 110, 120]:
-        get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902'],
+        get_LiNOX_plumes(flight_id_list=['2019120110080702', '2019120509585102', '2019121923354702', '2019121009343202', '2019122309322102', '2019121009343202', '2020030216204102', '2020031413160402'],
 
                          CO_q3=CO_q3, show_region_names=False,
 
                          print_debug=False, save_output=True,
 
-                         output_dirname_suffix='plume_detection',
-                         flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
+                         output_dirname_suffix='plume_detection_vols2018-COq3-100-110-120',
+                         #flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
                          file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
 
-                         filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+                         filtered_ds_to_netcdf=False, plume_ds_to_netcdf=True,
                          plot_flight=True, save_fig=True, show_fig=False)
 
     """iagos_utils.plot_NOx_CO_PV_RHL_O3(

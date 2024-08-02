@@ -3,6 +3,7 @@ import pathlib
 #----- output -----
 OUTPUT_ROOT_DIR = pathlib.Path('/o3p/patj/SOFT-IO-LI_output')
 TIMESTAMP_FORMAT = "%Y-%m-%d_%H%M"
+ARRIVALTIME_FORMAT_CSV_FILENAME = '%Y%m%d-%H%M'
 
 #----- part 1 -----
 IAGOSv3_CAT_PATH = pathlib.Path('/o3p/iagos/catalogues_v3/iagos_L2.parquet')

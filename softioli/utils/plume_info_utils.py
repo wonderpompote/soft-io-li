@@ -4,7 +4,7 @@ import pathlib
 
 from common.utils import timestamp_now_formatted
 
-from .constants import OUTPUT_ROOT_DIR, AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, TIMESTAMP_FORMAT
+from .constants import OUTPUT_ROOT_DIR, AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME
 from .iagos_utils import get_CO_varname, get_O3_varname
 from .utils_functions import get_lon_lat_varnames
 
@@ -66,5 +66,5 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix=''):
         if not output_dirpath.exists():
             output_dirpath.mkdir(parents=True)
 
-        arrival_time = pd.Timestamp(ds.attrs["arrival_UTC_time"]).strftime(TIMESTAMP_FORMAT)
-        pd.DataFrame(plume_info_list).to_csv(f'{output_dirpath}/{ds.attrs["flight_name"]}_{arrival_time}{filename_suffix}_plume-info.csv')
+        arrival_time = pd.Timestamp(ds.attrs["arrival_UTC_time"]).strftime(ARRIVALTIME_FORMAT_CSV_FILENAME)
+        pd.DataFrame(plume_info_list).to_csv(f'{output_dirpath}/{ds.attrs["flight_name"]}_arrivaltime-{arrival_time}{filename_suffix}_plume-info.csv')
