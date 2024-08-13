@@ -260,6 +260,8 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
     else:
         ax1.set_xlim(x_lim)
 
+    title_suffix = ''
+
     # PV
     if PV:
         ax_PV = ax1.twinx()
@@ -290,18 +292,22 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
 
     # O3
     if O3:
-        ax_O3 = ax1.twinx()
-        ax_O3.plot(ds[x_axis], ds['O3_P1'].where(ds['PV'] < 2), label='O3 tropo', color='tab:blue', alpha=0.85)
-        """if CO:
-            label = 'CO & O3 (ppb)'
-        else:"""
-        label = 'O3 (ppb)'
-        ax_O3.set_ylabel(label)
-        ax_O3.set_ylim([0, ds['O3_P1'].where(ds['PV'] < 2).max().values + 0.05])
-        ax_O3.tick_params(axis='y', colors='tab:blue')
-        ax_O3.set_zorder(1)
-        if CO:
-            ax_O3.spines.right.set_position(("axes", 1.075))
+        if not np.isnan(ds['O3_P1']).all():
+	        ax_O3 = ax1.twinx()
+	        ax_O3.plot(ds[x_axis], ds['O3_P1'].where(ds['PV'] < 2), label='O3 tropo', color='tab:blue', alpha=0.85)
+	        """if CO:
+	            label = 'CO & O3 (ppb)'
+	        else:"""
+	        label = 'O3 (ppb)'
+	        ax_O3.set_ylabel(label)
+	        ax_O3.set_ylim([0, ds['O3_P1'].where(ds['PV'] < 2).max().values + 0.05])
+	        ax_O3.tick_params(axis='y', colors='tab:blue')
+	        ax_O3.set_zorder(1)
+	        if CO:
+	            ax_O3.spines.right.set_position(("axes", 1.075))
+        else:
+            title_suffix = '\n<!> O3 values all nan <!>'	
+            
 
     # RHL
     if RHL:
@@ -332,6 +338,8 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
             NOx_plot = ax1.plot(ds[x_axis], ds[NOx_tropo_filtered_varname], color='red',
                                 label='NOx_filtered')
         ax1.set_ylim([0, ds[NOx_tropo_varname].max().values + 0.05])
+    else:
+        title_suffix += '\n<!> NOx tropo values all nan <!>'
 
     if NOx_spike and len(NOx_spike_id) > 0:
         ax1.scatter(ds[x_axis].isel(UTC_time=NOx_spike_id),
@@ -369,9 +377,9 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
 
     # title
     if title is None or title.lower() == "default":
-        plt.title(f'flight {ds.attrs["flight_name"]} - {ds.attrs["departure_airport"]} --> {ds.attrs["arrival_airport"]} - CO_q3: {q3_ds["CO_q3"]} - NOx_q3: {q3_ds["NOx_q3"]:.4f}')
+        plt.title(f'flight {ds.attrs["flight_name"]} - {ds.attrs["departure_airport"]} --> {ds.attrs["arrival_airport"]} - CO_q3: {q3_ds["CO_q3"]} - NOx_q3: {q3_ds["NOx_q3"]:.4f} {title_suffix}')
     else:
-        plt.title(title)
+        plt.title(f'{title} {title_suffix}')
     # save fig
     if save_fig:
         if fig_name is None:
@@ -391,6 +399,7 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
                 fig_name = f'{fig_name}.png'
         plt.savefig(f'{plot_dirpath}/{fig_name}')
         print(f'Saved plot {plot_dirpath}/{fig_name}')
+        print(f'{fig_name} exists: {pathlib.Path(f"{plot_dirpath}/{fig_name}").exists()}')
     # show fig
     if show_fig:
         plt.show()

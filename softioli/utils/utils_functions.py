@@ -89,4 +89,5 @@ def create_flight_output_dir(output_dirpath, flight_name, dirname_suffix=''):
     flight_output_dirpath = pathlib.Path(f'{output_dirpath}/{flight_name}{dirname_suffix}')
     if not flight_output_dirpath.exists():
         flight_output_dirpath.mkdir(parents=True)
+        print(f'Creating directory {flight_output_dirpath}')
     return flight_output_dirpath

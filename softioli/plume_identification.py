@@ -227,7 +227,7 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
             if CO_q3 is not None:
                 q3_ds = { 'NOx_q3': cts.NOx_Q3, 'CO_q3': CO_q3 }
             else:
-                q3_ds = xr.open_dataset(cts.Q3_DS_PATH).mean('year')
+                with  = xr.open_dataset(cts.Q3_DS_PATH).mean('year')
             iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
                                               NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
                                               NOx_spike=False, NOx_spike_id=[],
@@ -267,13 +267,14 @@ if __name__ == "__main__":
     
     # TODO: regarder si OK que si id = int ou si ok quand id = str
     for CO_q3 in [100, 110, 120]:
-        get_LiNOX_plumes(flight_id_list=['2019120110080702', '2019120509585102', '2019121923354702', '2019121009343202', '2019122309322102', '2019121009343202', '2020030216204102', '2020031413160402'],
+        get_LiNOX_plumes(flight_id_list=['2019050408470102', '2019050422200302', '2019050610321002', '2019050700471802', '2019051109015302', '2019051122525702', '2019051510361502', '2019051600221902', '2019051910471409', '2019060113150309', '2019061700505609', '2019100610413009', '2019120110080702', '2019120509585102', '2019121009343202', '2019121321383702', '2019121909264402', '2019121923354702', '2019122309322102', '2019122323292902', '2019122613194402', '2019122703264902', '2019122810430802', '2019122900241602'],
+						 #['2019120110080702', '2019120509585102', '2019121923354702', '2019121009343202', '2019122309322102', '2019121009343202', '2020030216204102', '2020031413160402'],
 
                          CO_q3=CO_q3, show_region_names=False,
 
                          print_debug=False, save_output=True,
 
-                         output_dirname_suffix='plume_detection_vols2018-COq3-100-110-120',
+                         output_dirname_suffix='plume_detection_tests-plots-vols2019-COq3-100-110-120',
                          #flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
                          file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
 
