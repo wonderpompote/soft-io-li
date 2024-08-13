@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pathlib
+import re #TODO: supprimer après fin des tests
 import warnings
 import xarray as xr
 
@@ -232,7 +233,7 @@ def get_q3_attrs(ds, q3_ds):
 
 
 params = {'legend.fontsize': 'x-large',
-          'figure.figsize': (20, 5),
+          'figure.figsize': (20, 6),
           'axes.labelsize': 'x-large',
           'axes.titlesize': 'x-large',
           'xtick.labelsize': 'x-large',
@@ -276,19 +277,19 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
 
     # CO
     if CO:
-        """if O3:
-            ax_CO = ax_O3
-        else:"""
-        ax_CO = ax1.twinx()
-        ax_CO.set_ylabel('CO (ppb)')
-        ax_CO.tick_params(axis='y', colors='tab:cyan')
         CO_varname = get_CO_varname(flight_program=flight_program, tropo=False, filtered=False)
-        CO_plot = ax_CO.plot(ds[x_axis], ds[CO_varname].where(ds['PV'] < 2), color='tab:cyan', label='CO tropo')
-        if isinstance(q3_ds, xr.Dataset):
-            ax_CO.plot(ds[x_axis], q3_ds['CO_q3'], color='tab:cyan', linestyle='--')
+        if not np.isnan(ds[CO_varname]).all():
+            ax_CO = ax1.twinx()
+            ax_CO.set_ylabel('CO (ppb)')
+            ax_CO.tick_params(axis='y', colors='tab:cyan')
+            CO_plot = ax_CO.plot(ds[x_axis], ds[CO_varname].where(ds['PV'] < 2), color='tab:cyan', label='CO tropo')
+            if isinstance(q3_ds, xr.Dataset):
+                ax_CO.plot(ds[x_axis], q3_ds['CO_q3'], color='tab:cyan', linestyle='--')
+            else:
+                ax_CO.axhline(y=q3_ds['CO_q3'], linestyle='--', color='tab:cyan')
+            ax_CO.set_zorder(1)
         else:
-            ax_CO.axhline(y=q3_ds['CO_q3'], linestyle='--', color='tab:cyan')
-        ax_CO.set_zorder(1)
+            title_suffix = '\n<!> CO values all nan <!>'
 
     # O3
     if O3:
@@ -306,7 +307,10 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
 	        if CO:
 	            ax_O3.spines.right.set_position(("axes", 1.075))
         else:
-            title_suffix = '\n<!> O3 values all nan <!>'	
+            if len(title_suffix) > 0:
+                title_suffix = ' | <!> O3 values all nan <!>'	
+            else:
+                title_suffix = '\n<!> O3 values all nan <!>'	
             
 
     # RHL
@@ -399,7 +403,6 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
                 fig_name = f'{fig_name}.png'
         plt.savefig(f'{plot_dirpath}/{fig_name}')
         print(f'Saved plot {plot_dirpath}/{fig_name}')
-        print(f'{fig_name} exists: {pathlib.Path(f"{plot_dirpath}/{fig_name}").exists()}')
     # show fig
     if show_fig:
         plt.show()

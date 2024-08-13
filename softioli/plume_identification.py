@@ -179,7 +179,7 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                      filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
                      plot_flight=False, save_fig=False, show_fig=False, file_suffix='',
                      show_region_names=False, output_dirname_suffix='', flight_dirname_suffix='',
-                     root_output_dirpath=cts.OUTPUT_ROOT_DIR):
+                     root_output_dirpath=cts.OUTPUT_ROOT_DIR, timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')):
     # get NOx flights url (L2 files)
     NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
                                                                  start_flight_id=start_flight_id,
@@ -187,7 +187,6 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                                                                  flight_id_list=flight_id_list)
 
     if save_output:
-        timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
         output_dirpath = create_root_output_dir(date=timenow, dirname_suffix=output_dirname_suffix,
                                                 root_dirpath=root_output_dirpath)
     else:
@@ -223,6 +222,15 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
             if plot_flight: #TODO: for testing purposes, si ça se trouve q3_ds sert à rien en fait
                 if CO_q3 is not None:
                     q3_ds = { 'NOx_q3': cts.NOx_Q3, 'CO_q3': CO_q3 }
+                    iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
+                                                          NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
+                                                          NOx_spike=False, NOx_spike_id=[],
+                                                          PV=True, RHL=True, CO=True, O3=True,
+                                                          scatter_NOx_tropo=False, scatter_NOx_excess=False,
+                                                          save_fig=save_fig, show_fig=show_fig,
+                                                          fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
+                                                          plot_dirpath=flight_output_dirpath,
+                                                          x_axis='UTC_time', x_lim=None, title=None)
                 else:
                     with xr.open_dataset(cts.Q3_DS_PATH).mean('year') as q3_ds:
                         iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
@@ -261,21 +269,20 @@ if __name__ == "__main__":
     
     flight_id_list = args.flight_id_list"""
 
-    
+    timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
     # TODO: regarder si OK que si id = int ou si ok quand id = str
     for CO_q3 in [100, 110, 120]:
-        get_LiNOX_plumes(flight_id_list=['2019050408470102', '2019050422200302', '2019050610321002', '2019050700471802', '2019051109015302', '2019051122525702', '2019051510361502', '2019051600221902', '2019051910471409', '2019060113150309', '2019061700505609', '2019100610413009', '2019120110080702', '2019120509585102', '2019121009343202', '2019121321383702', '2019121909264402', '2019121923354702', '2019122309322102', '2019122323292902', '2019122613194402', '2019122703264902', '2019122810430802', '2019122900241602'],
-						 #['2019120110080702', '2019120509585102', '2019121923354702', '2019121009343202', '2019122309322102', '2019121009343202', '2020030216204102', '2020031413160402'],
+        get_LiNOX_plumes(flight_id_list=['2018041212072202', '2018060212485802', '2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018060922315102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062416375602', '2018062713274902', '2018082508362502', '2018091212344002', '2018091302243202', '2018091508412402', '2018091522263202', '2018091612343702', '2018091702313302', '2018091912372002', '2018092002182002'],
 
                          CO_q3=CO_q3, show_region_names=False,
 
-                         print_debug=False, save_output=True,
+                         print_debug=False, save_output=True, timenow=timenow,
 
-                         output_dirname_suffix='plume_detection_tests-plots-vols2019-COq3-100-110-120',
+                         output_dirname_suffix='plume_detection_plots-vols2018tous-COq3-100-110-120',
                          #flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
                          file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
 
-                         filtered_ds_to_netcdf=False, plume_ds_to_netcdf=True,
+                         filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
                          plot_flight=True, save_fig=True, show_fig=False)
 
     """iagos_utils.plot_NOx_CO_PV_RHL_O3(
@@ -290,7 +297,15 @@ if __name__ == "__main__":
                                       show_fig=True, x_axis='UTC_time', x_lim=None, title=None)"""
 
 
+
+
 # /o3p/iagos/iagosv3/L2/201806/IAGOS_timeseries_2018060302172202_L2_3.1.2.nc4
 #get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702'], print_debug=True,
 #                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=True)
 #['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902']
+
+# vols 2019
+# ['2019050408470102', '2019050422200302', '2019050610321002', '2019050700471802', '2019051109015302', '2019051122525702', '2019051510361502', '2019051600221902', '2019051910471409', '2019060113150309', '2019061700505609', '2019100610413009', '2019120110080702', '2019120509585102', '2019121009343202', '2019121321383702', '2019121909264402', '2019121923354702', '2019122309322102', '2019122323292902', '2019122613194402', '2019122703264902', '2019122810430802', '2019122900241602']
+
+# vols 2020
+# ['2020010110144002', '2020010200484802', '2020010313073902', '2020010401495902', '2020010413303202', '2020010503462402', '2020010709371002', '2020010723340002', '2020011209351002', '2020011509082102', '2020011522151002', '2020011613051802', '2020011703225002', '2020011810085902', '2020011900250702', '2020012109342702', '2020012121562302', '2020012309222002', '2020012323092702', '2020012713060702', '2020012803295402', '2020012910065502', '2020013000174302', '2020013109252202', '2020013123454802', '2020020113232402', '2020020203360602', '2020020409105002', '2020020421455902', '2020020510045602', '2020020523340202', '2020020613172502', '2020020703273302', '2020020810074202', '2020021010292002', '2020021021433102', '2020021109321302', '2020021123074502', '2020021409184002', '2020021423134002', '2020021709201502', '2020022310373302', '2020022322075902', '2020022509235102', '2020022523065502', '2020030216204102', '2020030303102102', '2020030409141102', '2020030421550802', '2020030512454902', '2020030603080102', '2020030909101202', '2020030922025302', '2020031010084302', '2020031021560202', '2020031213180102', '2020031303144602', '2020031413160402', '2020031503131902']
