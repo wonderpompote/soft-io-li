@@ -58,12 +58,8 @@ from utils.plume_info_utils import write_plume_info_to_csv_file
 from utils.utils_functions import create_root_output_dir, create_flight_output_dir
 
 
-def get_flight_ds(flight_path, geo_regions_dict=GEO_REGIONS, print_debug=False):
+def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print_debug=False):
     # return flight ds with PV and only valid data
-    if isinstance(flight_path, xr.Dataset):
-        ds = flight_path  # in case we give the dataset directly instead of the path
-    else:
-        ds = xr.open_dataset(flight_path)
     ds = iagos_utils.get_valid_data(var_list=iagos_utils.get_var_list(flight_program=ds.attrs['program']), ds=ds,
                                     print_debug=print_debug)
     ds = iagos_utils.get_PV(ds=ds, print_debug=print_debug)
@@ -202,41 +198,42 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
             print('##################################################')
             print(f'flight {flight_path}')
             print('##################################################')
-        flight_ds = get_flight_ds(flight_path=flight_path, print_debug=print_debug)
-        filtered_flight_ds = apply_LiNOx_plume_filters(ds=flight_ds, cruise_only=cruise_only, smoothed_data=True, CO_q3=CO_q3,  q3_ds_path=cts.Q3_DS_PATH, print_debug=print_debug)
+        with xr.open_dataset(flight_path) as flight_ds:
+            flight_ds = get_flight_ds_with_PV_and_valid_data(ds=flight_ds, print_debug=print_debug)
+            filtered_flight_ds = apply_LiNOx_plume_filters(ds=flight_ds, cruise_only=cruise_only, smoothed_data=True, CO_q3=CO_q3,  q3_ds_path=cts.Q3_DS_PATH, print_debug=print_debug)
 
-        if save_output:
-            flight_output_dirpath = create_flight_output_dir(output_dirpath=output_dirpath,
-                                                         flight_name=filtered_flight_ds.attrs['flight_name'],
-                                                         dirname_suffix=flight_dirname_suffix)
-            if print_debug:
-                print(f'---\nCreated output dirpath {flight_output_dirpath}\n---')
-            if filtered_ds_to_netcdf:
-                filtered_flight_ds.to_netcdf(f'{flight_output_dirpath}/filtered-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
-        else:
-            flight_output_dirpath = None
-
-        plume_ds = find_plumes(ds=filtered_flight_ds, flight_output_dirpath=flight_output_dirpath,
-                               write_plume_info_to_csv=True, filename_suffix=file_suffix)
-
-        if save_output and plume_ds_to_netcdf:
-            plume_ds.to_netcdf(
-                f'{flight_output_dirpath}/plume-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
-
-        if plot_flight: #TODO: for testing purposes, si ça se trouve q3_ds sert à rien en fait
-            if CO_q3 is not None:
-                q3_ds = { 'NOx_q3': cts.NOx_Q3, 'CO_q3': CO_q3 }
+            if save_output:
+                flight_output_dirpath = create_flight_output_dir(output_dirpath=output_dirpath,
+                                                             flight_name=filtered_flight_ds.attrs['flight_name'],
+                                                             dirname_suffix=flight_dirname_suffix)
+                if print_debug:
+                    print(f'---\nCreated output dirpath {flight_output_dirpath}\n---')
+                if filtered_ds_to_netcdf:
+                    filtered_flight_ds.to_netcdf(f'{flight_output_dirpath}/filtered-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
             else:
-                with  = xr.open_dataset(cts.Q3_DS_PATH).mean('year')
-            iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
-                                              NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
-                                              NOx_spike=False, NOx_spike_id=[],
-                                              PV=True, RHL=True, CO=True, O3=True,
-                                              scatter_NOx_tropo=False, scatter_NOx_excess=False,
-                                              save_fig=save_fig, show_fig=show_fig,
-                                              fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
-                                              plot_dirpath=flight_output_dirpath,
-                                              x_axis='UTC_time', x_lim=None, title=None)
+                flight_output_dirpath = None
+
+            plume_ds = find_plumes(ds=filtered_flight_ds, flight_output_dirpath=flight_output_dirpath,
+                                   write_plume_info_to_csv=True, filename_suffix=file_suffix)
+
+            if save_output and plume_ds_to_netcdf:
+                plume_ds.to_netcdf(
+                    f'{flight_output_dirpath}/plume-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
+
+            if plot_flight: #TODO: for testing purposes, si ça se trouve q3_ds sert à rien en fait
+                if CO_q3 is not None:
+                    q3_ds = { 'NOx_q3': cts.NOx_Q3, 'CO_q3': CO_q3 }
+                else:
+                    with xr.open_dataset(cts.Q3_DS_PATH).mean('year') as q3_ds:
+                        iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
+                                                          NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
+                                                          NOx_spike=False, NOx_spike_id=[],
+                                                          PV=True, RHL=True, CO=True, O3=True,
+                                                          scatter_NOx_tropo=False, scatter_NOx_excess=False,
+                                                          save_fig=save_fig, show_fig=show_fig,
+                                                          fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
+                                                          plot_dirpath=flight_output_dirpath,
+                                                          x_axis='UTC_time', x_lim=None, title=None)
 
 
 
