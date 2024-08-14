@@ -328,11 +328,15 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
     # setup NOx axis
     if NOx_tropo:
         NOx_tropo_varname = get_NOx_varname(flight_program=flight_program, smoothed=True, tropo=True, filtered=False)
-        if scatter_NOx_tropo:
-            ax1.scatter(ds[x_axis], ds[NOx_tropo_varname], color='tab:green', label='NOx_tropo',
-                        linewidths=0.5)
+        if not np.isnan(ds[NOx_tropo_varname]).all():
+            if scatter_NOx_tropo:
+                ax1.scatter(ds[x_axis], ds[NOx_tropo_varname], color='tab:green', label='NOx_tropo',
+                            linewidths=0.5)
+            else:
+                ax1.plot(ds[x_axis], ds[NOx_tropo_varname], color='tab:green', label='NOx_tropo')
         else:
-            ax1.plot(ds[x_axis], ds[NOx_tropo_varname], color='tab:green', label='NOx_tropo')
+            title_suffix += '\n<!> NOx tropo values all nan <!>'
+            
     NOx_tropo_filtered_varname = get_NOx_varname(flight_program=flight_program, smoothed=True, tropo=True, filtered=True)
     if not np.isnan(ds[NOx_tropo_filtered_varname]).all():
         if scatter_NOx_excess:
@@ -342,8 +346,6 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
             NOx_plot = ax1.plot(ds[x_axis], ds[NOx_tropo_filtered_varname], color='red',
                                 label='NOx_filtered')
         ax1.set_ylim([0, ds[NOx_tropo_varname].max().values + 0.05])
-    else:
-        title_suffix += '\n<!> NOx tropo values all nan <!>'
 
     if NOx_spike and len(NOx_spike_id) > 0:
         ax1.scatter(ds[x_axis].isel(UTC_time=NOx_spike_id),
