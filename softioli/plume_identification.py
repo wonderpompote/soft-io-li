@@ -173,10 +173,10 @@ def find_plumes(ds, flight_output_dirpath, end_of_plume_duration=100, write_plum
 
 
 
-
+#TODO: end_of_plume_duration for testing purposes
 def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
                      cruise_only=True, CO_q3=None, NOx_q3=None, print_debug=False, save_output=True,
-                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False, end_of_plume_duration=100,
                      plot_flight=False, save_fig=False, show_fig=False, file_suffix='',
                      show_region_names=False, output_dirname_suffix='', flight_dirname_suffix='',
                      root_output_dirpath=cts.OUTPUT_ROOT_DIR, timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')):
@@ -212,7 +212,8 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
             else:
                 flight_output_dirpath = None
 
-            plume_ds = find_plumes(ds=filtered_flight_ds, flight_output_dirpath=flight_output_dirpath,
+            plume_ds = find_plumes(ds=filtered_flight_ds, end_of_plume_duration=end_of_plume_duration,
+                                   flight_output_dirpath=flight_output_dirpath,
                                    write_plume_info_to_csv=True, filename_suffix=file_suffix)
 
             if save_output and plume_ds_to_netcdf:
@@ -274,7 +275,7 @@ if __name__ == "__main__":
     for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
         for CO_q3 in [100, 110, 115, 120]:
             get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018060922315102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902', '2018082508362502', '2019120110080702'],
-                             CO_q3=CO_q3, NOx_q3=NOx_q3,
+                             CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=200,
     
                              print_debug=False, save_output=True, timenow=timenow, show_region_names=False,
     

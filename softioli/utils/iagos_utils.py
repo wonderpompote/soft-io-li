@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pathlib
-import re #TODO: supprimer après fin des tests
+from re import match
 import warnings
 import xarray as xr
 
