@@ -1,48 +1,3 @@
-# coding=utf-8
-"""
-Main objective:
-- look at each flight in the catalogue, detect if NOx anomalies and store information about the anomaly (date, location, etc.)
-
-A faire annexe:
--reflechir a l'architecture des fichiers pour recup les resultats FP + garder les infos plume qqpart
-- Où et comment stocker les infos plume (JSON ou autre)
-
-Main steps:
-- get NOx flights from catalogue (<!> regarder si NOx flights ont déjà été analysés ou pas)
-        --> COMMENT ? check si flight déjà dans flight info
-            --> réfléchir architecture résultat write plume info JSP COMMENT FAIRE POUR LE MOMENT
-
-POUR CHAQUE VOL:
-- get flight ds
-        --> open IAGOS netcdf file
-        --> only keep values with validity flag = 0 --> <!> variable names != if MOZAIC/CORE ou CARIBIC
-        --> get pv
-        --> get rolling mean NOx
-        --> apply filters on smoothed data
-        :return: filtered_ds
-- find plumes
-        --> get labeled array (using scipy function)
-        --> get start_id and end_id from labeled array
-        --> merge plumes if start_id[i+1] - end_id[i] < 100 seconds (ou 200 ???)
-        --> create new data variable to store plume_id
-        --> remove plumes smaller than 25 km from the list (put their id to -1)
-- write plume info + plot
-        --> pour chaque vol --> dossier dans lequel on a:
-            - fichier json avec plume info (<?> à voir, faut qu'on puisse loop through les différents panaches si plusieurs)
-            - plot plume
-            - logs ??
-            - config FP
-            - résultats FP
-        ?? why not semble ok je pense, y re-réfléchir si besoin
-
-- fonction "main":
-    --> récup NOx flights et/ou take list of NOx_flights en entrée
-    --> for flight in NOx_flight_list:
-        --> get_flight_ds (get_valid_data + get_PV + apply_LiNOx_plume_filters)
-        --> find plumes
-        --> write plume info qqpart
-
-"""
 import argparse
 import numpy as np
 import pandas as pd
@@ -66,7 +21,7 @@ def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print
 
     NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], tropo=False, smoothed=False, filtered=False)
     # if CARIBIC flight --> calculate NOx variable from NO and NO2 measurements
-    if ds.attrs['program'] == f'{cts.IAGOS}-{cts.CARIBIC}':
+    if ds.attrs["program"] == f'{cts.IAGOS}-{cts.CARIBIC}':
         ds[NOx_varname] = ds[cts.CARIBIC_NO_VARNAME] + ds[cts.CARIBIC_NO2_VARNAME]
     # smooth NOx timeseries (rolling mean with window size = min plume length)
     NOx_smoothed_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], smoothed=True,
@@ -184,7 +139,8 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
     NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
                                                                  start_flight_id=start_flight_id,
                                                                  end_flight_id=end_flight_id, flight_type=flight_type,
-                                                                 flight_id_list=flight_id_list)
+                                                                 flight_id_list=flight_id_list,
+                                                                 print_debug=print_debug)
 
     if save_output:
         output_dirpath = create_root_output_dir(date=timenow, dirname_suffix=output_dirname_suffix,
@@ -248,11 +204,9 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
 
 
 if __name__ == "__main__":
-    """parser = argparse.ArgumentParser()
-    
-    parser.add_argument('--flight-id-list', '-fid', nargs='+', help='List of flight ids/names (default = 12aine de vols 2018)', default=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902'])
+    parser = argparse.ArgumentParser()
 
-    mutually_ex_group = parser.add_mutually_exclusive_group(required=True)
+    mutually_ex_group = parser.add_mutually_exclusive_group()
     mutually_ex_group.add_argument('--flight-list', action='store_true',
                        help='Indicates if a list of flight ids/names will be passed')
     mutually_ex_group.add_argument('--flight-range', action='store_true',
@@ -263,16 +217,49 @@ if __name__ == "__main__":
                         help='Start flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
     flights_group.add_argument('-e', '--end-id',
                         help='End flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
-    flights_group.add_argument('--flight-id-list', '-fid', nargs='+', help='List of flight ids/names') 
+    flights_group.add_argument('--flight-id-list', nargs='+', help='List of flight ids/names (default = None)')
 
+    parser.add_argument('--end-of-plume', type=int, help='End of plume duration (default=100)', default=100)
+
+    parser.add_argument('-o', '--output-dirname-suffix', help='Output dirname suffix (default=plume_detection_COq3-100-110-115-120_NOxq3-0.283-NOxMedian-0.161)',
+                        default='plume_detection_COq3-100-110-115-120_NOxq3-0.283-NOxMedian-0.161')
+
+    parser.add_argument('-d', '--print-debug', action='store_true', help='print debug (default=False)')
 
     args = parser.parse_args()
     
-    flight_id_list = args.flight_id_list"""
+    print('coucou')
+    print(args)
 
     timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
-    # TODO: regarder si OK que si id = int ou si ok quand id = str
+
     for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
+        for CO_q3 in [100, 110, 115, 120]:
+            get_LiNOX_plumes(
+                flight_id_list=args.flight_id_list,
+                CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=args.end_of_plume,
+
+                print_debug=args.print_debug, save_output=True, timenow=timenow, show_region_names=False,
+
+                output_dirname_suffix=args.output_dirname_suffix,
+                # flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
+                file_suffix=f'_endofplume-{args.end_of_plume}_COq3-{CO_q3}_NOxq3-{NOx_q3}',
+
+                filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+                plot_flight=True, save_fig=True, show_fig=False)
+
+
+
+
+
+
+
+
+
+
+
+            # TODO: regarder si OK que si id = int ou si ok quand id = str
+    """for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
         for CO_q3 in [100, 110, 115, 120]:
             get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018060922315102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902', '2018082508362502', '2019120110080702'],
                              CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=200,
@@ -284,10 +271,10 @@ if __name__ == "__main__":
                              file_suffix=f'_COq3-{CO_q3}_NOxq3-{NOx_q3}',
     
                              filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
-                             plot_flight=True, save_fig=True, show_fig=False)
+                             plot_flight=True, save_fig=True, show_fig=False)   
 
     
-    """iagos_utils.plot_NOx_CO_PV_RHL_O3(
+    iagos_utils.plot_NOx_CO_PV_RHL_O3(
         ds=xr.open_dataset('/o3p/patj/SOFT-IO-LI_output/2024-07-03_testsPlumeDetection/2024-07-03_1131_plume-ds_2018060508235702.nc'),
                                       q3_ds=xr.open_dataset(cts.Q3_DS_PATH).mean('year'),
                                       NOx_plumes=True, NOx_tropo=True, region_names=True,

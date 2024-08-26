@@ -43,8 +43,10 @@ def get_CO_varname(flight_program, tropo, filtered):
 
 
 def get_O3_varname(flight_program, tropo):
-    if flight_program in [cts.CORE, f'{cts.IAGOS}-{cts.CORE}', cts.CARIBIC, f'{cts.IAGOS}-{cts.CARIBIC}']:
+    if flight_program == cts.CORE or flight_program == f'{cts.IAGOS}-{cts.CORE}':
         O3_varname = cts.O3_VARNAME
+    elif flight_program == cts.CARIBIC or flight_program == f'{cts.IAGOS}-{cts.CARIBIC}':
+        O3_varname = cts.CARIBIC_O3_VARNAME
     else:
         raise KeyError(f'{flight_program} {cts.FLIGHT_PROGRAM_KEYERROR_MSG}')
     # add suffix to CO varname
@@ -90,7 +92,7 @@ def get_valid_data(var_list, ds, valid_data_flag_value=0, print_debug=False):
 
 # TODO: filtrer par date aussi ??
 def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_flight_id=None, end_flight_id=None,
-                                   flight_type=None, flight_id_list=None):
+                                   flight_type=None, flight_id_list=None, print_debug=False):
     """
     Returns list of NOx flights urls (from iagos v3 catalogue) between
     :param iagos_cat_path:
@@ -104,7 +106,7 @@ def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_fl
         raise ValueError(f"Invalid IAGOS catalogue path, {iagos_cat_path} does NOT exist!")
     df_cat = pd.read_parquet(iagos_cat_path)
     # get all NO2 data variable names
-    NO2_vars = [varname for varname in df_cat if varname.startswith("data_vars_") and ("NO2") in varname]
+    NO2_vars = [varname for varname in df_cat.columns if match(r'data_vars_NO2_P\w{2}$', varname)]
     # get all NOx flights (flights with NO2 variables > 0)
     NOx_flights = df_cat.loc[(df_cat[NO2_vars] > 0).any(axis='columns')]
     # if we only want flights between two flight ids or specific flights in a given list
@@ -121,6 +123,10 @@ def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_fl
             raise ValueError(
                 f"Invalid IAGOS program type ({flight_type}), expecting any of the following: ['IAGOS-CARIBIC', 'CARIBIC', 'IAGOS-CORE', 'CORE', 'IAGOS-MOZAIC', 'MOZAIC']")
         NOx_flights = NOx_flights.loc[NOx_flights.attrs_program == flight_type]
+
+    if print_debug:
+        print(f'len(NOx_flights) = {len(NOx_flights.general_url)}')
+        print('---')
 
     return NOx_flights.general_url
 
@@ -293,15 +299,16 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
 
     # O3
     if O3:
-        if not np.isnan(ds['O3_P1']).all():
+        O3_varname = get_O3_varname(ds.attrs['program'], tropo=False)
+        if not np.isnan(ds[O3_varname]).all():
 	        ax_O3 = ax1.twinx()
-	        ax_O3.plot(ds[x_axis], ds['O3_P1'].where(ds['PV'] < 2), label='O3 tropo', color='tab:blue', alpha=0.85)
+	        ax_O3.plot(ds[x_axis], ds[O3_varname].where(ds['PV'] < 2), label='O3 tropo', color='tab:blue', alpha=0.85)
 	        """if CO:
 	            label = 'CO & O3 (ppb)'
 	        else:"""
 	        label = 'O3 (ppb)'
 	        ax_O3.set_ylabel(label)
-	        ax_O3.set_ylim([0, ds['O3_P1'].where(ds['PV'] < 2).max().values + 0.05])
+	        ax_O3.set_ylim([0, ds[O3_varname].where(ds['PV'] < 2).max().values + 0.05])
 	        ax_O3.tick_params(axis='y', colors='tab:blue')
 	        ax_O3.set_zorder(1)
 	        if CO:
@@ -315,14 +322,15 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
 
     # RHL
     if RHL:
-        ax_RHL = ax1.twinx()
-        ax_RHL.plot(ds[x_axis], ds['RHL_P1'].where(ds['PV'] < 2), label='RHL tropo', color='tab:purple', alpha=0.85)
-        ax_RHL.set_ylabel('RHL')
-        ax_RHL.set_ylim([0, ds['RHL_P1'].max().values + 0.05])
-        ax_RHL.tick_params(axis='y', colors='tab:purple')
-        ax_RHL.set_zorder(0.5)
-        if CO or O3:
-            ax_RHL.spines.right.set_position(("axes", 1.15))
+        if 'RHL_P1' in list(ds.keys()):
+            ax_RHL = ax1.twinx()
+            ax_RHL.plot(ds[x_axis], ds['RHL_P1'].where(ds['PV'] < 2), label='RHL tropo', color='tab:purple', alpha=0.85)
+            ax_RHL.set_ylabel('RHL')
+            ax_RHL.set_ylim([0, ds['RHL_P1'].max().values + 0.05])
+            ax_RHL.tick_params(axis='y', colors='tab:purple')
+            ax_RHL.set_zorder(0.5)
+            if CO or O3:
+                ax_RHL.spines.right.set_position(("axes", 1.15))
 
     # NOx
     # setup NOx axis
