@@ -15,19 +15,19 @@ from utils.utils_functions import create_root_output_dir, create_flight_output_d
 
 def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print_debug=False):
     # return flight ds with PV and only valid data
-    ds = iagos_utils.get_valid_data(var_list=iagos_utils.get_var_list(flight_program=ds.attrs['program']), ds=ds,
+    ds = iagos_utils.get_valid_data(var_list=iagos_utils.get_var_list(flight_program=ds.attrs[cts.PROGRAM_ATTR]), ds=ds,
                                     print_debug=print_debug)
     ds = iagos_utils.get_PV(ds=ds, print_debug=print_debug)
 
-    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], tropo=False, smoothed=False, filtered=False)
+    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs[cts.PROGRAM_ATTR], tropo=False, smoothed=False, filtered=False)
     # if CARIBIC flight --> calculate NOx variable from NO and NO2 measurements
     if ds.attrs["program"] == f'{cts.IAGOS}-{cts.CARIBIC}':
         ds[NOx_varname] = ds[cts.CARIBIC_NO_VARNAME] + ds[cts.CARIBIC_NO2_VARNAME]
     # smooth NOx timeseries (rolling mean with window size = min plume length)
-    NOx_smoothed_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], smoothed=True,
+    NOx_smoothed_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs[cts.PROGRAM_ATTR], smoothed=True,
                                                        tropo=False, filtered=False)
     ds[NOx_smoothed_varname] = ds[NOx_varname] \
-        .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs['program']], min_periods=1) \
+        .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]], min_periods=1) \
         .mean()
     # add regions to each data point
     ds = regions_utils.assign_geo_region_to_ds(ds=ds, geo_regions_dict=geo_regions_dict)
@@ -49,14 +49,14 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
     :param print_debug: <bool> for testing purposes, print debug
     :return: <xarray.Dataset> filtered version of flight ds
     """
-    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs['program'], tropo=False, smoothed=smoothed_data, filtered=False)
+    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False, smoothed=smoothed_data, filtered=False)
 
     # only keep cruise data
     if cruise_only:
         ds = iagos_utils.keep_cruise(ds=ds, NOx_varname=NOx_varname, print_debug=print_debug)
 
-    CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], tropo=False, filtered=False)
-    O3_varname = iagos_utils.get_O3_varname(ds.attrs['program'], tropo=False)
+    CO_varname = iagos_utils.get_CO_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False, filtered=False)
+    O3_varname = iagos_utils.get_O3_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False)
 
     # remove stratospheric influence #TODO: est-ce qu'on ferait pas un filtre tropo sur tout le ds ? mais peut-être trop
     ds = iagos_utils.keep_tropo(ds=ds, var_list=[NOx_varname, CO_varname, O3_varname], print_debug=print_debug)
@@ -71,12 +71,12 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
         ds = ds.assign_attrs(iagos_utils.get_q3_attrs(ds=ds, q3_ds=q3_ds_complete))
 
     # remove anthropogenic influence
-    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs['program'], tropo=True, smoothed=smoothed_data, filtered=False)
+    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=True, smoothed=smoothed_data, filtered=False)
     ds = iagos_utils.remove_CO_excess(ds=ds, CO_q3=q3_ds['CO_q3'], NOx_varname=NOx_varname,
                                       CO_varname=CO_varname, print_debug=print_debug)
 
     # remove background influence (keep NOx > q3)
-    CO_varname = iagos_utils.get_CO_varname(ds.attrs['program'], tropo=True, filtered=False)
+    CO_varname = iagos_utils.get_CO_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=True, filtered=False)
     ds = iagos_utils.keep_NOx_excess(ds=ds, NOx_varname=NOx_varname, NOx_q3=q3_ds['NOx_q3'], print_debug=print_debug)
 
     return ds
@@ -91,7 +91,7 @@ def find_plumes(ds, flight_output_dirpath, end_of_plume_duration=100, write_plum
     @param write_plume_info_to_csv: <bool>
     @return:
     """
-    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs['program'], tropo=True, smoothed=True, filtered=True)
+    NOx_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs[cts.PROGRAM_ATTR], tropo=True, smoothed=True, filtered=True)
 
     # get labeled array
     labeled, ncomponents = label(xr.where(ds[NOx_varname] > 0, True, False))
@@ -110,7 +110,7 @@ def find_plumes(ds, flight_output_dirpath, end_of_plume_duration=100, write_plum
     ds[cts.NOx_PLUME_ID_VARNAME] = xr.DataArray(dims=['UTC_time'], coords={"UTC_time": ds.UTC_time})
     # remove plumes smaller than 25 km (100 seconds) from the list (put their id to -1)
     plume_id = 1
-    min_plume_length = cts.WINDOW_SIZE[ds.attrs['program']] # min length = smoothing window size
+    min_plume_length = cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]] # min length = smoothing window size
     for i in range(len(start_id)):
         # if plume too small (plume_length < min_plume_length) --> plume_id = -1
         if end_id[i] - start_id[i] < min_plume_length:
@@ -157,48 +157,53 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
             flight_ds = get_flight_ds_with_PV_and_valid_data(ds=flight_ds, print_debug=print_debug)
             filtered_flight_ds = apply_LiNOx_plume_filters(ds=flight_ds, cruise_only=cruise_only, smoothed_data=True, CO_q3=CO_q3,  q3_ds_path=cts.Q3_DS_PATH, print_debug=print_debug)
 
-            if save_output:
-                flight_output_dirpath = create_flight_output_dir(output_dirpath=output_dirpath,
-                                                             flight_name=filtered_flight_ds.attrs['flight_name'],
-                                                             dirname_suffix=flight_dirname_suffix)
-                if print_debug:
-                    print(f'---\nCreated output dirpath {flight_output_dirpath}\n---')
-                if filtered_ds_to_netcdf:
-                    filtered_flight_ds.to_netcdf(f'{flight_output_dirpath}/filtered-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
-            else:
-                flight_output_dirpath = None
+            NOx_tropo_varname = iagos_utils.get_NOx_varname(flight_program=filtered_flight_ds.attrs[cts.PROGRAM_ATTR],
+                                                            smoothed=True, tropo=True, filtered=False)
 
-            plume_ds = find_plumes(ds=filtered_flight_ds, end_of_plume_duration=end_of_plume_duration,
-                                   flight_output_dirpath=flight_output_dirpath,
-                                   write_plume_info_to_csv=True, filename_suffix=file_suffix)
-
-            if save_output and plume_ds_to_netcdf:
-                plume_ds.to_netcdf(
-                    f'{flight_output_dirpath}/plume-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
-
-            if plot_flight: #TODO: for testing purposes, si ça se trouve q3_ds sert à rien en fait
-                if CO_q3 is not None:
-                    q3_ds = { 'NOx_q3': NOx_q3 if NOx_q3 is not None else cts.NOx_Q3, 'CO_q3': CO_q3 }
-                    iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
-                                                          NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
-                                                          NOx_spike=False, NOx_spike_id=[],
-                                                          PV=True, RHL=True, CO=True, O3=True,
-                                                          scatter_NOx_tropo=False, scatter_NOx_excess=False,
-                                                          save_fig=save_fig, show_fig=show_fig,
-                                                          fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
-                                                          plot_dirpath=flight_output_dirpath,
-                                                          x_axis='UTC_time', x_lim=None, title=None)
+            # only look for plumes if NOx tropo measurements are NOT all nan
+            if not np.isnan(filtered_flight_ds[NOx_tropo_varname]).all():
+                if save_output:
+                    flight_output_dirpath = create_flight_output_dir(output_dirpath=output_dirpath,
+                                                                 flight_name=filtered_flight_ds.attrs['flight_name'],
+                                                                 dirname_suffix=flight_dirname_suffix)
+                    if print_debug:
+                        print(f'---\nCreated output dirpath {flight_output_dirpath}\n---')
+                    if filtered_ds_to_netcdf:
+                        filtered_flight_ds.to_netcdf(f'{flight_output_dirpath}/filtered-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
                 else:
-                    with xr.open_dataset(cts.Q3_DS_PATH).mean('year') as q3_ds:
+                    flight_output_dirpath = None
+
+                plume_ds = find_plumes(ds=filtered_flight_ds, end_of_plume_duration=end_of_plume_duration,
+                                       flight_output_dirpath=flight_output_dirpath,
+                                       write_plume_info_to_csv=True, filename_suffix=file_suffix)
+
+                if save_output and plume_ds_to_netcdf:
+                    plume_ds.to_netcdf(
+                        f'{flight_output_dirpath}/plume-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
+
+                if plot_flight: #TODO: for testing purposes, si ça se trouve q3_ds sert à rien en fait
+                    if CO_q3 is not None:
+                        q3_ds = { 'NOx_q3': NOx_q3 if NOx_q3 is not None else cts.NOx_Q3, 'CO_q3': CO_q3 }
                         iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
-                                                          NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
-                                                          NOx_spike=False, NOx_spike_id=[],
-                                                          PV=True, RHL=True, CO=True, O3=True,
-                                                          scatter_NOx_tropo=False, scatter_NOx_excess=False,
-                                                          save_fig=save_fig, show_fig=show_fig,
-                                                          fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
-                                                          plot_dirpath=flight_output_dirpath,
-                                                          x_axis='UTC_time', x_lim=None, title=None)
+                                                              NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
+                                                              NOx_spike=False, NOx_spike_id=[],
+                                                              PV=True, RHL=True, CO=True, O3=True,
+                                                              scatter_NOx_tropo=False, scatter_NOx_excess=False,
+                                                              save_fig=save_fig, show_fig=show_fig,
+                                                              fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
+                                                              plot_dirpath=flight_output_dirpath,
+                                                              x_axis='UTC_time', x_lim=None, title=None)
+                    else:
+                        with xr.open_dataset(cts.Q3_DS_PATH).mean('year') as q3_ds:
+                            iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
+                                                              NOx_plumes=True, NOx_tropo=True, show_region_names=show_region_names,
+                                                              NOx_spike=False, NOx_spike_id=[],
+                                                              PV=True, RHL=True, CO=True, O3=True,
+                                                              scatter_NOx_tropo=False, scatter_NOx_excess=False,
+                                                              save_fig=save_fig, show_fig=show_fig,
+                                                              fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
+                                                              plot_dirpath=flight_output_dirpath,
+                                                              x_axis='UTC_time', x_lim=None, title=None)
 
 
 
@@ -219,7 +224,7 @@ if __name__ == "__main__":
                         help='End flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
     flights_group.add_argument('--flight-id-list', nargs='+', help='List of flight ids/names (default = None)')
 
-    parser.add_argument('--end-of-plume', type=int, help='End of plume duration (default=100)', default=100)
+    parser.add_argument('--end-of-plume', nargs='+', type=int, help='End of plume duration (default=100)', default=100)
 
     parser.add_argument('-o', '--output-dirname-suffix', help='Output dirname suffix (default=plume_detection_COq3-100-110-115-120_NOxq3-0.283-NOxMedian-0.161)',
                         default='plume_detection_COq3-100-110-115-120_NOxq3-0.283-NOxMedian-0.161')
@@ -233,20 +238,23 @@ if __name__ == "__main__":
 
     timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
 
-    for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
-        for CO_q3 in [100, 110, 115, 120]:
-            get_LiNOX_plumes(
-                flight_id_list=args.flight_id_list,
-                CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=args.end_of_plume,
 
-                print_debug=args.print_debug, save_output=True, timenow=timenow, show_region_names=False,
 
-                output_dirname_suffix=args.output_dirname_suffix,
-                # flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
-                file_suffix=f'_endofplume-{args.end_of_plume}_COq3-{CO_q3}_NOxq3-{NOx_q3}',
+    for end_of_plume in args.end_of_plume:
+        for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
+            for CO_q3 in [110, 115, 120]:
+                get_LiNOX_plumes(
+                    flight_id_list=args.flight_id_list,
+                    CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=end_of_plume,
 
-                filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
-                plot_flight=True, save_fig=True, show_fig=False)
+                    print_debug=args.print_debug, save_output=True, timenow=timenow, show_region_names=False,
+
+                    output_dirname_suffix=args.output_dirname_suffix,
+                    # flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
+                    file_suffix=f'_endofplume-{end_of_plume}_COq3-{CO_q3}_NOxq3-{NOx_q3}',
+
+                    filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+                    plot_flight=True, save_fig=True, show_fig=False)
 
 
 

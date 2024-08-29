@@ -14,6 +14,7 @@ IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'
 #TODO: je vais pas m'en servir en fait T.T
 Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc'
 
+PROGRAM_ATTR = 'program'
 IAGOS = 'IAGOS'
 CARIBIC = 'CARIBIC'
 CORE = 'CORE'
@@ -44,7 +45,7 @@ WINDOW_SIZE = {
 FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 
 NOx_MEDIAN = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
-NOx_Q3 = 0.28299999237060547 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
+NOx_Q3 = 0.283 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
 
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')

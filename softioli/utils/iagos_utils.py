@@ -277,7 +277,7 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
         ax_PV.get_yaxis().set_ticks([])
         ax_PV.set_zorder(0)
 
-    flight_program = ds.attrs['program']
+    flight_program = ds.attrs[cts.PROGRAM_ATTR]
     if isinstance(q3_ds, xr.Dataset):
         q3_ds = q3_ds.sel(geo_region=ds['geo_region'], month=ds['UTC_time'].dt.month)
 
@@ -294,25 +294,32 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
             else:
                 ax_CO.axhline(y=q3_ds['CO_q3'], linestyle='--', color='tab:cyan')
             ax_CO.set_zorder(1)
+        elif np.isnan(ds[CO_varname].where(ds['PV'] < 2)).all():
+            title_suffix = '\n<!> CO tropo values all nan <!>'
         else:
             title_suffix = '\n<!> CO values all nan <!>'
 
     # O3
     if O3:
-        O3_varname = get_O3_varname(ds.attrs['program'], tropo=False)
+        O3_varname = get_O3_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False)
         if not np.isnan(ds[O3_varname]).all():
-	        ax_O3 = ax1.twinx()
-	        ax_O3.plot(ds[x_axis], ds[O3_varname].where(ds['PV'] < 2), label='O3 tropo', color='tab:blue', alpha=0.85)
-	        """if CO:
-	            label = 'CO & O3 (ppb)'
-	        else:"""
-	        label = 'O3 (ppb)'
-	        ax_O3.set_ylabel(label)
-	        ax_O3.set_ylim([0, ds[O3_varname].where(ds['PV'] < 2).max().values + 0.05])
-	        ax_O3.tick_params(axis='y', colors='tab:blue')
-	        ax_O3.set_zorder(1)
-	        if CO:
-	            ax_O3.spines.right.set_position(("axes", 1.075))
+            ax_O3 = ax1.twinx()
+            ax_O3.plot(ds[x_axis], ds[O3_varname].where(ds['PV'] < 2), label='O3 tropo', color='tab:blue', alpha=0.85)
+            label = 'O3 (ppb)'
+            ax_O3.set_ylabel(label)
+            if not np.isnan(ds[O3_varname].where(ds['PV'] < 2)).all():
+                ax_O3.set_ylim([0, ds[O3_varname].where(ds['PV'] < 2).max().values + 5])
+            else:
+                if len(title_suffix) > 0:
+                    title_suffix = ' | <!> O3 tropo values all nan <!>'
+                else:
+                    title_suffix = '\n<!> O3 tropo values all nan <!>'
+            """else: en fait j'avais fait ca parce que sinon O3 trop grand à cause strato (je pense?)
+                ax_O3.set_ylim([0, 200]) #TODO: valeur arbitraire pour que ça plot même si pas O3 dans tropo"""
+            ax_O3.tick_params(axis='y', colors='tab:blue')
+            ax_O3.set_zorder(1)
+            if CO:
+                ax_O3.spines.right.set_position(("axes", 1.075))
         else:
             if len(title_suffix) > 0:
                 title_suffix = ' | <!> O3 values all nan <!>'	
@@ -326,7 +333,7 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, NOx_plumes=False, NOx_tropo=False, NOx_spik
             ax_RHL = ax1.twinx()
             ax_RHL.plot(ds[x_axis], ds['RHL_P1'].where(ds['PV'] < 2), label='RHL tropo', color='tab:purple', alpha=0.85)
             ax_RHL.set_ylabel('RHL')
-            ax_RHL.set_ylim([0, ds['RHL_P1'].max().values + 0.05])
+            """ pas besoin en fait: ax_RHL.set_ylim([0, ds['RHL_P1'].max().values + 0.05])"""
             ax_RHL.tick_params(axis='y', colors='tab:purple')
             ax_RHL.set_zorder(0.5)
             if CO or O3:
