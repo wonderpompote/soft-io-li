@@ -92,7 +92,7 @@ def get_valid_data(var_list, ds, valid_data_flag_value=0, print_debug=False):
 
 # TODO: filtrer par date aussi ??
 def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_flight_id=None, end_flight_id=None,
-                                   flight_type=None, flight_id_list=None, print_debug=False):
+                                   flight_type=None, flight_id_list=None, airports_list=cts.SOFTIOLI_AIRPORTS, print_debug=False):
     """
     Returns list of NOx flights urls (from iagos v3 catalogue) between
     :param iagos_cat_path:
@@ -100,6 +100,7 @@ def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_fl
     :param end_flight_id:
     :param flight_type:
     :param flight_id_list:
+    @param airports_list:
     :return:
     """
     if not str_to_path(iagos_cat_path).exists():
@@ -109,12 +110,14 @@ def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_fl
     NO2_vars = [varname for varname in df_cat.columns if match(r'data_vars_NO2_P\w{2}$', varname)]
     # get all NOx flights (flights with NO2 variables > 0)
     NOx_flights = df_cat.loc[(df_cat[NO2_vars] > 0).any(axis='columns')]
-    # if we only want flights between two flight ids or specific flights in a given list
+    # if we only want flights between two flight ids or specific flights in a given list or in specific region
     if flight_id_list is not None:
         NOx_flights = NOx_flights.loc[flight_id_list]
     elif (start_flight_id is not None) and (end_flight_id is not None):
         NOx_flights = NOx_flights.loc[start_flight_id:end_flight_id]
-        # TODO: recup flights from several programs instead of just one (passe une liste)
+    elif airports_list is not None:
+        NOx_flights = NOx_flights.loc[(NOx_flights['attrs_departure_airport'].isin(airports_list) &
+                                       NOx_flights['attrs_arrival_airport'].isin(airports_list))]
     # if we only want flights from one specific program
     if flight_type is not None:
         if flight_type in ['CARIBIC', 'CORE', 'MOZAIC']:

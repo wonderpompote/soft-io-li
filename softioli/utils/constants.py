@@ -11,6 +11,36 @@ IAGOSv3_PV_PATH = pathlib.Path('/o3p/iagos/iagosv3/L4/')
 IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
 IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'
 
+SOFTIOLI_AIRPORTS = ['SCL, Santiago, Chile',
+ 'MIA, Miami, United States',
+ 'PTY, Panama City, Panama',
+ 'BOG, Bogota, Colombia',
+ 'JED, Jeddah, Saudi Arabia',
+ 'DFW, Dallas, United States',
+ 'JFK, New York, United States',
+ 'YVR, Vancouver, Canada',
+ 'GRU, Sao Paulo, Brazil',
+ 'CCS, Caracas, Venezuela',
+ 'SAN, San Diego, United States',
+ 'MUC, Munich, Germany',
+ 'DUS, Dusseldorf, Germany',
+ 'ATL, Atlanta, United States',
+ 'CUN, Cancun, Mexico',
+ 'FRA, Frankfurt, Germany',
+ 'EWR, Newark, United States',
+ 'SJO, San Jose, Costa Rica',
+ 'ORD, Chicago, United States',
+ 'LIS, Lisbon, Portugal',
+ 'SFO, San Francisco, United States',
+ 'CGN, Cologne, Germany',
+ 'TXL, Berlin, Germany',
+ 'DEN, Denver, United States',
+ 'LAX, Los Angeles, United States',
+ 'YYZ, Toronto, Canada',
+ 'IAH, Houston, United States',
+ 'DTW, Detroit, United States',
+ 'PHL, Philadelphia, United States']
+
 #TODO: je vais pas m'en servir en fait T.T
 Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc'
 
