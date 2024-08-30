@@ -238,11 +238,6 @@ if __name__ == "__main__":
 
     timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
 
-    NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH)
-
-    print(f'len(NOx_flights_url) = {len(NOx_flights_url)}')
-
-    """
     for end_of_plume in args.end_of_plume:
         for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
             for CO_q3 in [110, 115, 120]:
@@ -257,7 +252,7 @@ if __name__ == "__main__":
                     file_suffix=f'_endofplume-{end_of_plume}_COq3-{CO_q3}_NOxq3-{NOx_q3}',
 
                     filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
-                    plot_flight=True, save_fig=True, show_fig=False)"""
+                    plot_flight=True, save_fig=True, show_fig=False)
 
 
 
