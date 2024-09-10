@@ -45,6 +45,7 @@ SOFTIOLI_AIRPORTS = ['SCL, Santiago, Chile',
 Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc'
 
 PROGRAM_ATTR = 'program'
+DEPARTURE_UTC_TIME_ATTR = 'departure_UTC_time'
 IAGOS = 'IAGOS'
 CARIBIC = 'CARIBIC'
 CORE = 'CORE'
@@ -65,12 +66,19 @@ CARIBIC_O3_VARNAME = 'O3_PC2'
 CARIBIC_NO_VARNAME = 'NO_PC2'
 CARIBIC_NO2_VARNAME = 'NO2_PC2'
 CARIBIC_NOx_VARNAME = 'NOx_PC'
-NOx_PLUME_ID_VARNAME = 'NOx_plume_id'
 
+NOx_SMOOTHED_VARNAME = 'NOx_smoothed'
+NOx_FILTERED_VARNAME = 'NOx_filtered'
+
+CO_SMOOTHED_VARNAME = 'CO_smoothed'
+O3_TROPO_VARNAME = 'O3_tropo'
+
+# window used to smooth NOx and CO values, window size = min plume length (100 seconds)
 WINDOW_SIZE = {
     f'{IAGOS}-{CORE}': 25, # 25 * 4sec intervals
     f'{IAGOS}-{CARIBIC}': 10 # 10 * 10sec intervals
 }
+MIN_PLUME_LENGTH = 100
 
 FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 

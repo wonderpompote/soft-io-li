@@ -36,7 +36,7 @@ def generate_plume_detection_flight_output_dirpath(flight_name, date=None, plume
 def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix=''):
     if not (np.isnan(ds[NOx_PLUME_ID_VARNAME].where(ds[NOx_PLUME_ID_VARNAME] > 0)).all()):
         lon_varname, lat_varname = get_lon_lat_varnames(ds)
-        CO_varname = get_CO_varname(flight_program=ds.attrs[PROGRAM_ATTR], tropo=True, filtered=False)
+        CO_varname = get_CO_varname(flight_program=ds.attrs[PROGRAM_ATTR], smoothed=True, tropo=True)
         O3_varname = get_O3_varname(flight_program=ds.attrs[PROGRAM_ATTR], tropo=True)
         plume_info_list = []
         plume_id_list = [id for id in np.unique(ds[NOx_PLUME_ID_VARNAME]) if (id != -1 and not np.isnan(id))]

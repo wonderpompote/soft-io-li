@@ -24,18 +24,21 @@ def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print
     if ds.attrs["program"] == f"{cts.IAGOS}-{cts.CARIBIC}":
         ds[NOx_varname] = ds[cts.CARIBIC_NO_VARNAME] + ds[cts.CARIBIC_NO2_VARNAME]
     # smooth NOx timeseries (rolling mean with window size = min plume length)
-    NOx_smoothed_varname = iagos_utils.get_NOx_varname(flight_program=ds.attrs[cts.PROGRAM_ATTR], smoothed=True,
-                                                       tropo=False, filtered=False)
-    ds[NOx_smoothed_varname] = ds[NOx_varname] \
-        .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]], min_periods=1) \
-        .mean()
+    ds[cts.NOx_SMOOTHED_VARNAME] = ds[NOx_varname] \
+                                        .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]], min_periods=1) \
+                                        .mean()
+    # smooth CO timeseries (rolling mean with window size = min plume length)
+    CO_varname = iagos_utils.get_CO_varname(flight_program=ds.attrs[cts.PROGRAM_ATTR], smoothed=False, tropo=False)
+    ds[cts.CO_SMOOTHED_VARNAME] = ds[CO_varname] \
+                                        .rolling(UTC_time=cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]], min_periods=1) \
+                                        .mean()
     # add regions to each data point
     ds = regions_utils.assign_geo_region_to_ds(ds=ds, geo_regions_dict=geo_regions_dict)
 
     return ds
 
 
-def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=None, print_debug=False):
+def apply_LiNOx_plume_filters(ds, cruise_only, CO_q3, NOx_q3=None, q3_ds_path=None, print_debug=False):
     """
     Function to apply filters on the NOx timeseries to remove stratospheric, anthropogenic and background influence.
     If cruise_only = True: only keep data where air pressure < 30000 Pa
@@ -49,21 +52,18 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
     :param print_debug: <bool> for testing purposes, print debug
     :return: <xarray.Dataset> filtered version of flight ds
     """
-    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False, smoothed=smoothed_data, filtered=False)
-
     # only keep cruise data
     if cruise_only:
-        ds = iagos_utils.keep_cruise(ds=ds, NOx_varname=NOx_varname, print_debug=print_debug)
+        ds = iagos_utils.keep_cruise(ds=ds, print_debug=print_debug)
 
-    CO_varname = iagos_utils.get_CO_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False, filtered=False)
-    O3_varname = iagos_utils.get_O3_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False)
-
-    # remove stratospheric influence #TODO: est-ce qu'on ferait pas un filtre tropo sur tout le ds ? mais peut-être trop
-    ds = iagos_utils.keep_tropo(ds=ds, var_list=[NOx_varname, CO_varname, O3_varname], print_debug=print_debug)
+    # remove stratospheric influence
+    ds = iagos_utils.keep_tropo(ds=ds, print_debug=True,
+                                var_list=[cts.NOx_SMOOTHED_VARNAME, cts.CO_SMOOTHED_VARNAME,
+                                             iagos_utils.get_O3_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False)])
 
     if CO_q3 is not None:
-        q3_ds = { 'NOx_q3': cts.NOx_Q3, 'CO_q3': CO_q3 }
-        ds.assign_attrs(q3_ds)
+        q3_ds = { 'NOx_q3': NOx_q3 if NOx_q3 is not None else cts.NOx_Q3, 'CO_q3': CO_q3 }
+        ds = ds.assign_attrs(q3_ds)
     else:
         # get q3_ds for ds month and geo region #TODO <!> mean('year')
         q3_ds_complete = xr.open_dataset(q3_ds_path).mean('year')
@@ -71,23 +71,46 @@ def apply_LiNOx_plume_filters(ds, cruise_only, smoothed_data, CO_q3, q3_ds_path=
         ds = ds.assign_attrs(iagos_utils.get_q3_attrs(ds=ds, q3_ds=q3_ds_complete))
 
     # remove anthropogenic influence
-    NOx_varname = iagos_utils.get_NOx_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=True, smoothed=smoothed_data, filtered=False)
-    ds = iagos_utils.remove_CO_excess(ds=ds, CO_q3=q3_ds['CO_q3'], NOx_varname=NOx_varname,
-                                      CO_varname=CO_varname, print_debug=print_debug)
+    ds = iagos_utils.remove_CO_excess(ds=ds, CO_q3=q3_ds['CO_q3'], NOx_varname=cts.NOx_SMOOTHED_TROPO_VARNAME,
+                                      CO_varname=cts.CO_SMOOTHED_TROPO_VARNAME, print_debug=print_debug)
 
     # remove background influence (keep NOx > q3)
-    CO_varname = iagos_utils.get_CO_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=True, filtered=False)
-    ds = iagos_utils.keep_NOx_excess(ds=ds, NOx_varname=NOx_varname, NOx_q3=q3_ds['NOx_q3'], print_debug=print_debug)
+    ds = iagos_utils.keep_NOx_excess(ds=ds, NOx_varname=cts.NOx_FILTERED_VARNAME, NOx_q3=q3_ds['NOx_q3'], print_debug=print_debug)
+
+    # remove aircraft exhaust spikes
+    ds = iagos_utils.remove_aircraft_spikes(ds=ds, print_debug=print_debug)
 
     return ds
 
 
-def find_plumes(ds, flight_output_dirpath, end_of_plume_duration=100, write_plume_info_to_csv=True, filename_suffix=''):
+def get_spike_indices(NOx_filtered_da, window_size, roll_mean_multiplier=1.5):
+    """
+
+    @param NOx_filtered_da:
+    @param window_size:
+    @param roll_mean_multiplier:
+    @return: <array>
+    """
+    roll_mean = NOx_filtered_da.rolling(UTC_time=window_size, min_periods=1).mean().values
+    spike_id = []
+    spike_offset = 0
+    NOx_filtered_array = NOx_filtered_da.values
+    for i in range(len(roll_mean) - 1):
+        # compare NOx_filtered[i+1] to rolling mean[i] * 1.5 (or another coefficient)
+        # spike_offset so we keep comparing spike values to the same "normal" values
+        if NOx_filtered_array[i + 1] > (roll_mean_multiplier * roll_mean[i - spike_offset]):
+            spike_id.append(i + 1)
+            spike_offset += 1
+        else:  # if not spike, spike_offset back to 0
+            spike_offset = 0
+    return spike_id
+
+def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH, write_plume_info_to_csv=True, filename_suffix=''):
     """
 
     @param ds:
     @param flight_output_dirpath: <pathlib.Path> or <str>
-    @param end_of_plume_duration: <int>
+    @param min_plume_length: <int>
     @param write_plume_info_to_csv: <bool>
     @return:
     """
@@ -98,22 +121,22 @@ def find_plumes(ds, flight_output_dirpath, end_of_plume_duration=100, write_plum
     # get start_id (min index of group) and end_id (max index of group) from labeled array
     start_id = [ np.min(np.nonzero(labeled == i)) for i in range(1, ncomponents+1) ]
     end_id = [ np.max(np.nonzero(labeled == i)) for i in range(1, ncomponents+1) ]
-    # merge plumes if start_id[i+1] - end_id[i] < 100 seconds (ou 200 ???)
+    # merge plumes if start_id[i+1] - end_id[i] < 100 seconds
     id_offset = 0
     for i in range(len(start_id)-1):
         # if start next plume - end current plume < end of plume duration
-        if ds['UTC_time'][start_id[i+1-id_offset]] - ds['UTC_time'][end_id[i-id_offset]] < pd.Timedelta(seconds=end_of_plume_duration):
+        if ds['UTC_time'][start_id[i+1-id_offset]] - ds['UTC_time'][end_id[i-id_offset]] < pd.Timedelta(seconds=min_plume_length):
             # "merge" both plumes (remove index end current plume and index start next plume
             del start_id[i+1-id_offset], end_id[i-id_offset]
             id_offset += 1
     # create new data variable to store plume_id
     ds[cts.NOx_PLUME_ID_VARNAME] = xr.DataArray(dims=['UTC_time'], coords={"UTC_time": ds.UTC_time})
-    # remove plumes smaller than 25 km (100 seconds) from the list (put their id to -1)
+    # assign plume_id + remove plumes smaller than 27.5 km (100 seconds) from the list (put their id to -1)
     plume_id = 1
-    min_plume_length = cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]] # min length = smoothing window size
+    min_plume_datapoints = cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]] # min datapoints = smoothing window size = 100sec
     for i in range(len(start_id)):
-        # if plume too small (plume_length < min_plume_length) --> plume_id = -1
-        if end_id[i] - start_id[i] < min_plume_length:
+        # if plume too small (plume_length < min_plume_datapoints) --> plume_id = -1
+        if end_id[i] - start_id[i] < min_plume_datapoints:
             ds[cts.NOx_PLUME_ID_VARNAME].isel(UTC_time=slice(start_id[i], end_id[i] + 1)).values[:] = -1
         else:
             ds[cts.NOx_PLUME_ID_VARNAME].isel(UTC_time=slice(start_id[i], end_id[i] + 1)).values[:] = plume_id
@@ -128,7 +151,6 @@ def find_plumes(ds, flight_output_dirpath, end_of_plume_duration=100, write_plum
 
 
 
-#TODO: end_of_plume_duration for testing purposes
 def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
                      cruise_only=True, CO_q3=None, NOx_q3=None, print_debug=False, save_output=True,
                      filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False, end_of_plume_duration=100,
@@ -173,9 +195,11 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                 else:
                     flight_output_dirpath = None
 
-                plume_ds = find_plumes(ds=filtered_flight_ds, end_of_plume_duration=end_of_plume_duration,
+                #TODO <!!!!> ajouter détection des pics d'avion ici
+
+                plume_ds = find_plumes(ds=filtered_flight_ds, min_plume_length=end_of_plume_duration,
                                        flight_output_dirpath=flight_output_dirpath,
-                                       write_plume_info_to_csv=True, filename_suffix=file_suffix)
+                                       write_plume_info_to_csv=save_output, filename_suffix=file_suffix)
 
                 if save_output and plume_ds_to_netcdf:
                     plume_ds.to_netcdf(
@@ -224,7 +248,7 @@ if __name__ == "__main__":
                         help='End flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
     flights_group.add_argument('--flight-id-list', nargs='+', help='List of flight ids/names (default = None)')
 
-    parser.add_argument('--end-of-plume', nargs='+', type=int, help='End of plume duration (default=100)', default=100)
+    #parser.add_argument('--end-of-plume', nargs='+', type=int, help='End of plume duration (default=100)', default=[100])
 
     parser.add_argument('-o', '--output-dirname-suffix', help='Output dirname suffix (default=plume_detection_COq3-100-110-115-120_NOxq3-0.283-NOxMedian-0.161)',
                         default='plume_detection_COq3-100-110-115-120_NOxq3-0.283-NOxMedian-0.161')
@@ -238,21 +262,19 @@ if __name__ == "__main__":
 
     timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
 
-    for end_of_plume in args.end_of_plume:
-        for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
-            for CO_q3 in [110, 115, 120]:
-                get_LiNOX_plumes(
-                    flight_id_list=args.flight_id_list,
-                    CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=end_of_plume,
+    for CO_q3 in [110, 115, 120]:
+        get_LiNOX_plumes(
+            flight_id_list=args.flight_id_list,
+            CO_q3=CO_q3,
 
-                    print_debug=args.print_debug, save_output=True, timenow=timenow, show_region_names=False,
+            print_debug=args.print_debug, save_output=False, timenow=timenow, show_region_names=False,
 
-                    output_dirname_suffix=args.output_dirname_suffix,
-                    # flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
-                    file_suffix=f'_endofplume-{end_of_plume}_COq3-{CO_q3}_NOxq3-{NOx_q3}',
+            output_dirname_suffix=args.output_dirname_suffix,
+            flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
+            file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3}',
 
-                    filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
-                    plot_flight=True, save_fig=True, show_fig=False)
+            filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+            plot_flight=True, save_fig=False, show_fig=True)
 
 
 
@@ -265,7 +287,25 @@ if __name__ == "__main__":
 
 
             # TODO: regarder si OK que si id = int ou si ok quand id = str
-    """for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
+    """
+        for end_of_plume in args.end_of_plume:
+        for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
+            for CO_q3 in [110, 115, 120]:
+                get_LiNOX_plumes(
+                    flight_id_list=args.flight_id_list,
+                    CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=end_of_plume,
+
+                    print_debug=args.print_debug, save_output=False, timenow=timenow, show_region_names=False,
+
+                    output_dirname_suffix=args.output_dirname_suffix,
+                    # flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
+                    file_suffix=f'_endofplume-{end_of_plume}_COq3-{CO_q3}_NOxq3-{NOx_q3}',
+
+                    filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
+                    plot_flight=True, save_fig=False, show_fig=True)
+    
+    
+    for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:
         for CO_q3 in [100, 110, 115, 120]:
             get_LiNOX_plumes(flight_id_list=['2018060302172202', '2018060508235702', '2018060522312902', '2018060612335502', '2018060702191102', '2018060922315102', '2018061013043302', '2018061102095702', '2018061712343202', '2018061802164802', '2018062312572002', '2018062402164402', '2018062713274902', '2018082508362502', '2019120110080702'],
                              CO_q3=CO_q3, NOx_q3=NOx_q3, end_of_plume_duration=200,
