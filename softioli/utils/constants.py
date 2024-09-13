@@ -68,10 +68,14 @@ CARIBIC_NO2_VARNAME = 'NO2_PC2'
 CARIBIC_NOx_VARNAME = 'NOx_PC'
 
 NOx_SMOOTHED_VARNAME = 'NOx_smoothed'
+NOx_SMOOTHED_TROPO_VARNAME = 'NOx_smoothed_tropo'
 NOx_FILTERED_VARNAME = 'NOx_filtered'
 
 CO_SMOOTHED_VARNAME = 'CO_smoothed'
+CO_SMOOTHED_TROPO_VARNAME = 'CO_smoothed_tropo'
 O3_TROPO_VARNAME = 'O3_tropo'
+
+AIRCRAFT_SPIKE_VARNAME = 'aircraft_spike'
 
 # window used to smooth NOx and CO values, window size = min plume length (100 seconds)
 WINDOW_SIZE = {
@@ -84,6 +88,7 @@ FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported valu
 
 NOx_MEDIAN = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
 NOx_Q3 = 0.283 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
+CO_Q3 = 115
 
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')

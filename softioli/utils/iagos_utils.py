@@ -206,9 +206,15 @@ def keep_tropo(ds, var_list, print_debug=False):
     for var in var_list:
         if print_debug:
             print(f'{var}.notnull().sum() BEFORE PV < 2 filter: {ds[var].notnull().sum().values}')
-        ds[f"{var}_tropo"] = ds[var].where(ds[cts.PV_VARNAME] < 2)
+        if "O3" in var:
+            ds[cts.O3_TROPO_VARNAME] = ds[var].where(ds[cts.PV_VARNAME] < 2)
+        else:
+            ds[f"{var}_tropo"] = ds[var].where(ds[cts.PV_VARNAME] < 2)
         if print_debug:
-            print(f'{var}_tropo.notnull().sum() AFTER PV < 2 filter: {ds[f"{var}_tropo"].notnull().sum().values}')
+            if "O3" in var:
+                print(f'{var}_tropo.notnull().sum() AFTER PV < 2 filter: {ds[cts.O3_TROPO_VARNAME].notnull().sum().values}')
+            else:
+                print(f'{var}_tropo.notnull().sum() AFTER PV < 2 filter: {ds[f"{var}_tropo"].notnull().sum().values}')
             print('---')
     return ds
 
@@ -258,12 +264,12 @@ def remove_aircraft_spikes(ds, print_debug=False):
     spike_indices = get_spike_indices(NOx_filtered_da=ds[cts.NOx_FILTERED_VARNAME],
                                       window_size=cts.WINDOW_SIZE[ds.attrs[cts.PROGRAM_ATTR]],
                                       roll_mean_multiplier=1.5)
-    ds['aircraft_spike'] = xr.DataArray(np.full(ds.sizes['UTC_time'], False), dims='UTC_time')
-    ds['aircraft_spike'][spike_indices] = True
+    ds[cts.AIRCRAFT_SPIKE_VARNAME] = xr.DataArray(np.full(ds.sizes['UTC_time'], False), dims='UTC_time')
+    ds[cts.AIRCRAFT_SPIKE_VARNAME][spike_indices] = True
     if print_debug:
         print(
             f'{cts.NOx_FILTERED_VARNAME}.notnull().sum() BEFORE spike filter: {ds[cts.NOx_FILTERED_VARNAME].notnull().sum().values}')
-    ds[cts.NOx_FILTERED_VARNAME] = ds[cts.NOx_FILTERED_VARNAME].where(ds['aircraft_spike'] == False, drop=True)
+    ds[cts.NOx_FILTERED_VARNAME] = ds[cts.NOx_FILTERED_VARNAME].where(ds[cts.AIRCRAFT_SPIKE_VARNAME] == False, drop=True)
     if print_debug:
         print(
             f'{cts.NOx_FILTERED_VARNAME}.notnull().sum() AFTER spike filter: {ds[cts.NOx_FILTERED_VARNAME].notnull().sum().values}')
@@ -395,7 +401,6 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, plot_q3=True, NOx_plumes=False, NOx_tropo=F
 
     if NOx_tropo:
         NOx_tropo_varname = get_NOx_varname(flight_program=flight_program, smoothed=True, tropo=True, filtered=False)
-        print(f'NOx_tropo_varname = {NOx_tropo_varname}')
         if not np.isnan(ds[NOx_tropo_varname]).all():
             if scatter_NOx_tropo:
                 ax1.scatter(ds[x_axis], ds[NOx_tropo_varname], color='tab:green', label='NOx_tropo',
@@ -408,7 +413,6 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, plot_q3=True, NOx_plumes=False, NOx_tropo=F
     if NOx_tropo_filtered:
         NOx_tropo_filtered_varname = get_NOx_varname(flight_program=flight_program, smoothed=True, tropo=True,
                                                      filtered=True)
-        print(f'NOx_tropo_filtered_varname = {NOx_tropo_filtered_varname}')
         if not np.isnan(ds[NOx_tropo_filtered_varname]).all():
             if scatter_NOx_excess:
                 NOx_plot = ax1.scatter(ds[x_axis], ds[NOx_tropo_filtered_varname], color='red',
@@ -416,12 +420,17 @@ def plot_NOx_CO_PV_RHL_O3(ds, q3_ds, plot_q3=True, NOx_plumes=False, NOx_tropo=F
             else:
                 NOx_plot = ax1.plot(ds[x_axis], ds[NOx_tropo_filtered_varname], color='red',
                                     label='NOx_filtered')
-            ax1.set_ylim([0, ds[NOx_tropo_varname].max().values + 0.05])
+            ax1.set_ylim([0, ds[cts.NOx_SMOOTHED_TROPO_VARNAME].max().values + 0.05])
 
-    if NOx_spike and len(NOx_spike_id) > 0:
-        ax1.scatter(ds[x_axis].isel(UTC_time=NOx_spike_id),
-                    ds[NOx_tropo_varname].isel(UTC_time=NOx_spike_id), color='lime',
-                    label='aircraft_spike', linewidths=0.75, marker='o', edgecolor='black', s=70)
+    if NOx_spike:
+        if len(NOx_spike_id) > 0:
+            ax1.scatter(ds[x_axis].isel(UTC_time=NOx_spike_id),
+                        ds[cts.NOx_FILTERED_VARNAME].isel(UTC_time=NOx_spike_id), color='lime',
+                        label='aircraft_spike', linewidths=0.75, marker='o', edgecolor='black', s=70)
+        else:
+            ax1.scatter(ds[x_axis].where(ds[cts.AIRCRAFT_SPIKE_VARNAME], drop=True),
+                        ds[cts.NOx_SMOOTHED_TROPO_VARNAME].where(ds[cts.AIRCRAFT_SPIKE_VARNAME], drop=True), color='lime',
+                        label='aircraft_spike', linewidths=0.75, marker='o', edgecolor='black', s=70)
 
     if NOx_plumes:
         if not (np.isnan(ds[cts.NOx_PLUME_ID_VARNAME].where(ds[cts.NOx_PLUME_ID_VARNAME] > 0)).all()):
