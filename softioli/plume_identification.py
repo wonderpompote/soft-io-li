@@ -57,7 +57,7 @@ def apply_LiNOx_plume_filters(ds, cruise_only, CO_q3=None, NOx_q3=None, use_q3_d
         ds = iagos_utils.keep_cruise(ds=ds, print_debug=print_debug)
 
     # remove stratospheric influence
-    ds = iagos_utils.keep_tropo(ds=ds, print_debug=True,
+    ds = iagos_utils.keep_tropo(ds=ds, print_debug=print_debug,
                                 var_list=[cts.NOx_SMOOTHED_VARNAME, cts.CO_SMOOTHED_VARNAME,
                                              iagos_utils.get_O3_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False)])
 
@@ -85,31 +85,9 @@ def apply_LiNOx_plume_filters(ds, cruise_only, CO_q3=None, NOx_q3=None, use_q3_d
     return ds
 
 
-def get_spike_indices(NOx_filtered_da, window_size, roll_mean_multiplier=1.5):
-    """
-
-    @param NOx_filtered_da:
-    @param window_size:
-    @param roll_mean_multiplier:
-    @return: <array>
-    """
-    roll_mean = NOx_filtered_da.rolling(UTC_time=window_size, min_periods=1).mean().values
-    spike_id = []
-    spike_offset = 0
-    NOx_filtered_array = NOx_filtered_da.values
-    for i in range(len(roll_mean) - 1):
-        # compare NOx_filtered[i+1] to rolling mean[i] * 1.5 (or another coefficient)
-        # spike_offset so we keep comparing spike values to the same "normal" values
-        if NOx_filtered_array[i + 1] > (roll_mean_multiplier * roll_mean[i - spike_offset]):
-            spike_id.append(i + 1)
-            spike_offset += 1
-        else:  # if not spike, spike_offset back to 0
-            spike_offset = 0
-    return spike_id
-
 def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH, write_plume_info_to_csv=True, filename_suffix=''):
     """
-
+    Merge plumes together if gap between them is smaller than minimum plume length + remove plumes with length smaller than minimum plume length
     @param ds:
     @param flight_output_dirpath: <pathlib.Path> or <str>
     @param min_plume_length: <int>
@@ -255,10 +233,26 @@ if __name__ == "__main__":
 
     #parser.add_argument('--end-of-plume', nargs='+', type=int, help='End of plume duration (default=100)', default=[100])
 
-    parser.add_argument('-o', '--output-dirname-suffix', help='Output dirname suffix (default=plume_detection_COq3-110-115-120_NOxq3-0.283)',
+    output_group = parser.add_argument_group("output parameters")
+
+    output_group.add_argument('--dont-save-output', action='store_true', help='Indicates if output should NOT be saved')
+
+    output_group.add_argument('-o', '--output-dirname-suffix', help='Output dirname suffix (default=plume_detection_COq3-110-115-120_NOxq3-0.283)',
                         default='plume_detection_COq3-110-115-120_NOxq3-0.283')
 
-    parser.add_argument('-d', '--print-debug', action='store_true', help='print debug (default=False)')
+    output_group.add_argument('--filename-suffix', help='suffix to add to each file (default = "_COq3-<CO_q3>_NOxq3-<NOx_q3>"')
+    output_group.add_argument('--flight-dirname-suffix', default='',
+                              help='suffix to add to flight output directory name')
+
+    output_group.add_argument('-d', '--print-debug', action='store_true', help='print debug (default=False)')
+
+    output_group.add_argument('--save-filtered-ds', action='store_true', help='Indicates if filtered ds should be stored (default=False)')
+    output_group.add_argument('--save-plume-ds', action='store_true',
+                              help='Indicates if plume ds should be stored (default=False)')
+
+    output_group.add_argument('--show-fig', action='store_true', help='Indicates if flight plot should be shown during execution (<!> stops program execution until plot is closed <!>) (default=False)')
+
+    parser.add_argument('-c', '--CO-q3', type=int, help=f'CO q3, default = {cts.CO_Q3} (value stored in constant file)')
 
     args = parser.parse_args()
     
@@ -270,18 +264,16 @@ if __name__ == "__main__":
     #for CO_q3 in [110, 115, 120]:
     get_LiNOX_plumes(
         flight_id_list=args.flight_id_list,
-        CO_q3=CO_q3,
+        CO_q3=args.CO_q3,
 
-        print_debug=args.print_debug, save_output=True, timenow=timenow, show_region_names=False,
+        print_debug=args.print_debug, save_output=not args.dont_save_output, timenow=timenow, show_region_names=False,
 
         output_dirname_suffix=args.output_dirname_suffix,
-        flight_dirname_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3:.4f}',
-        file_suffix=f'_COq3-{CO_q3}_NOxq3-{cts.NOx_Q3}',
+        flight_dirname_suffix=args.flight_dirname_suffix,
+        file_suffix=args.filename_suffix if args.filename_suffix else f'_COq3-{args.CO_q3}_NOxq3-{cts.NOx_Q3}',
 
-        filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False,
-        plot_flight=True, save_fig=True, show_fig=False)
-
-
+        filtered_ds_to_netcdf=args.save_filtered_ds, plume_ds_to_netcdf=args.save_plume_ds,
+        plot_flight=True, save_fig=not args.dont_save_output, show_fig=args.show_fig)
 
 
 
@@ -291,7 +283,6 @@ if __name__ == "__main__":
 
 
 
-            # TODO: regarder si OK que si id = int ou si ok quand id = str
     """
         for end_of_plume in args.end_of_plume:
         for NOx_q3 in [cts.NOx_Q3, cts.NOx_MEDIAN]:

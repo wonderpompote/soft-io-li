@@ -245,6 +245,13 @@ def keep_NOx_excess(ds, NOx_varname, NOx_q3, print_debug=False):
 
 
 def get_spike_indices(NOx_filtered_da, window_size, roll_mean_multiplier=1.5):
+    """
+
+    @param NOx_filtered_da:
+    @param window_size:
+    @param roll_mean_multiplier:
+    @return:
+    """
     roll_mean = NOx_filtered_da.rolling(UTC_time=window_size, min_periods=1).mean().values
     spike_id = []
     spike_offset = 0

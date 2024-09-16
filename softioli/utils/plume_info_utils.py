@@ -4,8 +4,8 @@ import pathlib
 
 from common.utils import timestamp_now_formatted
 
-from .constants import OUTPUT_ROOT_DIR, AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR
-from .iagos_utils import get_CO_varname, get_O3_varname
+from .constants import OUTPUT_ROOT_DIR, AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_Q3, CO_Q3
+from .iagos_utils import get_CO_varname, get_O3_varname, get_NOx_varname
 from .utils_functions import get_lon_lat_varnames
 
 #TODO: supprimer d'ici
@@ -38,6 +38,7 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix=''):
         lon_varname, lat_varname = get_lon_lat_varnames(ds)
         CO_varname = get_CO_varname(flight_program=ds.attrs[PROGRAM_ATTR], smoothed=True, tropo=True)
         O3_varname = get_O3_varname(flight_program=ds.attrs[PROGRAM_ATTR], tropo=True)
+        NOx_varname = get_NOx_varname(flight_program=ds.attrs[PROGRAM_ATTR], smoothed=True, tropo=True, filtered=True)
         plume_info_list = []
         plume_id_list = [id for id in np.unique(ds[NOx_PLUME_ID_VARNAME]) if (id != -1 and not np.isnan(id))]
         for plume_id in plume_id_list:
@@ -58,7 +59,11 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix=''):
                 'O3_std': np.nanstd(plume_ds[O3_varname].values),
                 'CO_mean': np.nanmean(plume_ds[CO_varname].values),
                 'CO_median': np.nanmedian(plume_ds[CO_varname].values),
-                'CO_std': np.nanstd(plume_ds[CO_varname].values),
+                'CO_excess_mean': np.nanmean(plume_ds[CO_varname].values - CO_Q3),
+                'CO_excess_std': np.nanstd(plume_ds[CO_varname].values - CO_Q3),
+                'NOx_mean': np.nanmean(plume_ds[NOx_varname].values),
+                'NOx_excess_mean': np.nanmean(plume_ds[NOx_varname].values - NOx_Q3),
+                'NOx_excess_std': np.nanstd(plume_ds[NOx_varname].values - NOx_Q3)
             }
             plume_info_list.append(plume_info_dict)
 
