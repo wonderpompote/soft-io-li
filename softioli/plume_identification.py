@@ -270,13 +270,10 @@ if __name__ == "__main__":
 
         output_dirname_suffix=args.output_dirname_suffix,
         flight_dirname_suffix=args.flight_dirname_suffix,
-        file_suffix=args.filename_suffix if args.filename_suffix else f'_COq3-{args.CO_q3}_NOxq3-{cts.NOx_Q3}',
+        file_suffix=args.filename_suffix if args.filename_suffix else f'_COq3-{cts.CO_Q3}_NOxq3-{cts.NOx_Q3}',
 
         filtered_ds_to_netcdf=args.save_filtered_ds, plume_ds_to_netcdf=args.save_plume_ds,
         plot_flight=True, save_fig=not args.dont_save_output, show_fig=args.show_fig)
-
-
-
 
 
 

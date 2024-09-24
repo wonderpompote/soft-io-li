@@ -23,7 +23,6 @@ def assign_geo_region_to_ds(ds, geo_regions_dict=GEO_REGIONS):
                 (ds[lat_varname] > region["LAT_MIN"]) &
                 (ds[lat_varname] <= region["LAT_MAX"])
         )
-        # region_ids = region_ids.where(~condition, other=region["id"])
         region_names = region_names.where(~condition, other=region["REGION_NAME"])
     ds = ds.assign_coords(geo_region=region_names)
     return ds

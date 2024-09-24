@@ -43,6 +43,7 @@ SOFTIOLI_AIRPORTS = ['SCL, Santiago, Chile',
 
 #TODO: je vais pas m'en servir en fait T.T
 Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc'
+CO_O3_BACKGROUND_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_O3_bckg_q3_by_region_month_year_2024-09-20_1730.nc'
 
 PROGRAM_ATTR = 'program'
 DEPARTURE_UTC_TIME_ATTR = 'departure_UTC_time'
