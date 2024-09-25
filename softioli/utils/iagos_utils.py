@@ -125,6 +125,10 @@ def get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH, start_fl
         NOx_flights = NOx_flights.loc[flight_id_list]
     elif (start_flight_id is not None) and (end_flight_id is not None):
         NOx_flights = NOx_flights.loc[start_flight_id:end_flight_id]
+    elif (start_flight_id is not None) and (end_flight_id is None):
+        NOx_flights = NOx_flights.loc[start_flight_id:]
+    elif (end_flight_id is not None) and (start_flight_id is None):
+        NOx_flights = NOx_flights.loc[:end_flight_id]
     elif airports_list is not None:
         NOx_flights = NOx_flights.loc[(NOx_flights['attrs_departure_airport'].isin(airports_list) &
                                        NOx_flights['attrs_arrival_airport'].isin(airports_list))]

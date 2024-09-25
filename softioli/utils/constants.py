@@ -11,6 +11,7 @@ IAGOSv3_PV_PATH = pathlib.Path('/o3p/iagos/iagosv3/L4/')
 IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
 IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'
 
+# as found from IAGOS v3 catalogue in August 2024 --> <!> might need to be updated if new flights to new airports are added to the database
 SOFTIOLI_AIRPORTS = ['SCL, Santiago, Chile',
  'MIA, Miami, United States',
  'PTY, Panama City, Panama',
@@ -41,8 +42,7 @@ SOFTIOLI_AIRPORTS = ['SCL, Santiago, Chile',
  'DTW, Detroit, United States',
  'PHL, Philadelphia, United States']
 
-#TODO: je vais pas m'en servir en fait T.T
-Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc'
+Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc' #TODO: suppr if we don't use it
 CO_O3_BACKGROUND_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_O3_bckg_q3_by_region_month_year_2024-09-20_1730.nc'
 
 PROGRAM_ATTR = 'program'
@@ -62,7 +62,7 @@ CORE_NO_VARNAME = 'NO_P2b'
 CORE_NO2_VARNAME = 'NO2_P2b'
 CORE_NOx_VARNAME = 'NOx_P2b'
 
-CARIBIC_CO_VARNAME = 'CO_PC2' #TODO: store caribic suffix instead ?
+CARIBIC_CO_VARNAME = 'CO_PC2' 
 CARIBIC_O3_VARNAME = 'O3_PC2'
 CARIBIC_NO_VARNAME = 'NO_PC2'
 CARIBIC_NO2_VARNAME = 'NO2_PC2'
@@ -148,31 +148,4 @@ YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 DDD_pattern = "[0-3][0-9][0-9]" # day of year
 HH_pattern = "[0-2][0-9]" # hour
 
-############ old version
-"""# "original" GLM files
-OG_GLM_FILES_PATH = '/o3p/macc/glm'
-GLM_DIR_NAME = "OR_GLM-L2-LCFA_G16_s" # OR_GLM-L2-LCFA_G16_sYYYYDDD
-GLM_HOURLY_FILE_NAME = "GLM_array_" # GLM_array_DDD_HH1-HH2.nc
-# regrid
-GLM_REGRID_DIR_PATH = '/o3p/patj/glm/GLM_array_05deg/'
-CONCAT_GLM_REGRID_DIR_NAME = "daily_GLM_array_05deg"
-GLM_REGRID_DIR_NAME = "GLM_array_05deg_"
 
-# glob patterns
-#HH_pattern = "[0-2][0-9]" # hour
-#DDD_pattern = "[0-3][0-6][0-9]" # day of year
-MM_pattern = "[0-1][1-9]" # month
-#YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
-YYYYDDD_PATTERN = YYYY_pattern+DDD_pattern
-
-REGRID_STR = "05deg_"
-
-# histograms
-HIST_STEP = 0.1
-FLASH_ENERGY_BINS = 50
-FLASH_ENERGY_LOG10_RANGE = [-15, -10] # <!> log10
-FLASH_AREA_BINS = 30
-FLASH_AREA_LOG10_RANGE = [1.5, 4.5] # <!> log10
-
-# miscellaneous
-DUMMY_VALUE = -999"""
