@@ -3,35 +3,9 @@ import pandas as pd
 import pathlib
 import xarray as xr
 
-from common.utils import timestamp_now_formatted
-
-from .constants import OUTPUT_ROOT_DIR, AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH
+from .constants import AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH
 from .iagos_utils import get_CO_varname, get_O3_varname, get_NOx_varname
 from .utils_functions import get_lon_lat_varnames
-
-#TODO: supprimer d'ici
-def generate_root_plume_detection_output_dirpath(date=None, dirname_suffix='', root_output_dir_path=None):
-    """
-    Return directory path in which plume detection outputs should be stored
-    @param date: <pd.Timestamp> or <str> (or anything convertible to pandas
-    @param dirname_suffix:
-    @param root_output_dir_path:
-    @return: <root_output_dir_path>/YYYY-MM-DD_HHMM_plume_detection<_suffix>
-    """
-    date = date if date is not None else timestamp_now_formatted('%Y-%m-%d_%H%M', tz='CET')
-    root_output_dir_path = root_output_dir_path if root_output_dir_path is not None else OUTPUT_ROOT_DIR
-    date = pd.Timestamp(date).strftime('%Y-%m-%d_%H%M')
-
-    return pathlib.Path(f'{root_output_dir_path}/{date}_plume_detection{dirname_suffix}')
-
-#TODO: supprimer d'ici (à mettre dans utils_function)
-def generate_plume_detection_flight_output_dirpath(flight_name, date=None, plume_detection_res_dir=None, dirname_suffix=''):
-    if plume_detection_res_dir is None:
-        plume_detection_res_dir = generate_root_plume_detection_output_dirpath(date=date, dirname_suffix=dirname_suffix)
-    else:
-        plume_detection_res_dir = pathlib.Path(plume_detection_res_dir)
-
-    return pathlib.Path(f'{plume_detection_res_dir}/{flight_name}/')
 
 
 def get_dict_value_by_region(value_by_region_ds):

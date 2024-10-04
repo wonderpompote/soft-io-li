@@ -91,6 +91,12 @@ CO_Q3 = 115
 
 FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 
+
+#----- part 2 -----
+FP_LOUTSTEP = '1h' # flexpart timestep
+FP_DURATION = 10 #days
+
+
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
 

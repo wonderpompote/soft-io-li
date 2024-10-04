@@ -6,6 +6,8 @@ import pathlib
 from .GLMPathParser import GLMPathParser
 from .constants import OUTPUT_ROOT_DIR
 
+
+#TODO: sert à rien je crois, faudra supprimer
 def str_to_path(path_to_convert):
     if isinstance(path_to_convert, str):
         return pathlib.Path(path_to_convert)
@@ -76,7 +78,7 @@ def create_root_output_dir(date, dirname_suffix, root_dirpath=OUTPUT_ROOT_DIR):
         output_dirpath.mkdir(parents=True)
     return output_dirpath
 
-def create_flight_output_dir(output_dirpath, flight_name, dirname_suffix=''):
+def generate_flight_output_dir(output_dirpath, flight_name, dirname_suffix='', missing_ok=True):
     """
     Returns path to directory in which results for a particular flight should be stored
     + Creates directory if it doesn't exist
@@ -84,10 +86,14 @@ def create_flight_output_dir(output_dirpath, flight_name, dirname_suffix=''):
     @param output_dirpath: <pathlib.Path> or <str>
     @param flight_name: <str> or <int>
     @param dirname_suffix: <str>
+    @param missing_ok: <bool> if True, directory is created, if False error raised
     @return: <pathlib.Path>
     """
     flight_output_dirpath = pathlib.Path(f'{output_dirpath}/{flight_name}{dirname_suffix}')
     if not flight_output_dirpath.exists():
-        flight_output_dirpath.mkdir(parents=True)
-        print(f'Creating directory {flight_output_dirpath}')
+        if missing_ok:
+            flight_output_dirpath.mkdir(parents=True)
+            print(f'Creating directory {flight_output_dirpath}')
+        else:
+            raise FileNotFoundError(f'{flight_output_dirpath} does NOT exist!')
     return flight_output_dirpath
