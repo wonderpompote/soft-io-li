@@ -95,9 +95,7 @@ FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported valu
 #----- part 2 -----
 FP_LOUTSTEP = '1h' # flexpart timestep
 FP_DURATION = 10 #days
-FP_OUTHEIGHT_MIN = 500 #m
-FP_OUTHEIGHT_STEP = 500
-FP_OUTHEIGHT_MAX = 18000
+
 
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
