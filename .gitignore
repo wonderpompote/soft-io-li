@@ -4,4 +4,5 @@
 *.pyc
 __pycache__/
 # Pawel libs
-libs/
+libs/*
+!libs/fpsim
