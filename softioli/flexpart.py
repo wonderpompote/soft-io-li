@@ -7,7 +7,7 @@ from common.utils import timestamp_now_formatted
 import fpsim
 
 from utils import constants as cts
-from utils.utils_functions import generate_flight_output_dir
+from utils.utils_functions import generate_flight_output_dir, get_list_of_files_between_two_values
 from utils import fp_utils
 
 
@@ -118,22 +118,23 @@ if __name__ == "__main__":
 
     # flexpart parameters
     fp_group = parser.add_argument_group('Flexpart parameters')
-    fp_group.add_argument('-t', '--timestep', default='1h', help='Timestep for the flexpart simulation (loutstep), default="1h"')
+    fp_group.add_argument('-t', '--timestep', default='1h', help='Timestep for the flexpart simulation (loutstep), (default="1h")')
     # fp simu duration
-    fp_group.add_argument('-sd', '--simu-duration', default=10, type=int, help='Flexpart simulation duration in days, default=10')
+    fp_group.add_argument('-sd', '--simu-duration', default=10, type=int, help='Flexpart simulation duration in days, (default=10)')
     # fp out grid resolution
-    fp_group.add_argument('-gr', '--grid-res', default=cts.GRID_RESOLUTION, type=float, help=f'Flexpart output grid resolution (default={cts.GRID_RESOLUTION}')
+    fp_group.add_argument('-gr', '--grid-res', default=cts.GRID_RESOLUTION, type=float, help=f'Flexpart output grid resolution (default={cts.GRID_RESOLUTION})')
     # run simu
     fp_group.add_argument('--run-simu', action='store_true', help='Indicates if flexpart simulation should be run')
     # slurm node on which fp simu should be launched
-    fp_group.add_argument('--slurm-partition', default='o3pwork', help='Slurm partition (default="o3pwork")')
+    fp_group.add_argument('--slurm-partition', default='o3pwork', help='Slurm partition on which flexpart should be run (default="o3pwork")')
 
     args = parser.parse_args()
     print(args)
 
     if args.flight_range:
-        flight_range_list = []
-        # grep pour trouver tous les noms de vols présents dans le dossier résultat (start_id >= nom_dossier >= end_id)
+        flight_range_list = get_list_of_files_between_two_values(args.flights_output_dir, start_name=args.start_id,
+                                                                 end_name=args.end_id,
+                                                                 glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*')
 
         args.flight_id_list = list(set(args.flight_id_list + flight_range_list))
 
@@ -159,3 +160,6 @@ if __name__ == "__main__":
                 sim_dir=fpsim_dirpath,
                 slurm_partition=args.slurm_partition,
             )
+
+
+        #TODO: recup la liste des fichiers .nc créés ? ou au moins liste des dossiers flexpart/output our la partie 3

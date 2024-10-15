@@ -6,17 +6,7 @@ import pathlib
 from .GLMPathParser import GLMPathParser
 from .constants import OUTPUT_ROOT_DIR
 
-
-#TODO: sert à rien je crois, faudra supprimer
-def str_to_path(path_to_convert):
-    if isinstance(path_to_convert, str):
-        return pathlib.Path(path_to_convert)
-    elif isinstance(path_to_convert, pathlib.PurePath):
-        return path_to_convert
-    else:
-        raise TypeError('Expecting str or pathlib object')
-
-
+#TODO: jsp si vraiment utile, peut-être juste pour GLMPathParser mais bizarre ce truc quand même
 def date_to_pd_timestamp(date_to_check):
     """
     Function to convert date or GLMPathParser to pandas.Timestamp object
@@ -97,3 +87,27 @@ def generate_flight_output_dir(output_dirpath, flight_name, dirname_suffix='', m
         else:
             raise FileNotFoundError(f'{flight_output_dirpath} does NOT exist!')
     return flight_output_dirpath
+
+
+def get_list_of_files_between_two_values(dirpath, start_name, end_name, glob_pattern='*'):
+    """
+    Returns list of path to files or directories between start and end name (including start and end names)
+    @param dirpath:
+    @param start_name:
+    @param end_name:
+    @return:
+    """
+    dirpath = pathlib.Path(dirpath)
+    all_paths = sorted(dirpath.glob(glob_pattern))
+    res_list = []
+    start_ok = False
+    for path in all_paths:
+        pathname = path.name
+        # if start name is found, put start_ok to True and then append all files until end_name is reached
+        if pathname == start_name:
+            start_ok = True
+        if start_ok:
+            res_list.append(path)
+        if pathname == end_name:
+            break
+    return sorted(res_list)

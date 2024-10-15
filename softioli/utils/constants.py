@@ -154,6 +154,8 @@ GRID_RESOLUTION = 0.5
 
 YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 DDD_pattern = "[0-3][0-9][0-9]" # day of year
+DD_pattern = "[0-3][0-9]" # day
+MM_pattern = "[0-1][0-9]" # month
 HH_pattern = "[0-2][0-9]" # hour
 
 
