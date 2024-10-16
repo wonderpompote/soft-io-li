@@ -3,7 +3,7 @@ import pathlib
 import pandas as pd
 from pandas import Timedelta
 
-from .utils_functions import date_to_pd_timestamp, str_to_path
+from .utils_functions import date_to_pd_timestamp
 from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 
@@ -174,7 +174,7 @@ def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res
     """
     # check if sat_dir_path is a single path (puts it in list, easier to loop through)
     if isinstance(sat_dir_path, (pathlib.PurePath, str)):
-        sat_dir_path = [str_to_path(sat_dir_path)]
+        sat_dir_path = [pathlib.Path(sat_dir_path)]
     # if not single path AND not list --> TypeError
     elif not isinstance(sat_dir_path, list):
         raise TypeError('Expecting list of pathlib.Path (or str) objects or single pathlib.Path (or str) object')
@@ -185,7 +185,7 @@ def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res
         dir_list = []
         for parent_dir_path in sat_dir_path:
             # check that parent_dir_path is a pathlib.Path object (needed for glob function)
-            parent_dir_path = str_to_path(parent_dir_path)
+            parent_dir_path = pathlib.Path(parent_dir_path)
             dir_list.extend(parent_dir_path.glob(dirname_pattern))
         sat_dir_path = dir_list
     # get list of files
@@ -193,7 +193,7 @@ def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res
     file_list = []
     for dir_path in sat_dir_path:
         if not parent_dir: # if not parent dir, check if dir_path is a pathlib object
-            dir_path = str_to_path(dir_path)
+            dir_path = pathlib.Path(dir_path)
         file_list.extend(dir_path.glob(filename_pattern))
 
     return sorted(file_list)

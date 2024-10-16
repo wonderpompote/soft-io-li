@@ -1,5 +1,4 @@
 from .utils_functions import (
-    str_to_path,
     date_to_pd_timestamp
 )
 

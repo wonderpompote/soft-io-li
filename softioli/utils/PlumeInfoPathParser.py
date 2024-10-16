@@ -1,12 +1,11 @@
 import pandas as pd
 import pathlib
 
-from utils_functions import str_to_path, date_to_pd_timestamp
 
 class PlumeInfoPathParser():
 
     def __init__(self, url, flight_name=None, arrival_timestamp=None):
-        self.url = str_to_path(url)
+        self.url = pathlib.Path(url)
         self.flight_name = flight_name
         self.arrival_timestamp = pd.Timestamp(arrival_timestamp)
         if any(self.flight_name, self.arrival_timestamp):

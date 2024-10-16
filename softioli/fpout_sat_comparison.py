@@ -2,15 +2,15 @@
 UPGRADES: gérer pour aller chercher les données satellites de PLUSIEURS satellites et les merge dans UN seul sat_ds!
 Faut que je connaisse la zone couverte par FP out et que je lance get_sat_ds sur plusieurs sat
 """
-import pathlib
-
+import argparse
 import numpy as np
 import pandas as pd
-import xarray
+import pathlib
 import xarray as xr
 
 from common.utils import short_list_repr
 import fpout
+from fpsim import check_fp_status
 
 from . import utils
 from .utils import constants as cts
@@ -32,7 +32,7 @@ def get_fp_out_da(fpout_path, sum_height=True, load=False, chunks='auto', max_ch
     @param assign_releases_position_coords:
     @return:
     """
-    if not utils.str_to_path(fpout_path).exists():
+    if not pathlib.Path(fpout_path).exists():
         raise ValueError(f'fp_path {fpout_path} does NOT exist')
     fp_ds = fpout.open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
                                   assign_releases_position_coords=assign_releases_position_coords)
@@ -58,7 +58,7 @@ def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', 
     :param assign_releases_position_coords:
     :return:
     """
-    if not utils.str_to_path(fpout_path).exists():
+    if not pathlib.Path(fpout_path).exists():
         raise ValueError(f'fp_path {fpout_path} does NOT exist')
     fp_ds = fpout.open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
                                   assign_releases_position_coords=assign_releases_position_coords)\
@@ -88,7 +88,7 @@ def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', 
 # TODO: suppr dry_run une fois que les tests sont finis
 # TODO: pour avoir un sat_ds avec PLUSIEURS sources sat --> sat_name = list, for loop et ensuite je merge tout ?
 def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RESOLUTION,
-                     grid_res_str=cts.GRID_RESOLUTION_STR, overwrite=False, dry_run=False):
+                     grid_res_str=cts.GRID_RESOLUTION_STR, overwrite=False, dry_run=False, print_debug=False):
     """
     Returns dataset with regridded satellite data between start and end date
     @param start_date:
@@ -121,23 +121,19 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     }
     # check if missing_raw_daily_dir_list is empty, if not --> check if pre-regrid directories exist
     if missing_raw_daily_dir_list:
-        # TODO: suppr les prints de debug
-        ########################################"
-        print()
-        print(f"regrid_daily_dir_list : {regrid_daily_dir_list}")
-        print()
-        print(f'missing_raw_daily_dir_list : {missing_raw_daily_dir_list}')
-        print()
-        ##########################################
+        if print_debug:
+            print()
+            print(f"regrid_daily_dir_list : {regrid_daily_dir_list}")
+            print()
+            print(f'missing_raw_daily_dir_list : {missing_raw_daily_dir_list}')
+            print()
         # directories to regrid (pre-regrid directory exist but NOT regrid directory)
         dir_to_regrid_list = {d_path for d_path in missing_raw_daily_dir_list if d_path.exists()}
         # regrid the files in the missing directories
         if dir_to_regrid_list:
-            # TODO: suppr les prints de debug
-            ##########################################
-            print(f'Directories to regrid: {sorted(dir_to_regrid_list)}')
-            print()
-            ##########################################
+            if print_debug:
+                print(f'Directories to regrid: {sorted(dir_to_regrid_list)}')
+                print()
             sat_regrid.regrid_sat_files(path_list=list(dir_to_regrid_list), sat_name=sat_name,
                                         grid_res=grid_resolution, dir_list=True,
                                         grid_res_str=grid_res_str, overwrite=overwrite, naming_convention=None)
@@ -154,11 +150,9 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     regrid_daily_file_list = get_sat_files_list_between_start_end_date(dir_list=sorted(regrid_daily_dir_list),
                                                                        start_date=start_date, end_date=end_date,
                                                                        sat_name=sat_name, regrid=True)
-    # TODO: suppr les prints de debug
-    ##########################################
-    print(f'Regrid daily file list: {short_list_repr(regrid_daily_file_list)}')
-    print()
-    ##########################################
+    if print_debug:
+        print(f'Regrid daily file list: {short_list_repr(regrid_daily_file_list)}')
+        print()
     # create a dataset merging all the regrid hourly files
     sat_ds = xr.open_mfdataset(regrid_daily_file_list, combine_attrs='drop_conflicts') #TODO: <?> utiliser dask: ajouter parallel=True
     return sat_ds
@@ -174,7 +168,6 @@ def get_weighted_flash_count(spec001_mr_da, flash_count_da):
     return (spec001_mr_da * flash_count_da).sum(['latitude', 'longitude']) / 3600
 
 
-#TODO: <!> prendre 7 days from RELSTART !! NOT min date en fait --> du coup recup closest heure AVANT relstart je suppose ?
 def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='auto',
                            max_chunk_size=1e8, assign_releases_position_coords=False):
     """
@@ -191,7 +184,7 @@ def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='a
     # if passed fp_out path instead of dataArray/dataset
     if not (isinstance(fp_ds, xr.DataArray) or isinstance(fp_ds, xr.Dataset)):
         # check fp_path and get fp_da
-        if utils.str_to_path(fp_ds).exists():
+        if pathlib.Path(fp_ds).exists():
             fp_ds = get_fp_out_ds_7days(fpout_path=fp_ds, sum_height=sum_height, load=load,
                                         chunks=chunks, max_chunk_size=max_chunk_size,
                                         assign_releases_position_coords=assign_releases_position_coords)
@@ -217,7 +210,7 @@ def fpout_sat_comparison(fp_path, sat_name, file_list=False, sum_height=True, lo
         fp_path = [fp_path]
     for fp_file in fp_path:
         # step1: verif si fp_path file exists
-        if not utils.str_to_path(fp_file).exists():
+        if not pathlib.Path(fp_file).exists():
             raise FileNotFoundError(f'Expecting existing fp out file! {fp_file} does NOT exist')
         # step2: recup fp_ds sur 7 JOURS avec les 7j pour chaque releases, PAS depuis début fichier
         with get_fp_out_ds_7days(fpout_path=fp_file, sum_height=sum_height, load=load, chunks=chunks,
@@ -232,3 +225,39 @@ def fpout_sat_comparison(fp_path, sat_name, file_list=False, sum_height=True, lo
             weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds.flash_count)
             # TODO: step6: générer le fichier intermédiaire <!>
             # TODO: pour chaque RELSTART donner weighted_fp_sat_ds['weighted_flash_count'].sum('time')
+
+
+
+#TODO: recupérer la liste des fichiers de sortie FP à partir de la liste des vols
+def get_fpout_nc_file_path(flight_id, flight_output_path, flexpart_dirname):
+    pass
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    # output directories
+    dir_group = parser.add_argument_group('Directories')
+    dir_group.add_argument('-fo', '--flights-output-dir', required=True, type=pathlib.Path, help='Path to output directory (directory containing all flight output directories)')
+    dir_group.add_argument('--flight-dirname-suffix', default='',
+                              help='suffix to add to flight output directory name')
+    dir_group.add_argument('-o', '--fp-output-dirname', default='flexpart', help='Name of the directory where the flexpart output will be stored (default="flexpart")')
+
+    # flight list
+    flight_group = parser.add_argument_group('Flights')
+    flight_group.add_argument('--flight-list', action='store_true',
+                              help='Indicates if a list of flight ids/names will be passed')
+    flight_group.add_argument('--flight-range', action='store_true',
+                              help='Indicates if start and end flight ids/names will be passed')
+    # range
+    flight_group.add_argument('-s', '--start-id',
+                              help='Start flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
+    flight_group.add_argument('-e', '--end-id',
+                              help='End flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
+    # list
+    flight_group.add_argument('--flight-id-list', nargs='+', default=[],
+                              help='List of flight ids/names (default = None)')
+
+    # satellite
+    sat_group = parser.add_argument_group('Satellite parameters')
+    sat_group.add_argument('--sat-name', default=cts.GOES_SATELLITE_GLM, help=f'Satellite name (default={cts.GOES_SATELLITE_GLM})')
+    sat_group.add_argument('--grid-res', default=cts.GRID_RESOLUTION, help=f'Satellite grid resolution (default={cts.GRID_RESOLUTION})')
