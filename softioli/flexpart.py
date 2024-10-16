@@ -135,7 +135,8 @@ if __name__ == "__main__":
         flight_range_list = get_list_of_files_between_two_values(args.flights_output_dir, start_name=args.start_id,
                                                                  end_name=args.end_id,
                                                                  glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*')
-
+        # only keep flight names from list of flight paths
+        flight_range_list = [ flight_path.name for flight_path in flight_range_list]
         args.flight_id_list = list(set(args.flight_id_list + flight_range_list))
 
     if args.fp_output_dirname != "flexpart":
