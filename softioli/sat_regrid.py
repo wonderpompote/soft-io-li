@@ -2,11 +2,11 @@ from datetime import datetime
 import numpy as np
 import xarray as xr
 
-from .utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_hourly_filename_pattern, generate_sat_dirname_pattern
-from .utils import constants as cts
-from .utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
+from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_hourly_filename_pattern, generate_sat_dirname_pattern
+from utils import constants as cts
+from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
-from .utils import xarray_pandas_utils as xr_pd_utils
+from utils import xarray_pandas_utils as xr_pd_utils
 
 
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, grid_res_str, overwrite,

@@ -1,5 +1,6 @@
 from .utils_functions import (
-    date_to_pd_timestamp
+    date_to_pd_timestamp,
+    get_list_of_paths_between_two_values
 )
 
 from .GLMPathParser import (

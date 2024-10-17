@@ -89,7 +89,7 @@ def generate_flight_output_dir(output_dirpath, flight_name, dirname_suffix='', m
     return flight_output_dirpath
 
 
-def get_list_of_files_between_two_values(dirpath, start_name, end_name, glob_pattern='*'):
+def get_list_of_paths_between_two_values(dirpath, start_name, end_name, glob_pattern='*'):
     """
     Returns list of path to files or directories between start and end name (including start and end names)
     @param dirpath:
