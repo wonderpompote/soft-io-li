@@ -9,7 +9,7 @@ import pathlib
 import xarray as xr
 
 from common.utils import short_list_repr
-import fpout
+from fpout import open_fp_dataset
 from fpsim import check_fp_status
 
 import utils
@@ -35,7 +35,7 @@ def get_fp_out_da(fpout_path, sum_height=True, load=False, chunks='auto', max_ch
     """
     if not pathlib.Path(fpout_path).exists():
         raise ValueError(f'fp_path {fpout_path} does NOT exist')
-    fp_ds = fpout.open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
+    fp_ds = open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
                                   assign_releases_position_coords=assign_releases_position_coords)
     fp_da = fp_ds.spec001_mr
     fp_da = fp_da.squeeze()
@@ -61,7 +61,7 @@ def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', 
     """
     if not pathlib.Path(fpout_path).exists():
         raise ValueError(f'fp_path {fpout_path} does NOT exist')
-    fp_ds = fpout.open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
+    fp_ds = open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
                                   assign_releases_position_coords=assign_releases_position_coords)\
                     .squeeze('nageclass')
     # rename numpoint dimension to pointspec
@@ -75,7 +75,7 @@ def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', 
     # get "end" date (release_start_date - 7 days)
     end_dates = release_start_dates - np.timedelta64(7, 'D')
     # get spec001_mr over 7 days
-    date_mask = (fp_ds.time >= end_dates) & (fp_ds.time <= release_start_dates)
+    date_mask = ((fp_ds.time >= end_dates) & (fp_ds.time <= release_start_dates)).compute()
     fp_da = fp_ds.where(date_mask, drop=True).spec001_mr
     # merge rel info and spec001_mr
     fp_ds = xr.merge([fp_da, rel_ds])
@@ -196,7 +196,7 @@ def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='a
         raise TypeError(
             f'Invalid sat_ds ({sat_ds}). Expecting <xarray.Dataset> object')
     # merge fp da and sat ds
-    fp_sat_ds = xr.merge([fp_ds, sat_ds.flash_count], combine_attrs='drop_conflicts')
+    fp_sat_ds = xr.merge([fp_ds, sat_ds], combine_attrs='drop_conflicts')
     # get weighted flash count
     fp_sat_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_sat_ds['spec001_mr'],
                                                                  flash_count_da=fp_sat_ds['flash_count'])
@@ -204,12 +204,13 @@ def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='a
 
 
 # TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout (? pourquoi j'ai dit ça?)
-def fpout_sat_comparison(fp_path, sat_name, file_list=False, sum_height=True, load=False, chunks='auto',
+def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, sum_height=True, load=False, chunks='auto',
                          max_chunk_size=1e8, assign_releases_position_coords=False, grid_resolution=cts.GRID_RESOLUTION,
                          grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None, weighted_ds_filename_suffix=''):
     if not file_list and isinstance(fp_path, str) or isinstance(fp_path, pathlib.Path):
         fp_path = [fp_path]
-    for fp_file in fp_path:
+    for index, fp_file in enumerate(fp_path):
+        # fp_file expected to be in <flight_output_dir>/flexpart/output/... hence the <fp_path>.parent.parent to get to the flexpart directory
         if check_fp_status(pathlib.Path(fp_file).parent.parent):
             # step2: recup fp_ds sur 7 JOURS avec les 7j pour chaque release, PAS depuis début fichier
             with get_fp_out_ds_7days(fpout_path=fp_file, sum_height=sum_height, load=load, chunks=chunks,
@@ -217,7 +218,8 @@ def fpout_sat_comparison(fp_path, sat_name, file_list=False, sum_height=True, lo
                     as fp_ds:
                 if args.print_debug:
                     print('##################################################')
-                    print(f'flight {fp_ds.attrs["flight_name"]}')
+                    print(f'Flight {flights_id_list[index]}')
+                    print(f'Flexpart output: {fp_file}')
                     print('##################################################')
                 # TODO: step3: recup liste des sat_name des zones couvertes
                 start_date, end_date = pd.Timestamp(fp_ds.time.min().values), pd.Timestamp(fp_ds.time.max().values)
@@ -225,7 +227,7 @@ def fpout_sat_comparison(fp_path, sat_name, file_list=False, sum_height=True, lo
                 sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=sat_name, grid_resolution=grid_resolution,
                                           grid_res_str=grid_res_str)
                 # setp5: get weighted fp_sat_ds
-                weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds.flash_count)
+                weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds)
                 # TODO: step6: ajouter données ABI à weighted_fp_sat_ds
                 # TODO: blablablabla
                 if save_weighted_ds:
@@ -233,7 +235,7 @@ def fpout_sat_comparison(fp_path, sat_name, file_list=False, sum_height=True, lo
                         Warning(f'Saving weighted ds to current directory ({pathlib.Path.cwd()})')
                         weighted_fp_sat_ds.to_netcdf(f'weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc')
                     else:
-                        weighted_ds_dirpath = pathlib.Path(f'{flights_output_dirpath}/{weighted_fp_sat_ds.args["flight_name"]}/flexpart_lightning_comparison')
+                        weighted_ds_dirpath = pathlib.Path(f'{flights_output_dirpath}/{flights_id_list[index]}/flexpart_lightning_comparison')
                         weighted_ds_dirpath.mkdir(exist_ok=True) # create lightning comparison dirpath if it doesn't exist yet
                         weighted_fp_sat_ds.to_netcdf(f'{weighted_ds_dirpath}/weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc')
                         print(f'Saved {weighted_ds_dirpath}/weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc file')
@@ -242,6 +244,7 @@ def fpout_sat_comparison(fp_path, sat_name, file_list=False, sum_height=True, lo
                 # TODO: pour chaque RELSTART donner weighted_fp_sat_ds['weighted_flash_count'].sum('time') <?>
         else:
             raise FileNotFoundError(f'Expecting existing completed fp out file! {fp_file} does NOT exist and/or flexpart simulation has NOT been successful')
+
 
 
 
@@ -309,11 +312,14 @@ if __name__ == '__main__':
         for flight_id in args.flight_id_list
     ]
 
-    fpout_sat_comparison(fp_path=fp_path_list, sat_name=args.sat_name, file_list=True,
+    print(sorted(fp_path_list))
+    print()
+    print(sorted(args.flight_id_list))
+
+    fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list), sat_name=args.sat_name, file_list=True,
                          sum_height=(not args.dont_sum_height), load=args.load_fpout,
                          chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,
                          grid_resolution=args.grid_res, grid_res_str=args.grid_res_str,
                          save_weighted_ds=args.save_weighted_ds, flights_output_dirpath=args.flights_output_dir,
                          weighted_ds_filename_suffix=args.ds_fname_suffix)
-
 
