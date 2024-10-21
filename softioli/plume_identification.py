@@ -11,10 +11,17 @@ from utils import constants as cts
 from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
 from utils.plume_info_utils import write_plume_info_to_csv_file
-from utils.utils_functions import create_root_output_dir, create_flight_output_dir
+from utils.utils_functions import create_root_output_dir, generate_flight_output_dir
 
 
 def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print_debug=False):
+    """
+    Adds PV values to flight dataset, only keeps valid data and assign geographical region id to each value along the flight
+    :param ds: <xarray.Dataset> iagos flight dataset
+    :param geo_regions_dict: <dict> dictionary with geographical regions with the following structure: { <region_id> : { "REGION_NAME": <str>, "LON_MIN": <float>, "LON_MAX": <float>, "LAT_MIN": <float>, "LAT_MAX": <float> }, ... }
+    :param print_debug: <bool> prints debug messages (for testing purposes)
+    :return: <xarray.Dataset>
+    """
     # return flight ds with PV and only valid data
     ds = iagos_utils.get_valid_data(var_list=iagos_utils.get_var_list(flight_program=ds.attrs[cts.PROGRAM_ATTR]), ds=ds,
                                     print_debug=print_debug)
@@ -134,9 +141,35 @@ def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH
 def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
                      cruise_only=True, CO_q3=None, NOx_q3=None, use_q3_ds=False, print_debug=False, save_output=True,
                      filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False, end_of_plume_duration=100,
-                     plot_flight=False, save_fig=False, show_fig=False, file_suffix='',
-                     show_region_names=False, output_dirname_suffix='', flight_dirname_suffix='',
-                     root_output_dirpath=cts.OUTPUT_ROOT_DIR, timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')):
+                     plot_flight=False, show_region_names=False, save_fig=False, show_fig=False, file_suffix='',
+                     output_dirname_suffix='', flight_dirname_suffix='',
+                     root_output_dirpath=cts.OUTPUT_ROOT_DIR, timenow=timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')):
+    """
+    Main function to retrieve potential LiNOx plumes from a list of flights
+    :param start_flight_id: <str>
+    :param end_flight_id: <str>
+    :param flight_type: <str> Expecting 'IAGOS-CARIBIC', 'CARIBIC', 'IAGOS-CORE', 'CORE', 'IAGOS-MOZAIC', 'MOZAIC' or None if all kind of flights are analysed
+    :param flight_id_list: <list> [ <str>, ... , <str> ] List of flight names
+    :param cruise_only: <bool> indicates if only values during the cruise stage of the flight should be kept for analysis
+    :param CO_q3: CO filter
+    :param NOx_q3: NOx q3 value
+    :param use_q3_ds: <bool> useful when using different CO q3 values depending on the geographical region #TODO: to be deleted
+    :param print_debug: <bool> prints debug messages (for testing purposes)
+    :param save_output: <bool> Indicates if the information gathered about potential LiNOx plume should be saved
+    :param filtered_ds_to_netcdf: <bool> Indicates if the flight dataset on which the filters have been applied should be saved
+    :param plume_ds_to_netcdf: <bool> Indicates if the flight dataset on which the filters have been applied AND the plumes identified should be saved
+    :param end_of_plume_duration: <int> number of seconds (containing NaN values) after which a plume is considered to be over
+    :param plot_flight: <bool> plot timeseries of the flight after plume detection
+    :param show_region_names: <bool> Indicates if geo region names should be displayed on the flight plot
+    :param save_fig: <bool> Indicates if flight plot should be saved
+    :param show_fig: <bool> Indicates if flight plot should be displayed when it is generated
+    :param file_suffix: <str> suffix to add to each output file
+    :param output_dirname_suffix: <str> suffix to add to the general output directory name
+    :param flight_dirname_suffix: <str> suffix to add to the flight output directory name
+    :param root_output_dirpath: <pathlib.Path> or <str> path to the directory in which the outputs will be saved
+    :param timenow: <str> date
+    :return:
+    """
     # get NOx flights url (L2 files)
     NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
                                                                  start_flight_id=start_flight_id,
@@ -165,9 +198,9 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
             # only look for plumes if NOx tropo measurements are NOT all nan
             if not np.isnan(filtered_flight_ds[NOx_tropo_varname]).all():
                 if save_output:
-                    flight_output_dirpath = create_flight_output_dir(output_dirpath=output_dirpath,
-                                                                 flight_name=filtered_flight_ds.attrs['flight_name'],
-                                                                 dirname_suffix=flight_dirname_suffix)
+                    flight_output_dirpath = generate_flight_output_dir(output_dirpath=output_dirpath,
+                                                                       flight_name=filtered_flight_ds.attrs['flight_name'],
+                                                                       dirname_suffix=flight_dirname_suffix)
                     if print_debug:
                         print(f'---\nCreated output dirpath {flight_output_dirpath}\n---')
                     if filtered_ds_to_netcdf:
@@ -183,7 +216,7 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                     plume_ds.to_netcdf(
                         f'{flight_output_dirpath}/plume-ds_{filtered_flight_ds.attrs["flight_name"]}{file_suffix}.nc')
 
-                if plot_flight: 
+                if plot_flight:
                     if not use_q3_ds: #TODO: use_q3_ds might not be used if we end up using same q3 value no matter the region
                         q3_ds = { 'NOx_q3': NOx_q3 if NOx_q3 is not None else cts.NOx_Q3, 'CO_q3': CO_q3 if CO_q3 is not None else cts.CO_Q3 }
                         iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
@@ -253,13 +286,11 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--CO-q3', type=int, help=f'CO q3, default = {cts.CO_Q3} (value stored in constant file)')
 
     args = parser.parse_args()
-    
-    print('coucou')
+
     print(args)
 
     timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
 
-    #for CO_q3 in [110, 115, 120]:
     get_LiNOX_plumes(
         flight_id_list=args.flight_id_list,
         start_flight_id=args.start_id, end_flight_id=args.end_id,
@@ -274,9 +305,3 @@ if __name__ == "__main__":
 
         filtered_ds_to_netcdf=args.save_filtered_ds, plume_ds_to_netcdf=args.save_plume_ds,
         plot_flight=True, save_fig=not args.dont_save_output, show_fig=args.show_fig)
-
-
-
-
-
-
