@@ -72,7 +72,7 @@ def get_var_list(flight_program):
     :return: <list> [ <str>, ..., <str> ]
     """
     if flight_program == cts.CORE or flight_program == f'{cts.IAGOS}-{cts.CORE}':
-        var_list = [cts.CO_VARNAME, cts.O3_VARNAME, cts.CORE_NO_VARNAME, cts.CORE_NO2_VARNAME, cts.CORE_NOx_VARNAME, cts.AIRPRESS_VARNAME]
+        var_list = [cts.CO_VARNAME, cts.O3_VARNAME, cts.CORE_NO_VARNAME, cts.CORE_NO2_VARNAME, cts.CORE_NOx_VARNAME, cts.AIRPRESS_VARNAME, cts.RHL_VARNAME]
     elif flight_program == cts.CARIBIC or flight_program == f'{cts.IAGOS}-{cts.CARIBIC}':
         var_list = [cts.CARIBIC_CO_VARNAME, cts.CARIBIC_O3_VARNAME, cts.CARIBIC_NO_VARNAME, cts.CARIBIC_NO2_VARNAME, cts.AIRPRESS_VARNAME]
     else:
