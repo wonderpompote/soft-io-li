@@ -87,7 +87,7 @@ MIN_PLUME_LENGTH = 100
 
 NOx_MEDIAN = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
 NOx_Q3 = 0.283 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
-CO_Q3 = 115
+CO_Q3 = 110 # calculated from all L2 IAGOS CO cruise values in the troposphere to date (03 July 2024)
 
 FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 
