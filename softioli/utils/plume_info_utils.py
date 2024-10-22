@@ -5,7 +5,7 @@ import xarray as xr
 
 from common.utils import timestamp_now_formatted
 
-from .constants import OUTPUT_ROOT_DIR, AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH
+from .constants import OUTPUT_ROOT_DIR, AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH, RHL_VARNAME
 from .iagos_utils import get_CO_varname, get_O3_varname, get_NOx_varname
 from .utils_functions import get_lon_lat_varnames
 
@@ -91,7 +91,9 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
 
                 'NOx_mean': np.nanmean(plume_ds[NOx_varname].values),
                 'NOx_excess_mean': np.nanmean(plume_ds[NOx_varname].values - NOx_MEDIAN),
-                'NOx_excess_std': np.nanstd(plume_ds[NOx_varname].values - NOx_MEDIAN)
+                'NOx_excess_std': np.nanstd(plume_ds[NOx_varname].values - NOx_MEDIAN),
+
+                'RHL_mean': np.nanmean(plume_ds[RHL_VARNAME].values)
             }
             plume_info_list.append(plume_info_dict)
 
