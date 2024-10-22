@@ -1,7 +1,7 @@
 #TODO: revoir les couleurs, c'est moche
 """ GEO_REGIONS: 19/09/2024 """
 GEO_REGIONS = {
-0: {
+    0: {
         # North America West
         "REGION_NAME": "NAW",
         "LON_MIN": -130,
@@ -132,4 +132,3 @@ GEO_REGIONS = {
         "COLOR": 'darkgreen'
     }
 }
-
