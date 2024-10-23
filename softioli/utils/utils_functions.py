@@ -68,7 +68,7 @@ def create_root_output_dir(date, dirname_suffix, root_dirpath=OUTPUT_ROOT_DIR):
         output_dirpath.mkdir(parents=True)
     return output_dirpath
 
-def generate_flight_output_dir(output_dirpath, flight_name, dirname_suffix='', missing_ok=True):
+def create_flight_output_dir(output_dirpath, flight_name, dirname_suffix='', missing_ok=True):
     """
     Returns path to directory in which results for a particular flight should be stored
     + Creates directory if it doesn't exist
