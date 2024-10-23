@@ -11,7 +11,7 @@ from utils import constants as cts
 from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
 from utils.plume_info_utils import write_plume_info_to_csv_file
-from utils.utils_functions import create_root_output_dir, generate_flight_output_dir
+from utils.utils_functions import create_root_output_dir, create_flight_output_dir
 
 
 def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print_debug=False):
@@ -198,7 +198,7 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
             # only look for plumes if NOx tropo measurements are NOT all nan
             if not np.isnan(filtered_flight_ds[NOx_tropo_varname]).all():
                 if save_output:
-                    flight_output_dirpath = generate_flight_output_dir(output_dirpath=output_dirpath,
+                    flight_output_dirpath = create_flight_output_dir(output_dirpath=output_dirpath,
                                                                        flight_name=filtered_flight_ds.attrs['flight_name'],
                                                                        dirname_suffix=flight_dirname_suffix)
                     if print_debug:
