@@ -56,6 +56,7 @@ PV_VARNAME = 'PV'
 AIRPRESS_VARNAME = 'air_press_AC'
 CO_VARNAME = 'CO_P1'
 O3_VARNAME = 'O3_P1'
+RHL_VARNAME = 'RHL_P1'
 NOx_PLUME_ID_VARNAME = 'NOx_plume_id'
 
 CORE_NO_VARNAME = 'NO_P2b'
@@ -87,7 +88,7 @@ MIN_PLUME_LENGTH = 100
 
 NOx_MEDIAN = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
 NOx_Q3 = 0.283 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
-CO_Q3 = 115
+CO_Q3 = 110 # calculated from all L2 IAGOS CO cruise values in the troposphere to date (03 July 2024)
 
 FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported values so far: "{IAGOS}-{CORE}" or "{CORE}" or "{IAGOS}-{CARIBIC}" or "{CARIBIC}"'
 

@@ -65,8 +65,10 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
 
                 'NOx_mean': np.nanmean(plume_ds[NOx_varname].values),
                 'NOx_excess_mean': np.nanmean(plume_ds[NOx_varname].values - NOx_MEDIAN),
-                'NOx_excess_std': np.nanstd(plume_ds[NOx_varname].values - NOx_MEDIAN)
+                'NOx_excess_std': np.nanstd(plume_ds[NOx_varname].values - NOx_MEDIAN),
             }
+            if ds.attrs[PROGRAM_ATTR] in [f"{IAGOS}-{CORE}", CORE] and not np.isnan(plume_ds[RHL_VARNAME]).all():
+                plume_info_dict['RHL_mean'] = np.nanmean(plume_ds[RHL_VARNAME].values)
             plume_info_list.append(plume_info_dict)
 
         output_dirpath = pathlib.Path(output_dirpath)
