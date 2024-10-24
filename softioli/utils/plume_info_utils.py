@@ -3,7 +3,7 @@ import pandas as pd
 import pathlib
 import xarray as xr
 
-from .constants import AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH
+from .constants import AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH, CORE, RHL_VARNAME
 from .iagos_utils import get_CO_varname, get_O3_varname, get_NOx_varname
 from .utils_functions import get_lon_lat_varnames
 
@@ -67,7 +67,7 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
                 'NOx_excess_mean': np.nanmean(plume_ds[NOx_varname].values - NOx_MEDIAN),
                 'NOx_excess_std': np.nanstd(plume_ds[NOx_varname].values - NOx_MEDIAN),
             }
-            if ds.attrs[PROGRAM_ATTR] in [f"{IAGOS}-{CORE}", CORE] and not np.isnan(plume_ds[RHL_VARNAME]).all():
+            if ds.attrs[PROGRAM_ATTR] == CORE and not np.isnan(plume_ds[RHL_VARNAME]).all():
                 plume_info_dict['RHL_mean'] = np.nanmean(plume_ds[RHL_VARNAME].values)
             plume_info_list.append(plume_info_dict)
 

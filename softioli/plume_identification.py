@@ -138,7 +138,7 @@ def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH
 
 
 
-def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None, airports_list=None,
+def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None, only_softioli=False,
                      cruise_only=True, CO_q3=None, NOx_q3=None, use_q3_ds=False, print_debug=False, save_output=True,
                      filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False, end_of_plume_duration=100,
                      plot_flight=False, show_region_names=False, save_fig=False, show_fig=False, file_suffix='',
@@ -171,6 +171,10 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
     :return:
     """
     # get NOx flights url (L2 files)
+    if only_softioli:
+        airports_list = cts.SOFTIOLI_AIRPORTS
+    else:
+        airports_list = None
     NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
                                                                  start_flight_id=start_flight_id,
                                                                  end_flight_id=end_flight_id, flight_type=flight_type,
@@ -256,7 +260,7 @@ if __name__ == "__main__":
                        help='Indicates if start and end flight ids/names will be passed')
 
     flights_group = parser.add_argument_group('flights info')
-    flights_group.add_argument('--not-only-softioli', action='store_true', help='Indicates if other flights outside of the softioli regions of interests should be taken into account')
+    flights_group.add_argument('--only-softioli', action='store_true', help='Indicates if only flights within the softioli regions of interests should be taken into account')
     flights_group.add_argument('-s', '--start-id',
                         help='Start flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
     flights_group.add_argument('-e', '--end-id',
@@ -292,15 +296,10 @@ if __name__ == "__main__":
 
     timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
 
-    if args.not_only_softioli:
-        airports_list = None
-    else:
-        airports_list = cts.SOFTIOLI_AIRPORTS
-
     get_LiNOX_plumes(
         flight_id_list=args.flight_id_list,
         start_flight_id=args.start_id, end_flight_id=args.end_id,
-        airports_list=airports_list,
+        only_softioli=args.only_softioli,
 
         CO_q3=args.CO_q3,
 
