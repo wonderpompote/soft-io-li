@@ -84,7 +84,7 @@ WINDOW_SIZE = {
     f'{IAGOS}-{CORE}': 25, # 25 * 4sec intervals
     f'{IAGOS}-{CARIBIC}': 10 # 10 * 10sec intervals
 }
-MIN_PLUME_LENGTH = 100
+MIN_PLUME_LENGTH = 100 # in seconds, ~= 27.5 km
 
 NOx_MEDIAN = 0.161 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
 NOx_Q3 = 0.283 # calculated from all L2 IAGOS NOx cruise values in the troposphere to date (03 July 2024)
@@ -99,6 +99,8 @@ FP_DURATION = 10 #days
 FP_OUTHEIGHT_MIN = 500 #m
 FP_OUTHEIGHT_STEP = 500
 FP_OUTHEIGHT_MAX = 18000
+
+MIN_NPARTS = 50000
 
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
