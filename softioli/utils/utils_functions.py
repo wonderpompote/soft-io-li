@@ -89,18 +89,20 @@ def create_flight_output_dir(output_dirpath, flight_name, dirname_suffix='', mis
     return flight_output_dirpath
 
 
-def get_list_of_paths_between_two_values(dirpath, start_name, end_name, glob_pattern='*'):
+def get_list_of_paths_between_two_values(dirpath, start_name, end_name, glob_pattern='*', subdir_glob_pattern=None):
     """
     Returns list of path to files or directories between start and end name (including start and end names)
     @param dirpath:
     @param start_name:
     @param end_name:
+    @param glob_pattern:
+    @param subdir_glob_pattern:
     @return:
     """
     dirpath = pathlib.Path(dirpath)
     all_paths = sorted(dirpath.glob(glob_pattern))
     res_list = []
-    start_ok = False
+    start_ok = False if start_name is not None else True
     for path in all_paths:
         pathname = path.name
         # if start name is found, put start_ok to True and then append all files until end_name is reached
@@ -110,4 +112,8 @@ def get_list_of_paths_between_two_values(dirpath, start_name, end_name, glob_pat
             res_list.append(path)
         if pathname == end_name:
             break
-    return sorted(res_list)
+    if subdir_glob_pattern is not None:
+        # only returns list of directory containing files or directories matching subdir_glob_pattern
+        return [ p for p in res_list if len(list(p.glob(f'**/{subdir_glob_pattern}'))) > 0]
+    else:
+        return sorted(res_list)

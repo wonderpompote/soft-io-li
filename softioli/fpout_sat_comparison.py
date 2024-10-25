@@ -224,8 +224,12 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                 # TODO: step3: recup liste des sat_name des zones couvertes
                 start_date, end_date = pd.Timestamp(fp_ds.time.min().values), pd.Timestamp(fp_ds.time.max().values)
                 #   step4: get sat_ds
-                sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=sat_name, grid_resolution=grid_resolution,
-                                          grid_res_str=grid_res_str)
+                try:
+                    sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=sat_name, grid_resolution=grid_resolution,
+                                              grid_res_str=grid_res_str)
+                except FileNotFoundError as e:
+                    print(e)
+                    continue
                 # setp5: get weighted fp_sat_ds
                 weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds)
                 # TODO: step6: ajouter données ABI à weighted_fp_sat_ds
@@ -298,10 +302,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    if args.flight_range:
+    if args.flight_range: # get list of flights containing potential plumes (flights with plume info csv file)
         flight_range_list = utils.get_list_of_paths_between_two_values(args.flights_output_dir,
                                                                        start_name=args.start_id, end_name=args.end_id,
-                                                                       glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*')
+                                                                       glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*',
+                                                                       subdir_glob_pattern='*.csv')
         # only keep flight names from list of flight paths
         flight_range_list = [flight_path.name for flight_path in flight_range_list]
         args.flight_id_list = list(set(args.flight_id_list + flight_range_list))

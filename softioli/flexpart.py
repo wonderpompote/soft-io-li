@@ -134,6 +134,7 @@ if __name__ == "__main__":
     # list
     flight_group.add_argument('--flight-id-list', nargs='+', default=[],
                               help='List of flight ids/names (default = None)')
+    flight_group.add_argument('-x', '--exclude-flight-ids', nargs='+', help='Flight ids to exclude')
 
     # flexpart parameters
     fp_group = parser.add_argument_group('Flexpart parameters')
@@ -146,7 +147,7 @@ if __name__ == "__main__":
     fp_group.add_argument('-gr', '--grid-res', default=cts.GRID_RESOLUTION, type=float,
                           help=f'Flexpart output grid resolution (default={cts.GRID_RESOLUTION})')
     # run simu
-    fp_group.add_argument('--run-simu', action='store_true', help='Indicates if flexpart simulation should be run')
+    fp_group.add_argument('--run-simu', action='store_true', help='Indicates if flexpart simulation should be run <!> only use when running a few flexpart simulations, use job arrays if you need to run many simulations')
     # slurm node on which fp simu should be launched
     fp_group.add_argument('--slurm-partition', default='o3pwork',
                           help='Slurm partition on which flexpart should be run (default="o3pwork")')
@@ -154,13 +155,26 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
-    if args.flight_range:
+    if args.all_flights: # get list of all flights containing potential plumes
+        all_flights_list = get_list_of_paths_between_two_values(args.flights_output_dir, start_name=None,
+                                                                 end_name=None,
+                                                                 glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*',
+                                                                 subdir_glob_pattern='*.csv')
+
+        # only keep flight names from list of flight paths (without duplicates)
+        args.flight_id_list = sorted([flight_path.name for flight_path in all_flights_list])
+
+    elif args.flight_range: # get list of flights containing potential plumes (flights with plume info csv file)
         flight_range_list = get_list_of_paths_between_two_values(args.flights_output_dir, start_name=args.start_id,
                                                                  end_name=args.end_id,
-                                                                 glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*')
+                                                                 glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*',
+                                                                 subdir_glob_pattern='*.csv')
         # only keep flight names from list of flight paths
         flight_range_list = [flight_path.name for flight_path in flight_range_list]
         args.flight_id_list = list(set(args.flight_id_list + flight_range_list))
+
+    if args.exclude_flight_ids is not None:
+        args.flight_id_list = sorted(set(args.flight_id_list) - set(args.exclude_flight_ids))
 
     if args.fp_output_dirname != "flexpart":
         args.fp_output_dirname = f"flexpart_{timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')}_{args.fp_output_dirname}"
