@@ -217,7 +217,7 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                                      max_chunk_size=max_chunk_size, assign_releases_position_coords=assign_releases_position_coords)\
                     as fp_ds:
                 if args.print_debug:
-                    print('##################################################')
+                    print('\n##################################################')
                     print(f'Flight {flights_id_list[index]}')
                     print(f'Flexpart output: {fp_file}')
                     print('##################################################')
@@ -228,7 +228,7 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                     sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=sat_name, grid_resolution=grid_resolution,
                                               grid_res_str=grid_res_str)
                 except FileNotFoundError as e:
-                    print(e)
+                    print(f'<!> {e}')
                     continue
                 # setp5: get weighted fp_sat_ds
                 weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds)

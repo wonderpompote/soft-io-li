@@ -122,6 +122,7 @@ if __name__ == "__main__":
 
     # flight list
     flight_group = parser.add_argument_group('Flights')
+    flight_group.add_argument('-a',  '--all-flights', action='store_true', help='Indicates if all flights in output dir should be taken into account')
     flight_group.add_argument('--flight-list', action='store_true',
                               help='Indicates if a list of flight ids/names will be passed')
     flight_group.add_argument('--flight-range', action='store_true',
@@ -179,26 +180,38 @@ if __name__ == "__main__":
     if args.fp_output_dirname != "flexpart":
         args.fp_output_dirname = f"flexpart_{timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')}_{args.fp_output_dirname}"
 
+    error_flight_ids = []
+
     for flight_id in sorted(args.flight_id_list):
         if args.print_debug:
             print('##################################################')
             print(f'flight {flight_id}')
             print('##################################################')
-        # install fp simulation
-        fpsim_dirpath = install_softioli_fp_simulation(flight_name=flight_id,
-                                                       flights_output_dirpath=args.flights_output_dir,
-                                                       flight_dirname_suffix=args.flight_dirname_suffix,
-                                                       fp_output_dirname=args.fp_output_dirname,
-                                                       duration=args.simu_duration, grid_resolution=args.grid_res,
-                                                       print_debug=args.print_debug, overwrite=args.overwrite)
-        # run simulation
-        if args.run_simu:
-            if args.print_debug:
-                print('---')
-                print(f'Running fp simulation on partition {args.slurm_partition} from directory: {fpsim_dirpath}')
-            fpsim.run_simulation(
-                sim_dir=fpsim_dirpath,
-                slurm_partition=args.slurm_partition,
-            )
+        try:
+            # install fp simulation
+            fpsim_dirpath = install_softioli_fp_simulation(flight_name=flight_id,
+                                                           flights_output_dirpath=args.flights_output_dir,
+                                                           flight_dirname_suffix=args.flight_dirname_suffix,
+                                                           fp_output_dirname=args.fp_output_dirname,
+                                                           duration=args.simu_duration, grid_resolution=args.grid_res,
+                                                           print_debug=args.print_debug, overwrite=args.overwrite)
+            # run simulation
+            if args.run_simu:
+                if args.print_debug:
+                    print('---')
+                    print(f'Running fp simulation on partition {args.slurm_partition} from directory: {fpsim_dirpath}')
+                fpsim.run_simulation(
+                    sim_dir=fpsim_dirpath,
+                    slurm_partition=args.slurm_partition,
+                )
+        except Exception as e:
+            print(f'<!> {e}')
+            error_flight_ids.append(flight_id)
+            continue
+
+    if len(error_flight_ids) > 0:
+        print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+        print(f'Fligths for which the flexpart installation and/or simulation has been aborted: \n{error_flight_ids}')
+        print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
 
         # TODO: recup la liste des fichiers .nc créés ? ou au moins liste des dossiers flexpart/output our la partie 3
