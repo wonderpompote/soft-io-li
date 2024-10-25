@@ -181,6 +181,7 @@ if __name__ == "__main__":
         args.fp_output_dirname = f"flexpart_{timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')}_{args.fp_output_dirname}"
 
     error_flight_ids = []
+    ok_flight_ids = []
 
     for flight_id in sorted(args.flight_id_list):
         if args.print_debug:
@@ -204,14 +205,23 @@ if __name__ == "__main__":
                     sim_dir=fpsim_dirpath,
                     slurm_partition=args.slurm_partition,
                 )
+            ok_flight_ids.append(flight_id)
+
         except Exception as e:
             print(f'<!> {e}')
             error_flight_ids.append(flight_id)
             continue
 
+    if len(ok_flight_ids) > 0:
+        print('\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+        print(f'Total number of flights: {len(args.flight_id_list)}')
+        print(
+            f'{len(ok_flight_ids)} fligths for which the flexpart installation and/or simulation is OK: \n{ok_flight_ids}')
+        print('\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+
     if len(error_flight_ids) > 0:
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-        print(f'Fligths for which the flexpart installation and/or simulation has been aborted: \n{error_flight_ids}')
+        print(f'{len(error_flight_ids)} fligths for which the flexpart installation and/or simulation has been aborted: \n{error_flight_ids}')
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
 
         # TODO: recup la liste des fichiers .nc créés ? ou au moins liste des dossiers flexpart/output our la partie 3
