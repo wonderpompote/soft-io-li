@@ -36,7 +36,7 @@ def get_fp_out_da(fpout_path, sum_height=True, load=False, chunks='auto', max_ch
     if not pathlib.Path(fpout_path).exists():
         raise ValueError(f'fp_path {fpout_path} does NOT exist')
     fp_ds = open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
-                                  assign_releases_position_coords=assign_releases_position_coords)
+                            assign_releases_position_coords=assign_releases_position_coords)
     fp_da = fp_ds.spec001_mr
     fp_da = fp_da.squeeze()
     if 'pointspec' in fp_da.dims:
@@ -46,6 +46,7 @@ def get_fp_out_da(fpout_path, sum_height=True, load=False, chunks='auto', max_ch
     if load:
         fp_da.load()
     return fp_da
+
 
 def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', max_chunk_size=1e8,
                         assign_releases_position_coords=False):
@@ -62,8 +63,8 @@ def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', 
     if not pathlib.Path(fpout_path).exists():
         raise ValueError(f'fp_path {fpout_path} does NOT exist')
     fp_ds = open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
-                                  assign_releases_position_coords=assign_releases_position_coords)\
-                    .squeeze('nageclass')
+                            assign_releases_position_coords=assign_releases_position_coords) \
+        .squeeze('nageclass')
     # rename numpoint dimension to pointspec
     fp_ds = fp_ds.rename({'numpoint': 'pointspec'})
     # get dataset containing releases info (RELxxxx variables)
@@ -85,6 +86,7 @@ def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', 
     if load:
         fp_ds.load()
     return fp_ds
+
 
 # TODO: suppr dry_run une fois que les tests sont finis
 # TODO: pour avoir un sat_ds avec PLUSIEURS sources sat --> sat_name = list, for loop et ensuite je merge tout ?
@@ -114,7 +116,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     missing_raw_daily_dir_list = {
         utils.generate_sat_dir_path(
             date=SatPathParser(regrid_dir_path, directory=True, regrid=True) \
-                        .get_start_date_pdTimestamp(ignore_missing_start_hour=True),
+                .get_start_date_pdTimestamp(ignore_missing_start_hour=True),
             sat_name=sat_name,
             regrid=False
         )
@@ -146,7 +148,8 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
                 path_list=(missing_raw_daily_dir_list - dir_to_regrid_list),
                 directory=True, satellite=sat_name, regrid=False, date_str=True
             )
-            raise FileNotFoundError(f'The GLM files for the following dates are missing, please download them from the ICARE server and try again: \n{sorted(missing_dates)}')
+            raise FileNotFoundError(
+                f'The GLM files for the following dates are missing, please download them from the ICARE server and try again: \n{sorted(missing_dates)}')
     # get list of satellite data files between start and end date
     regrid_daily_file_list = get_sat_files_list_between_start_end_date(dir_list=sorted(regrid_daily_dir_list),
                                                                        start_date=start_date, end_date=end_date,
@@ -156,7 +159,8 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
         print()
     if not dry_run:
         # create a dataset merging all the regrid hourly files
-        sat_ds = xr.open_mfdataset(regrid_daily_file_list, combine_attrs='drop_conflicts') #TODO: <?> utiliser dask: ajouter parallel=True
+        sat_ds = xr.open_mfdataset(regrid_daily_file_list,
+                                   combine_attrs='drop_conflicts')  # TODO: <?> utiliser dask: ajouter parallel=True
         return sat_ds
 
 
@@ -205,9 +209,11 @@ def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='a
 
 
 # TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout (? pourquoi j'ai dit ça?)
-def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, sum_height=True, load=False, chunks='auto',
+def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, sum_height=True, load=False,
+                         chunks='auto',
                          max_chunk_size=1e8, assign_releases_position_coords=False, grid_resolution=cts.GRID_RESOLUTION,
-                         grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None, weighted_ds_filename_suffix=''):
+                         grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None,
+                         weighted_ds_filename_suffix=''):
     if not file_list and isinstance(fp_path, str) or isinstance(fp_path, pathlib.Path):
         fp_path = [fp_path]
     missing_dates_list = []
@@ -216,7 +222,8 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
         if check_fp_status(pathlib.Path(fp_file).parent.parent):
             # step2: recup fp_ds sur 7 JOURS avec les 7j pour chaque release, PAS depuis début fichier
             with get_fp_out_ds_7days(fpout_path=fp_file, sum_height=sum_height, load=load, chunks=chunks,
-                                     max_chunk_size=max_chunk_size, assign_releases_position_coords=assign_releases_position_coords)\
+                                     max_chunk_size=max_chunk_size,
+                                     assign_releases_position_coords=assign_releases_position_coords) \
                     as fp_ds:
                 if args.print_debug:
                     print('\n\n##################################################')
@@ -227,11 +234,14 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                 start_date, end_date = pd.Timestamp(fp_ds.time.min().values), pd.Timestamp(fp_ds.time.max().values)
                 #   step4: get sat_ds
                 try:
-                    sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=sat_name, grid_resolution=grid_resolution,
+                    sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=sat_name,
+                                              grid_resolution=grid_resolution,
                                               grid_res_str=grid_res_str)
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
-                    missing_dates_list += eval(str(e).split('\n')[1])
+                    for m_date in eval(str(e).split('\n')[1]):
+                        if m_date not in missing_dates_list:
+                            missing_dates_list.append(m_date)
                     continue
                 # setp5: get weighted fp_sat_ds
                 weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds)
@@ -242,19 +252,21 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                         Warning(f'Saving weighted ds to current directory ({pathlib.Path.cwd()})')
                         weighted_fp_sat_ds.to_netcdf(f'weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc')
                     else:
-                        weighted_ds_dirpath = pathlib.Path(f'{flights_output_dirpath}/{flights_id_list[index]}/flexpart_lightning_comparison')
-                        weighted_ds_dirpath.mkdir(exist_ok=True) # create lightning comparison dirpath if it doesn't exist yet
-                        weighted_fp_sat_ds.to_netcdf(f'{weighted_ds_dirpath}/weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc')
+                        weighted_ds_dirpath = pathlib.Path(
+                            f'{flights_output_dirpath}/{flights_id_list[index]}/flexpart_lightning_comparison')
+                        weighted_ds_dirpath.mkdir(
+                            exist_ok=True)  # create lightning comparison dirpath if it doesn't exist yet
+                        weighted_fp_sat_ds.to_netcdf(
+                            f'{weighted_ds_dirpath}/weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc')
                         print(f'Saved {weighted_ds_dirpath}/weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc file')
 
                 # TODO: step7: générer le fichier intermédiaire <?>
                 # TODO: pour chaque RELSTART donner weighted_fp_sat_ds['weighted_flash_count'].sum('time') <?>
         else:
-            raise FileNotFoundError(f'Expecting existing completed fp out file! {fp_file} does NOT exist and/or flexpart simulation has NOT been successful')
+            raise FileNotFoundError(
+                f'Expecting existing completed fp out file! {fp_file} does NOT exist and/or flexpart simulation has NOT been successful')
 
-    return missing_dates_list
-
-
+    return sorted(missing_dates_list)
 
 
 if __name__ == '__main__':
@@ -262,10 +274,12 @@ if __name__ == '__main__':
 
     # output directories
     dir_group = parser.add_argument_group('Directories')
-    dir_group.add_argument('-fo', '--flights-output-dir', required=True, type=pathlib.Path, help='Path to output directory (directory containing all flight output directories)')
+    dir_group.add_argument('-fo', '--flights-output-dir', required=True, type=pathlib.Path,
+                           help='Path to output directory (directory containing all flight output directories)')
     dir_group.add_argument('--flight-dirname-suffix', default='',
-                              help='suffix to add to flight output directory name')
-    dir_group.add_argument('-o', '--fp-output-dirname', default='flexpart', help='Name of the directory where the flexpart output will be stored (default="flexpart")')
+                           help='suffix to add to flight output directory name')
+    dir_group.add_argument('-o', '--fp-output-dirname', default='flexpart',
+                           help='Name of the directory where the flexpart output will be stored (default="flexpart")')
 
     # flight list
     flight_group = parser.add_argument_group('Flights')
@@ -284,30 +298,35 @@ if __name__ == '__main__':
 
     # satellite
     sat_group = parser.add_argument_group('Satellite parameters')
-    sat_group.add_argument('--sat-name', default=cts.GOES_SATELLITE_GLM, help=f'Satellite name (default={cts.GOES_SATELLITE_GLM})')
-    sat_group.add_argument('--grid-res', default=cts.GRID_RESOLUTION, help=f'Satellite grid resolution (default={cts.GRID_RESOLUTION})')
+    sat_group.add_argument('--sat-name', default=cts.GOES_SATELLITE_GLM,
+                           help=f'Satellite name (default={cts.GOES_SATELLITE_GLM})')
+    sat_group.add_argument('--grid-res', default=cts.GRID_RESOLUTION,
+                           help=f'Satellite grid resolution (default={cts.GRID_RESOLUTION})')
     sat_group.add_argument('--grid-res-str', default=cts.GRID_RESOLUTION_STR,
                            help=f'Satellite grid resolution string, format="<res>deg" (default={cts.GRID_RESOLUTION_STR})')
 
     # flexpart output parameters
     fp_group = parser.add_argument_group('Flexpart output parameters')
-    fp_group.add_argument('--dont-sum-height', action='store_true', help='Indicates if flexpart output should NOT be summed over altitude (by default it is because satellite data does not have altitude information)')
+    fp_group.add_argument('--dont-sum-height', action='store_true',
+                          help='Indicates if flexpart output should NOT be summed over altitude (by default it is because satellite data does not have altitude information)')
     fp_group.add_argument('--load-fpout', action='store_true', help='load fp_out dataArray into memory (default=False)')
 
     # weighted ds
     weighted_ds_group = parser.add_argument_group('Weighted ds parameters')
-    weighted_ds_group.add_argument('--save-weighted-ds', action='store_true', help='Indicates if weighted ds should be saved')
-    weighted_ds_group.add_argument('--ds-fname-suffix', default='', help='Suffix to add to the weighted ds filename. The dataset will be stored in the flexpart_lightning_comparison directory in the flight output directory (default suffix="")')
-
+    weighted_ds_group.add_argument('--save-weighted-ds', action='store_true',
+                                   help='Indicates if weighted ds should be saved')
+    weighted_ds_group.add_argument('--ds-fname-suffix', default='',
+                                   help='Suffix to add to the weighted ds filename. The dataset will be stored in the flexpart_lightning_comparison directory in the flight output directory (default suffix="")')
 
     # other
-    parser.add_argument('--dry-run', action='store_true', help='dry run (fp_out and glm_out NOT loaded into memory and weighted flash count NOT calculated)')
+    parser.add_argument('--dry-run', action='store_true',
+                        help='dry run (fp_out and glm_out NOT loaded into memory and weighted flash count NOT calculated)')
     parser.add_argument('-d', '--print-debug', action='store_true', help='print debug (default=False)')
 
     args = parser.parse_args()
     print(args)
 
-    if args.flight_range: # get list of flights containing potential plumes (flights with plume info csv file)
+    if args.flight_range:  # get list of flights containing potential plumes (flights with plume info csv file)
         flight_range_list = utils.get_list_of_paths_between_two_values(args.flights_output_dir,
                                                                        start_name=args.start_id, end_name=args.end_id,
                                                                        glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*',
@@ -326,12 +345,14 @@ if __name__ == '__main__':
     print()
     print(sorted(args.flight_id_list))
 
-    missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list), sat_name=args.sat_name, file_list=True,
-                         sum_height=(not args.dont_sum_height), load=args.load_fpout,
-                         chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,
-                         grid_resolution=args.grid_res, grid_res_str=args.grid_res_str,
-                         save_weighted_ds=args.save_weighted_ds, flights_output_dirpath=args.flights_output_dir,
-                         weighted_ds_filename_suffix=args.ds_fname_suffix)
+    missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list),
+                                         sat_name=args.sat_name, file_list=True,
+                                         sum_height=(not args.dont_sum_height), load=args.load_fpout,
+                                         chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,
+                                         grid_resolution=args.grid_res, grid_res_str=args.grid_res_str,
+                                         save_weighted_ds=args.save_weighted_ds,
+                                         flights_output_dirpath=args.flights_output_dir,
+                                         weighted_ds_filename_suffix=args.ds_fname_suffix)
 
     if len(missing_dates) > 0:
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
