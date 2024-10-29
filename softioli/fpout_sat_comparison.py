@@ -135,9 +135,10 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
             if print_debug:
                 print(f'Directories to regrid: {sorted(dir_to_regrid_list)}')
                 print()
-            sat_regrid.regrid_sat_files(path_list=list(dir_to_regrid_list), sat_name=sat_name,
-                                        grid_res=grid_resolution, dir_list=True,
-                                        grid_res_str=grid_res_str, overwrite=overwrite, naming_convention=None)
+            if not dry_run:
+                sat_regrid.regrid_sat_files(path_list=list(dir_to_regrid_list), sat_name=sat_name,
+                                            grid_res=grid_resolution, dir_list=True,
+                                            grid_res_str=grid_res_str, overwrite=overwrite, naming_convention=None)
         # if we still have missing pre-regrid directories --> FileNotFoundError
         if missing_raw_daily_dir_list - dir_to_regrid_list:
             # get the missing dates from the remaining missing directory paths to display them in the error message
@@ -145,8 +146,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
                 path_list=(missing_raw_daily_dir_list - dir_to_regrid_list),
                 directory=True, satellite=sat_name, regrid=False, date_str=True
             )
-            raise FileNotFoundError(f'The GLM files for the following dates are missing: {sorted(missing_dates)}\nPlease download '
-                                    f'them from the ICARE server and try again')
+            raise FileNotFoundError(f'The GLM files for the following dates are missing, please download them from the ICARE server and try again: \n{sorted(missing_dates)}')
     # get list of satellite data files between start and end date
     regrid_daily_file_list = get_sat_files_list_between_start_end_date(dir_list=sorted(regrid_daily_dir_list),
                                                                        start_date=start_date, end_date=end_date,
@@ -154,9 +154,10 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     if print_debug:
         print(f'Regrid daily file list: {short_list_repr(regrid_daily_file_list)}')
         print()
-    # create a dataset merging all the regrid hourly files
-    sat_ds = xr.open_mfdataset(regrid_daily_file_list, combine_attrs='drop_conflicts') #TODO: <?> utiliser dask: ajouter parallel=True
-    return sat_ds
+    if not dry_run:
+        # create a dataset merging all the regrid hourly files
+        sat_ds = xr.open_mfdataset(regrid_daily_file_list, combine_attrs='drop_conflicts') #TODO: <?> utiliser dask: ajouter parallel=True
+        return sat_ds
 
 
 def get_weighted_flash_count(spec001_mr_da, flash_count_da):
@@ -209,6 +210,7 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                          grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None, weighted_ds_filename_suffix=''):
     if not file_list and isinstance(fp_path, str) or isinstance(fp_path, pathlib.Path):
         fp_path = [fp_path]
+    missing_dates_list = []
     for index, fp_file in enumerate(fp_path):
         # fp_file expected to be in <flight_output_dir>/flexpart/output/... hence the <fp_path>.parent.parent to get to the flexpart directory
         if check_fp_status(pathlib.Path(fp_file).parent.parent):
@@ -217,7 +219,7 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                                      max_chunk_size=max_chunk_size, assign_releases_position_coords=assign_releases_position_coords)\
                     as fp_ds:
                 if args.print_debug:
-                    print('\n##################################################')
+                    print('\n\n##################################################')
                     print(f'Flight {flights_id_list[index]}')
                     print(f'Flexpart output: {fp_file}')
                     print('##################################################')
@@ -229,6 +231,7 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                                               grid_res_str=grid_res_str)
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
+                    missing_dates_list += eval(str(e).split('\n')[1])
                     continue
                 # setp5: get weighted fp_sat_ds
                 weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds)
@@ -248,6 +251,8 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                 # TODO: pour chaque RELSTART donner weighted_fp_sat_ds['weighted_flash_count'].sum('time') <?>
         else:
             raise FileNotFoundError(f'Expecting existing completed fp out file! {fp_file} does NOT exist and/or flexpart simulation has NOT been successful')
+
+    return missing_dates_list
 
 
 
@@ -321,10 +326,16 @@ if __name__ == '__main__':
     print()
     print(sorted(args.flight_id_list))
 
-    fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list), sat_name=args.sat_name, file_list=True,
+    missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list), sat_name=args.sat_name, file_list=True,
                          sum_height=(not args.dont_sum_height), load=args.load_fpout,
                          chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,
                          grid_resolution=args.grid_res, grid_res_str=args.grid_res_str,
                          save_weighted_ds=args.save_weighted_ds, flights_output_dirpath=args.flights_output_dir,
                          weighted_ds_filename_suffix=args.ds_fname_suffix)
 
+    if len(missing_dates) > 0:
+        print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+        print(
+            f'{len(missing_dates)} missing GLM daily files, please download them before running the program again: \n{missing_dates}')
+        print('See logs above for more detail on which flights have not been computed')
+        print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')

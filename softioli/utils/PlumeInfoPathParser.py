@@ -2,7 +2,7 @@ import pandas as pd
 import pathlib
 
 
-class PlumeInfoPathParser():
+class PlumeInfoPathParser:
 
     def __init__(self, url, flight_name=None, arrival_timestamp=None):
         self.url = pathlib.Path(url)
