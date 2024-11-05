@@ -25,7 +25,7 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GR
     if sat_name == cts.GOES_SATELLITE_GLM:
         if naming_convention is None:
             # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
-            filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_{YYYY}_{DDD}_{start_HH}-{end_HH}.nc'
+            filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.GLM_Gxx_PATTERN}_{YYYY}_{DDD}_{start_HH}-{end_HH}.nc'
         elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
             # GLM_array_DDD_temp_HH.nc
             filename_pattern = f'GLM_array_{DDD}_temp_{start_HH}.nc'
@@ -62,7 +62,7 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
             dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.YYYY_pattern}_{cts.DDD_pattern}'
         elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
             #OR_GLM-L2-LCFA_Gxx_sYYYYDDD
-            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.Gxx_PATTERN}_s{cts.YYYY_pattern}{cts.DDD_pattern}'
+            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.GLM_Gxx_PATTERN}_s{cts.YYYY_pattern}{cts.DDD_pattern}'
         elif naming_convention == OLD_GLM_NOTATION:
             # GLM_array(_05deg)_DDD
             if regrid:

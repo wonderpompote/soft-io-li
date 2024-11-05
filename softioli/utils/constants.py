@@ -116,8 +116,9 @@ REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{REGRID_GLM_DIRNAME}')
 PRE_REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{PRE_REGRID_GLM_DIRNAME}')
 
 GOES_SATELLITE_GLM = 'GOES_GLM'
+GOES_SATELLITE_ABI = 'GOES-ABI'
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
-Gxx_PATTERN = 'G1[6-7]' # TODO: update if newer versions available
+GLM_Gxx_PATTERN = 'G1[6-8]' # TODO: update if older/newer versions available
 
 # sat settings dict keys
 flash_energy_varname = "flash_energy_varname"

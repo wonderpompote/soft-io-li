@@ -9,6 +9,9 @@ from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_ar
 from utils import xarray_pandas_utils as xr_pd_utils
 
 
+def generate_abi_hourly_nc_file():
+    pass
+
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, grid_res_str, overwrite,
                                               lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                               lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
@@ -141,6 +144,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     :param naming_convention: <str> file or directory naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD' or None (default)
     :return:
     """
+    if sat_name == cts.GOES_SATELLITE_ABI:
+        generate_abi_hourly_nc_file() #TODO: faaaaire
     # if path_list contains paths to directories --> get list of files in each directory
     if dir_list:
         filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=False,
