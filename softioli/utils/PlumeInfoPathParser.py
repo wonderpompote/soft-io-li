@@ -10,10 +10,6 @@ class PlumeInfoPathParser:
         self.arrival_timestamp = pd.Timestamp(arrival_timestamp)
         if any(self.flight_name, self.arrival_timestamp):
             self.extract_flight_name_and_arrival_timestamp()
-        """
-        est-ce que pathparser pour extract les infos du fichier pour ensuite flexpart
-        + fonctions pour generate file path
-        """
 
     def extract_flight_name_and_arrival_timestamp(self):
         split_url = self.url.stem.split('_') # <flight_name>_<arrival_timestamp>_plume-info.csv

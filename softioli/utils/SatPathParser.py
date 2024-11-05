@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 class SatPathParser(ABC):
 
      @abstractmethod
-     def extract_missing_date(self):
+     def extract_date(self):
          pass
 
      @abstractmethod

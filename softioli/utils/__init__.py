@@ -18,6 +18,10 @@ from .sat_utils import (
     get_list_of_sat_files
 )
 
+from .ABIPathParser import (
+    ABIPathParser
+)
+
 from . import constants
 
 from . import xarray_pandas_utils

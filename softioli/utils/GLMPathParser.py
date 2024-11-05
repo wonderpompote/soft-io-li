@@ -56,7 +56,7 @@ class GLMPathParser(SatPathParser):
         self.end_hour = int(end_hour) if end_hour is not None else end_hour
         # if we're missing at least 1 date info --> extract date from filename
         if any(val is None for val in [self.year, self.day_of_year, self.start_hour]):
-            self.extract_missing_date()
+            self.extract_date()
         # extract missing values
         if end_hour is None and self.hourly and start_hour is not None:
             self.end_hour = start_hour + 1
@@ -66,7 +66,7 @@ class GLMPathParser(SatPathParser):
             self.extract_satellite()
         self.start_datetime = self.get_start_date_pdTimestamp()
 
-    def extract_missing_date(self):
+    def extract_date(self):
         filename = self.url.stem
         filename_split = filename.split('_')
         # if directory
@@ -150,8 +150,7 @@ class GLMPathParser(SatPathParser):
             self.regrid_res = None
 
     def extract_satellite(self):
-        filename = self.url.stem
-        filename_split = filename.split('_')
+        filename_split = self.url.stem.split('_')
         if self.naming_convention == OLD_GLM_NOTATION or self.naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
             # old_glm_filename --> usually only for 05-2018 or 06-2018 files so 'G16' satellite
             self.satellite_version = 'G16'
