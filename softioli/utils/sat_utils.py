@@ -8,8 +8,8 @@ from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 
 
-def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None,
-                                         YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern):
+def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None,
+                                  YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern):
     """
     Generate filename pattern for a specific satellite, naming convention and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
@@ -22,6 +22,7 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GR
     :param end_HH:  <str> or <int> end hour
     :return: <str> filename pattern for the satellite
     """
+    # GLM
     if sat_name == cts.GOES_SATELLITE_GLM:
         if naming_convention is None:
             # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
@@ -38,10 +39,16 @@ def generate_sat_hourly_filename_pattern(sat_name, regrid, regrid_res_str=cts.GR
             filename_pattern = f'GLM_array_{regrid_pattern}{DDD}_{start_HH}-{end_HH}.nc'
         else:
             raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
+    # ABI
+    elif sat_name == cts.GOES_SATELLITE_ABI:
+        if not hourly: #GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_X_IR10x_V1-0x.hdf
+            filename_pattern = f'GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].hdf'
+        else: # ABI_GEO_L1B-GOES1x_YYYY-MM-DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY-MM-DD_HH1-HH2.nc
+            filename_pattern = f"ABI_GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}_{start_HH}-{end_HH}.nc"
     else:
-        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
+        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
-    if regrid and naming_convention is None:
+    if regrid and hourly and naming_convention is None:
         return f'{regrid_res_str}_{filename_pattern}'
     else:
         return filename_pattern
@@ -72,8 +79,10 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
             dirname_pattern = f'GLM_array_{regrid_pattern}{cts.DDD_pattern}'
         else:
             raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
+    elif sat_name == cts.GOES_SATELLITE_ABI:
+        pass
     else:
-        raise ValueError(f'{sat_name} NOT supported yet. Supported satellite so far: "GOES_GLM"')
+        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
     if regrid and naming_convention is None:
         return f'{regrid_res_str}_{dirname_pattern}'
@@ -189,7 +198,7 @@ def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res
             dir_list.extend(parent_dir_path.glob(dirname_pattern))
         sat_dir_path = dir_list
     # get list of files
-    filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str)
+    filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str)
     file_list = []
     for dir_path in sat_dir_path:
         if not parent_dir: # if not parent dir, check if dir_path is a pathlib object
@@ -233,7 +242,7 @@ def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sa
     start_date, end_date = date_to_pd_timestamp(start_date), date_to_pd_timestamp(end_date)
     file_list = []
     dir_list = sorted(dir_list)
-    fname_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=regrid)
+    fname_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid)
     for file in dir_list[0].glob(fname_pattern):
         fparser = GLMPathParser(file_url=file, regrid=regrid)
         if fparser.start_hour >= start_date.hour:

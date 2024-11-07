@@ -105,9 +105,6 @@ MIN_NPARTS = 50000
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
 
-# TODO: update when other satellites OK
-SAT_VALUE_ERROR = f'satellite not supported yet. Only "GOES_GLM" satellite for now'
-
 GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm')
 REGRID_GLM_DIRNAME = 'regrid_hourly_glm'
 PRE_REGRID_GLM_DIRNAME = 'pre_regrid_hourly_glm'
@@ -119,6 +116,21 @@ GOES_SATELLITE_GLM = 'GOES_GLM'
 GOES_SATELLITE_ABI = 'GOES-ABI'
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
 GLM_Gxx_PATTERN = 'G1[6-8]' # TODO: update if older/newer versions available
+ABI_GOESXX_PATTERN = 'GOES1[236-8]'
+
+GRID_RESOLUTION_STR = '05deg'
+GRID_RESOLUTION = 0.5
+
+YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
+DDD_pattern = "[0-3][0-9][0-9]" # day of year
+DD_pattern = "[0-3][0-9]" # day
+MM_pattern = "[0-1][0-9]" # month
+HH_pattern = "[0-2][0-9]" # hour
+mm_pattern = "[0-5][0-9]" # seconds
+
+# TODO: update when other satellites OK
+SAT_VALUE_ERROR = f' not supported yet. Supported satellites so far: "{GOES_SATELLITE_GLM}", "{GOES_SATELLITE_ABI}"'
+
 
 # sat settings dict keys
 flash_energy_varname = "flash_energy_varname"
@@ -153,13 +165,6 @@ FPOUT_LAT_MAX = 89.75
 FPOUT_LON_MIN = -179.25
 FPOUT_LON_MAX = 180.25
 
-GRID_RESOLUTION_STR = '05deg'
-GRID_RESOLUTION = 0.5
 
-YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
-DDD_pattern = "[0-3][0-9][0-9]" # day of year
-DD_pattern = "[0-3][0-9]" # day
-MM_pattern = "[0-1][0-9]" # month
-HH_pattern = "[0-2][0-9]" # hour
 
 

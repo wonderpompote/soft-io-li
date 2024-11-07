@@ -2,14 +2,14 @@ from datetime import datetime
 import numpy as np
 import xarray as xr
 
-from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_hourly_filename_pattern, generate_sat_dirname_pattern
+from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_filename_pattern, generate_sat_dirname_pattern
 from utils import constants as cts
 from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
 from utils import xarray_pandas_utils as xr_pd_utils
 
 
-def generate_abi_hourly_nc_file():
+def generate_abi_hourly_nc_file_from_15min_hdf_files():
     pass
 
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, grid_res_str, overwrite,
@@ -145,11 +145,11 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     :return:
     """
     if sat_name == cts.GOES_SATELLITE_ABI:
-        generate_abi_hourly_nc_file() #TODO: faaaaire
+        generate_abi_hourly_nc_file_from_15min_hdf_files() #TODO: faaaaire
     # if path_list contains paths to directories --> get list of files in each directory
     if dir_list:
-        filename_pattern = generate_sat_hourly_filename_pattern(sat_name=sat_name, regrid=False,
-                                                                naming_convention=naming_convention)
+        filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=False,
+                                                         naming_convention=naming_convention)
         # Get list of files in subdirectories
         path_list[:] = [
             file_path

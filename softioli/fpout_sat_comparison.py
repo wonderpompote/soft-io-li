@@ -16,7 +16,7 @@ import utils
 from utils import constants as cts
 from utils import GLMPathParser
 import sat_regrid
-from utils.sat_utils import generate_sat_dir_list_between_start_end_date, get_sat_files_list_between_start_end_date
+from utils.sat_utils import generate_sat_dir_path, get_list_of_dates_from_list_of_sat_path, generate_sat_dir_list_between_start_end_date, get_sat_files_list_between_start_end_date
 from utils.fp_utils import get_fpout_nc_file_path_from_fp_dir
 
 
@@ -112,9 +112,9 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
-    # get list of missing regrid sat dir
+    # get list of pre-regrid daily directories corresponding to each missing regrid sat dir
     missing_raw_daily_dir_list = {
-        utils.generate_sat_dir_path(
+        generate_sat_dir_path(
             date=SatPathParser(regrid_dir_path, directory=True, regrid=True) \
                 .get_start_date_pdTimestamp(ignore_missing_start_hour=True),
             sat_name=sat_name,
@@ -144,7 +144,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
         # if we still have missing pre-regrid directories --> FileNotFoundError
         if missing_raw_daily_dir_list - dir_to_regrid_list:
             # get the missing dates from the remaining missing directory paths to display them in the error message
-            missing_dates = utils.get_list_of_dates_from_list_of_sat_path(
+            missing_dates = get_list_of_dates_from_list_of_sat_path(
                 path_list=(missing_raw_daily_dir_list - dir_to_regrid_list),
                 directory=True, satellite=sat_name, regrid=False, date_str=True
             )

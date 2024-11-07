@@ -11,7 +11,7 @@ from .GLMPathParser import (
 
 from .sat_utils import (
     generate_sat_dir_path,
-    generate_sat_hourly_filename_pattern,
+    generate_sat_filename_pattern,
     generate_sat_hourly_file_path,
     get_list_of_dates_from_list_of_sat_path,
     generate_sat_dirname_pattern,

@@ -14,7 +14,7 @@ from sys import argv
 from common.log import logger, start_logging
 from common.utils import timestamp_now_formatted, short_list_repr
 
-from softioli.utils import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION, generate_sat_dir_path, generate_sat_hourly_filename_pattern, generate_sat_hourly_file_path, generate_sat_dirname_pattern
+from softioli.utils import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION, generate_sat_dir_path, generate_sat_filename_pattern, generate_sat_hourly_file_path, generate_sat_dirname_pattern
 from softioli.utils import constants as cts
 
 
@@ -91,12 +91,12 @@ if __name__ == '__main__':
         ]
         logger().debug(f'Subdirectories paths: {short_list_repr(args.path_list)}')
 
-    old_file_pattern = generate_sat_hourly_filename_pattern(sat_name=args.sat_name, regrid=args.regrid,
-                                                            naming_convention=OLD_GLM_NOTATION)
-    old_temp_file_pattern = generate_sat_hourly_filename_pattern(sat_name=args.sat_name, regrid=args.regrid,
-                                                                 naming_convention=OLD_GLM_PRE_REGRID_TEMP_NOTATION)
-    default_file_pattern = generate_sat_hourly_filename_pattern(sat_name=args.sat_name, regrid=args.regrid,
-                                                                naming_convention=None)
+    old_file_pattern = generate_sat_filename_pattern(sat_name=args.sat_name, regrid=args.regrid,
+                                                     naming_convention=OLD_GLM_NOTATION)
+    old_temp_file_pattern = generate_sat_filename_pattern(sat_name=args.sat_name, regrid=args.regrid,
+                                                          naming_convention=OLD_GLM_PRE_REGRID_TEMP_NOTATION)
+    default_file_pattern = generate_sat_filename_pattern(sat_name=args.sat_name, regrid=args.regrid,
+                                                         naming_convention=None)
 
     for dir_path in args.path_list:
         # get dirname date

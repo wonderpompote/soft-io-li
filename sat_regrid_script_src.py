@@ -14,7 +14,7 @@ from common.utils import timestamp_now_formatted, short_list_repr
 """ <!> depuis src/ faire $ python -m scripts.<nom_script> sinon ça marche pas à cause des imports jsp quoi"""
 from softioli import regrid_sat_files
 from softioli import constants as cts
-from softioli.utils import generate_sat_dirname_pattern, generate_sat_hourly_filename_pattern, OLD_GLM_NOTATION, OLD_GLM_PRE_REGRID_TEMP_NOTATION
+from softioli.utils import generate_sat_dirname_pattern, generate_sat_filename_pattern, OLD_GLM_NOTATION, OLD_GLM_PRE_REGRID_TEMP_NOTATION
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
