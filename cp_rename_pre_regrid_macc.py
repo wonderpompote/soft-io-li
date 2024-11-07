@@ -124,8 +124,8 @@ if __name__ == '__main__':
             file_parser = GLMPathParser(file_url=file_path, regrid=args.regrid, hourly=True,
                                       naming_convention=file_naming_convention, directory=False)
             new_file_path = generate_sat_hourly_file_path(date=file_parser.get_start_date_pdTimestamp(),
-                                                          satellite=args.sat_name,
-                                                          sat_version=file_parser.satellite_version,
+                                                          sat_name=args.sat_name,
+                                                          satellite=file_parser.satellite_version,
                                                           regrid=args.regrid, dir_path=args.res_path)
             logger().debug(f'new_file_path: {new_file_path}')
 

@@ -5,7 +5,7 @@ from pandas import Timedelta
 
 from .utils_functions import date_to_pd_timestamp
 from . import constants as cts
-from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
+from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION, ABIPathParser
 
 
 def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None,
@@ -54,7 +54,7 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
         return filename_pattern
 
 
-def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None):
+def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, naming_convention=None, YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern):
     """
     Generate directory name pattern for a specific satellite and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str>
@@ -63,24 +63,26 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
     :param naming_convention: <str> file naming convention (mostly for backward compatibility). Supported values: 'OLD', 'OLD_TEMP', None (default)
     :return: <str> directory name pattern for the satellite
     """
+    # GLM
     if sat_name == cts.GOES_SATELLITE_GLM:
         if naming_convention is None:
             # OR_GLM-L2-LCFA_YYYY_DDD
-            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.YYYY_pattern}_{cts.DDD_pattern}'
+            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{YYYY}_{DDD}'
         elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
             #OR_GLM-L2-LCFA_Gxx_sYYYYDDD
-            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.GLM_Gxx_PATTERN}_s{cts.YYYY_pattern}{cts.DDD_pattern}'
+            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.GLM_Gxx_PATTERN}_s{YYYY}{DDD}'
         elif naming_convention == OLD_GLM_NOTATION:
             # GLM_array(_05deg)_DDD
             if regrid:
                 regrid_pattern = f'{regrid_res_str}_'
             else:
                 regrid_pattern = ''
-            dirname_pattern = f'GLM_array_{regrid_pattern}{cts.DDD_pattern}'
+            dirname_pattern = f'GLM_array_{regrid_pattern}{DDD}'
         else:
             raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
-    elif sat_name == cts.GOES_SATELLITE_ABI:
-        pass
+    # ABI
+    elif sat_name == cts.GOES_SATELLITE_ABI: #ABI_GEO_L1B_YYYY_MM_DD
+        dirname_pattern = f"ABI_GEO_L1B_{YYYY}_{MM}_{DD}"
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
@@ -112,36 +114,46 @@ def generate_sat_dir_path(date, sat_name, regrid, regrid_res_str=cts.GRID_RESOLU
         else:
             return pathlib.Path(
                 f'{root_dir_path}/{cts.PRE_REGRID_GLM_DIRNAME}/{date.year}/{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
+    # ABI
+    elif sat_name == cts.GOES_SATELLITE_ABI:
+        root_dir_path = target_dir if target_dir is not None else cts.ABI_ROOT_DIR
+        if regrid:
+            return pathlib.Path(
+                f'{root_dir_path}/{cts.REGRID_ABI_DIRNAME}/{date.year}/{regrid_res_str}_{cts.ABI_PATH_PREFIX}_{date.year}_{date.month:02d}_{date.day:02d}')
+        else:
+            return pathlib.Path(
+                f'{root_dir_path}/{cts.PRE_REGRID_ABI_DIRNAME}/{date.year}/{cts.ABI_PATH_PREFIX}_{date.year}_{date.month:02d}_{date.day:02d}')
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
 
-def generate_sat_hourly_file_path(date, satellite, sat_version, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR,
+def generate_sat_hourly_file_path(date, sat_name, satellite, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR,
                                   dir_path=None):
     """
     Generate absolute path to a satellite hourly file (regridded or not)
     <!> The path does not necessarily point to an existing file, it might point to a file that has yet to be created
     :param date: <pandas.Timestamp> or <numpy.datetime64> or <datetime.datetime> or <GLMPathParser>
-    :param satellite: <str> satellite name
-    :param sat_version: <str> satellite version e.g.: 'G16' for GOES satellite
+    :param sat_name: <str> satellite name
+    :param satellite: <str> satellite version e.g.: 'G16' for GLM or 'GOES16' for ABI
     :param regrid: <bool> indicates if the file is regridded
     :param regrid_res_str: <str> regrid resolution (if regrid == True)
     :param dir_path: <str> or <pathlib.Path> mostly used for testing purposes, if == None the default directory path is used
     :return: <pathlib.Path> object pointing to satellite hourly data file
     """
     date = date_to_pd_timestamp(date)
-    dir_path = generate_sat_dir_path(date=date, sat_name=satellite, regrid=regrid, regrid_res_str=regrid_res_str,
+    dir_path = generate_sat_dir_path(date=date, sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str,
                                      target_dir=dir_path)
     if not dir_path.exists():
         dir_path.mkdir(parents=True)
-    if satellite == cts.GOES_SATELLITE_GLM:
-        filename = f'{cts.GLM_PATH_PREFIX}_{sat_version}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
-        if regrid:
-            return dir_path / pathlib.Path(f'{regrid_res_str}_{filename}')
-        else:
-            return dir_path / pathlib.Path(filename)
+    if sat_name == cts.GOES_SATELLITE_GLM:
+        filename = f'{cts.GLM_PATH_PREFIX}_{satellite}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
+    elif sat_name == cts.GOES_SATELLITE_ABI:
+        filename = f'{cts.ABI_PATH_PREFIX}-{satellite}_{date.year}_{date.month:02d}_{date.day:02d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
     else:
-        raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
+        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
+    if regrid:
+        filename = f'{regrid_res_str}_{filename}'
+    return dir_path / pathlib.Path(filename)
 
 
 def get_list_of_dates_from_list_of_sat_path(path_list, directory, satellite, regrid, date_str, date_format='%Y-%j'):
@@ -158,6 +170,8 @@ def get_list_of_dates_from_list_of_sat_path(path_list, directory, satellite, reg
     date_list = []
     if satellite == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
+    elif satellite == cts.GOES_SATELLITE_ABI:
+        SatPathParser = ABIPathParser
     else:
         raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
     for p in path_list:

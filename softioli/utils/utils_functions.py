@@ -6,17 +6,17 @@ import pathlib
 from .GLMPathParser import GLMPathParser
 from .constants import OUTPUT_ROOT_DIR
 
-#TODO: jsp si vraiment utile, peut-être juste pour GLMPathParser mais bizarre ce truc quand même
+#TODO: jsp si vraiment utile, peut-être juste pour GLMPathParser mais moche ce truc quand même
 def date_to_pd_timestamp(date_to_check):
     """
     Function to convert date or GLMPathParser to pandas.Timestamp object
     Expecting pd.Timestamp OR datetime.datetime object OR numpy.datetime64 object OR GLMPathParser
-    :param date_to_check: <pd.Timestamp> or <datetime.datetime> or <nup.datetime64> or <GLMPathParser> object
+    :param date_to_check: <pd.Timestamp> or <datetime.datetime> or <nup.datetime64> or <GLMPathParser> or <str> object
     :return: <pd.Timestamp>
     """
     # expecting a pd.Timestamp OR a datetime object OR np.datetime64 object OR GLMPathParser
     if not isinstance(date_to_check, pd.Timestamp):
-        if isinstance(date_to_check, datetime) or isinstance(date_to_check, np.datetime64):
+        if isinstance(date_to_check, datetime) or isinstance(date_to_check, np.datetime64) or isinstance(date_to_check, str):
             return pd.Timestamp(date_to_check)
         elif isinstance(date_to_check, pathlib.PurePath):
             return GLMPathParser(date_to_check, directory=True, regrid=True).get_start_date_pdTimestamp(
