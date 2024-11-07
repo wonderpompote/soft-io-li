@@ -146,7 +146,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
             # get the missing dates from the remaining missing directory paths to display them in the error message
             missing_dates = get_list_of_dates_from_list_of_sat_path(
                 path_list=(missing_raw_daily_dir_list - dir_to_regrid_list),
-                directory=True, satellite=sat_name, regrid=False, date_str=True
+                directory=True, sat_name=sat_name, regrid=False, date_str=True
             )
             raise FileNotFoundError(
                 f'The GLM files for the following dates are missing, please download them from the ICARE server and try again: \n{sorted(missing_dates)}')

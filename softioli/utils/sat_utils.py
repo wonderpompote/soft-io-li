@@ -156,29 +156,30 @@ def generate_sat_hourly_file_path(date, sat_name, satellite, regrid, regrid_res_
     return dir_path / pathlib.Path(filename)
 
 
-def get_list_of_dates_from_list_of_sat_path(path_list, directory, satellite, regrid, date_str, date_format='%Y-%j'):
+def get_list_of_dates_from_list_of_sat_path(path_list, directory, sat_name, regrid, date_str, hourly=True, date_str_format='%Y-%m-%d'):
     """
     Takes a list of satellite data paths (directories or files) and returns the corresponding dates
     extracted from the file/directory names
+    @param hourly:
     @param path_list: <list> [ <pathlib.Path> or <str>, ... ]
     @param directory: <bool> indicates if the paths point to directories
-    @param satellite: <str> satellite name
+    @param sat_name: <str> satellite name
     @param regrid: <bool> indicates if the paths point to regridded files or directories
     @param date_str: <bool> indicates if we want the dates as str
     @return: <list> [ <pd.Timestamp> or <str>, ... ] list of all the dates as pd.Timestamps or str
     """
     date_list = []
-    if satellite == cts.GOES_SATELLITE_GLM:
+    if sat_name == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
-    elif satellite == cts.GOES_SATELLITE_ABI:
+    elif sat_name == cts.GOES_SATELLITE_ABI:
         SatPathParser = ABIPathParser
     else:
-        raise ValueError(f'{satellite} {cts.SAT_VALUE_ERROR}')
+        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
     for p in path_list:
-        date = SatPathParser(p, regrid=regrid, directory=directory) \
+        date = SatPathParser(p, regrid=regrid, directory=directory, hourly=hourly) \
             .get_start_date_pdTimestamp(ignore_missing_start_hour=True)
         if date_str:
-            date = date.strftime(date_format)
+            date = date.strftime(date_str_format)
         date_list.append(date)
 
     return date_list
@@ -215,7 +216,7 @@ def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res
     filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str)
     file_list = []
     for dir_path in sat_dir_path:
-        if not parent_dir: # if not parent dir, check if dir_path is a pathlib object
+        if not parent_dir: # if not parent dir, make sure dir_path is a pathlib object
             dir_path = pathlib.Path(dir_path)
         file_list.extend(dir_path.glob(filename_pattern))
 
@@ -248,21 +249,23 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
 
 
 # TODO: add check dir_list contient que des pathlib.PurePath objects (?)
-def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sat_name, regrid):
+def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sat_name, regrid, hourly=True):
     if sat_name == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
+    elif sat_name == cts.GOES_SATELLITE_ABI:
+        SatPathParser = ABIPathParser
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
     start_date, end_date = date_to_pd_timestamp(start_date), date_to_pd_timestamp(end_date)
     file_list = []
     dir_list = sorted(dir_list)
-    fname_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid)
+    fname_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid, hourly=hourly)
     for file in dir_list[0].glob(fname_pattern):
-        fparser = GLMPathParser(file_url=file, regrid=regrid)
+        fparser = SatPathParser(file_url=file, regrid=regrid, hourly=hourly)
         if fparser.start_hour >= start_date.hour:
             file_list.append(file)
     for file in dir_list[-1].glob(fname_pattern):
-        fparser = GLMPathParser(file_url=file, regrid=regrid)
+        fparser = SatPathParser(file_url=file, regrid=regrid, hourly=hourly)
         if fparser.start_hour <= end_date.hour:
             file_list.append(file)
     # for the days: start_day < day < end_day --> get all files matching generic filename pattern

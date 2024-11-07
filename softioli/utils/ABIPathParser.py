@@ -1,7 +1,7 @@
 import pandas as pd
 import pathlib
 
-from .SatPathParser import SatPathParser
+from SatPathParser import SatPathParser
 
 """
 Filenames:
@@ -54,7 +54,8 @@ class ABIPathParser(SatPathParser):
         filename = self.url.stem
         filename_split = filename.split('_')
         if self.directory: # ABI_GEO_L1B_YYYY_MM_DD or xxdeg_ABI_GEO_L1B_YYYY_MM_DD
-            start_date = pd.Timestamp(f'{filename_split[-3]}-{filename_split[-2]}-{filename_split[-1]}')
+            date_split = filename_split[-1].split('-')
+            start_date = pd.Timestamp(f'{date_split[-3]}-{date_split[-2]}-{date_split[-1]}')
             end_date = None
         elif not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
             start_date = pd.Timestamp(filename_split[2], tz='UTC')
@@ -68,13 +69,13 @@ class ABIPathParser(SatPathParser):
         self.month = start_date.month
         self.day = start_date.day
         self.start_hour = start_date.hour
-        self.start_date = start_date if not self.directory else None
+        self.start_date = start_date
         self.end_date = end_date if not self.directory else None
         if end_date is not None:
             self.end_hour = end_date.hour
 
     def extract_version(self):
-        if not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
+        if not self.hourly and not self.directory:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
             self.version = self.url.stem.split('_')[-1]
         else:
             self.version = None
@@ -88,11 +89,14 @@ class ABIPathParser(SatPathParser):
             self.regrid_res = None
 
     def extract_satellite(self):
-        filename_split = self.url.stem.split('_')
-        if not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
-            self.satellite = filename_split[1].split('-')[1]
-        else:  # ABI_GEO_L1B-GOES16_YYYY-MM-DD_HH1-HH2.nc or 05deg_ABI_GEO_L1B-GOES16_YYYY-MM-DD_HH1-HH2.nc
-            self.satellite = filename_split[-3].split('-')[1]
+        if self.directory:
+            self.satellite = None
+        else:
+            filename_split = self.url.stem.split('_')
+            if not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
+                self.satellite = filename_split[1].split('-')[1]
+            else:  # ABI_GEO_L1B-GOES16_YYYY-MM-DD_HH1-HH2.nc or 05deg_ABI_GEO_L1B-GOES16_YYYY-MM-DD_HH1-HH2.nc
+                self.satellite = filename_split[-3].split('-')[1]
 
     def get_start_date_pdTimestamp(self, ignore_missing_start_hour=False):
         return pd.Timestamp(self.start_date)
