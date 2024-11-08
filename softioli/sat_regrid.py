@@ -1,16 +1,14 @@
 from datetime import datetime
 import numpy as np
+import pathlib
 import xarray as xr
 
-from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_filename_pattern, generate_sat_dirname_pattern
+from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_filename_pattern, generate_sat_dirname_pattern, open_hdf4, ABIPathParser, get_abi_coords_file
 from utils import constants as cts
 from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
 from utils import xarray_pandas_utils as xr_pd_utils
 
-
-def generate_abi_hourly_nc_file_from_15min_hdf_files():
-    pass
 
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, grid_res_str, overwrite,
                                               lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
@@ -129,6 +127,55 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
         print(f"{result_dir_path} already exists")
 
 
+
+def generate_cloud_temp_sat_hourly_regrid_file():
+    pass
+
+def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list):
+    # pour chaque daily dir
+    for dir_p in path_list:
+        dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True)
+        for h in range(24):
+            # get filename pattern
+            filename_pattern = generate_sat_filename_pattern(
+                sat_name=cts.GOES_SATELLITE_ABI,
+                regrid=False, hourly=False,
+                YYYY=dir_date.year, MM=f'{dir_date.month:02d}', DD=f'{dir_date.day:02d}',
+                start_HH=f'{h:02d}'
+            )
+            # get list of all 15-min files for the corresponding hour
+            h_file_list = sorted(pathlib.Path(f'{dir_p}/temp').glob(filename_pattern))
+            h_abi_ds_list = []
+            for h_file in h_file_list:
+                # open file + rename col names to coorespond to coords_ds col names
+                with open_hdf4(str(h_file)).rename(dict(NbLines='Nlin', NbColumns='Ncol')) as abi_ds_wout_coords:
+                    print(abi_ds_wout_coords)
+                    # get corresponding coords file_path
+                    h_file_parser = ABIPathParser(file_url=h_file, regrid=False, hourly=False)
+                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite, file_version=h_file_parser.version)
+                    # combine coords dataset with abi dataset
+                    with open_hdf4(str(coords_file_path)) as coords_ds:
+                        b_temp_w_coords_ds = coords_ds.assign(Brightness_Temperature=abi_ds_wout_coords.Brightness_Temperature)
+                        # add file timestamp
+                        b_temp_w_coords_ds = b_temp_w_coords_ds.expand_dims({
+                            'time': [h_file_parser.get_start_date_pdTimestamp(ignore_missing_start_hour=False).to_datetime64()],
+                            'satellite': [h_file_parser.satellite]
+                        })
+                        h_abi_ds_list.append(b_temp_w_coords_ds[['Latitude', 'Longitude', 'Brightness_Temperature']])
+            h_abi_ds = xr.merge(h_abi_ds_list)
+            result_hourly_filename = generate_sat_hourly_file_path(
+                                                    date=h_file_parser.start_date,
+                                                    sat_name=cts.GOES_SATELLITE_ABI, satellite=h_file_parser.satellite,
+                                                    regrid=False, dir_path=None)
+            h_abi_ds.to_netcdf(
+                path=result_hourly_filename, mode='w',
+                encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
+            )
+            print(f"Saved {result_hourly_filename}")
+
+
+
+
 def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
                      result_dir_path=None, naming_convention=None):
@@ -144,8 +191,9 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     :param naming_convention: <str> file or directory naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD' or None (default)
     :return:
     """
-    if sat_name == cts.GOES_SATELLITE_ABI:
-        generate_abi_hourly_nc_file_from_15min_hdf_files() #TODO: faaaaire
+    if sat_name == cts.GOES_SATELLITE_ABI and dir_list:
+        # if list of directories and temp dir in directory list --> concat 15min hdf files into hourly nc files
+        generate_abi_hourly_nc_file_from_15min_hdf_files(path_list) #TODO: faaaaire
     # if path_list contains paths to directories --> get list of files in each directory
     if dir_list:
         filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=False,
@@ -165,6 +213,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                                                       grid_res=grid_res, grid_res_str=grid_res_str,
                                                       overwrite=overwrite, result_dir_path=result_dir_path,
                                                       naming_convention=naming_convention)
+        elif sat_name == cts.GOES_SATELLITE_ABI:
+            pass
         else:
             raise ValueError(
-                f'{sat_name} satellite data not yet supported. Supported satellite data so far: GOES_GLM')
+                f'{sat_name} {cts.SAT_VALUE_ERROR}')

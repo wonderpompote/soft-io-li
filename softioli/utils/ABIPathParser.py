@@ -24,7 +24,7 @@ GOESNG-1370:    05deg_ABI_GEO_L1B-GOES1[78]_YYYY-MM-DD_HH1-HH2.nc
 
 class ABIPathParser(SatPathParser):
 
-    def __init__(self, file_url, regrid, hourly, directory=False, year=None, month=None, day=None, start_hour=None, end_hour=None,
+    def __init__(self, file_url, regrid, hourly=True, directory=False, year=None, month=None, day=None, start_hour=None, end_hour=None,
                  version=None, regrid_res_str=None, satellite=None):
         self.url = pathlib.Path(file_url)
         self.hourly = hourly
@@ -54,8 +54,7 @@ class ABIPathParser(SatPathParser):
         filename = self.url.stem
         filename_split = filename.split('_')
         if self.directory: # ABI_GEO_L1B_YYYY_MM_DD or xxdeg_ABI_GEO_L1B_YYYY_MM_DD
-            date_split = filename_split[-1].split('-')
-            start_date = pd.Timestamp(f'{date_split[-3]}-{date_split[-2]}-{date_split[-1]}')
+            start_date = pd.Timestamp(f'{filename_split[-3]}-{filename_split[-2]}-{filename_split[-1]}', tz='UTC')
             end_date = None
         elif not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
             start_date = pd.Timestamp(filename_split[2], tz='UTC')

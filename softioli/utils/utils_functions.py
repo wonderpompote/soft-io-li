@@ -2,6 +2,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import pathlib
+from pyhdf.SD import SD
+import xarray as xr
 
 from .GLMPathParser import GLMPathParser
 from .constants import OUTPUT_ROOT_DIR
@@ -117,3 +119,16 @@ def get_list_of_paths_between_two_values(dirpath, start_name, end_name, glob_pat
         return [ p for p in res_list if len(list(p.glob(f'**/{subdir_glob_pattern}'))) > 0]
     else:
         return sorted(res_list)
+
+
+def open_hdf4(url):
+    hdf = SD(str(url))
+    dic = {}
+    for dsets, (dims, *_) in hdf.datasets().items():
+        hdf_v = hdf.select(dsets)
+        fill_value = hdf_v.getfillvalue()
+        val = hdf_v.get()
+        val = np.where(val == fill_value, np.nan, val)
+        dic[dsets] = (dims, val)
+    ds = xr.Dataset(dic)
+    return ds

@@ -272,3 +272,21 @@ def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sa
     for dir_path in dir_list[1:-1]:
         file_list.extend(dir_path.glob(fname_pattern))
     return sorted(file_list)
+
+
+def get_abi_coords_file(sat_version, file_version):
+    if sat_version in ['GOES12', 'GOES13']:
+        if file_version is not None:
+            if file_version <= "V1-05":
+                coords_file = cts.GOES_0750_C0_COORDS_FILE
+            elif file_version >= "V1-06":
+                coords_file = cts.GOES_0750_C1_COORDS_FILE
+    elif sat_version == 'GOES16':
+        coords_file = cts.GOESNG_0750_COORDS_FILE
+    elif sat_version in ['GOES17', 'GOES18']:
+        coords_file = cts.GOESNG_1370_COORDS_FILE
+    else:
+        raise ValueError(
+            f'{sat_version} unsupported. Supported ABI satellites so far: "GOES12", "GOES13", "GOES16", "GOES17", "GOES18"')
+
+    return pathlib.Path(f'{cts.ABI_COORDS_DIRPATH}/{coords_file}')
