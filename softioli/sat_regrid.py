@@ -1,6 +1,7 @@
 from datetime import datetime
 import numpy as np
 import pathlib
+from shutil import rmtree
 import xarray as xr
 
 from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_filename_pattern, generate_sat_dirname_pattern, open_hdf4, ABIPathParser, get_abi_coords_file
@@ -128,10 +129,28 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
 
 
 
-def generate_cloud_temp_sat_hourly_regrid_file():
+def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, grid_res_str, overwrite,
+                                               lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
+                                               lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
+                                               result_dir_path=None):
+    """
+    Gère un seul fichier à la fois et il faut:
+    1- recup SatPathParser
+    2- pre_regrid_file_parsed = SatPathParser(pre_regrid_file_url, regrid=False, hourly=True)
+    3- create result_dir_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, sat_name=sat_name, regrid=True, satellite=pre_regrid_path_parsed.satellite_version, regrid_res_str=grid_res_str, dir_path=result_dir_path)
+    4- if parent result dir does not exist --> create it:
+    if not result_dir_path.parent.exists(): # TODO: pourquoi .parent ???
+        result_dir_path.parent.mkdir(parents=True)
+        print(f"Creating directory {result_dir_path.parent}")
+    5- if result
+    TODO: generic function pour regrid longitude et latitudes + création dossier parents et tout (je pense que ça peut le faire si on va jusqu'à truc reset_coords
+    TODO: <!> les cas où j'ai
+    ensuite, une fois que j'ai les bonnes latitudes et longitudes
+    --> PBM = quand j'ai deux satellites, j'ai la dimension "satellite"
+    """
     pass
 
-def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list):
+def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False):
     # pour chaque daily dir
     for dir_p in path_list:
         dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True)
@@ -172,17 +191,20 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list):
                 encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
             )
             print(f"Saved {result_hourly_filename}")
+        if remove_temp_files:
+            rmtree(pathlib.Path(f'{dir_p}/temp'))
+            print(f"Deleting {dir_p}/temp directory")
 
 
 
 
 def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
-                     result_dir_path=None, naming_convention=None):
+                     result_dir_path=None, naming_convention=None, remove_temp_abi_dir=False):
     """
     Function to regrid a list of hourly satellite data files to a specific grid resolution
-    :param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or directories to regrid
-    :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
+    :param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or daily directories to regrid
+    :param sat_name: <str> name of the satellite (only 'GOES_GLM' and 'GOES_ABI' supported for now)
     :param grid_res: <float> grid resolution
     :param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
     :param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
@@ -192,11 +214,18 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     :return:
     """
     if sat_name == cts.GOES_SATELLITE_ABI and dir_list:
-        # if list of directories and temp dir in directory list --> concat 15min hdf files into hourly nc files
-        generate_abi_hourly_nc_file_from_15min_hdf_files(path_list) #TODO: faaaaire
+        path_to_concat_into_hourly_files = []
+        hourly_pre_regrid_nc_file_pattern = generate_sat_filename_pattern(sat_name=cts.GOES_SATELLITE_ABI, regrid=False, hourly=True)
+        for p in path_list:
+            p = pathlib.Path(p)
+            # if temp dir exists and not all hourly pre regrid nc files available
+            if pathlib.Path(f'{p}/temp').exists() and len(sorted(p.glob(hourly_pre_regrid_nc_file_pattern))) != 24:
+                path_to_concat_into_hourly_files.append(p)
+        if len(path_to_concat_into_hourly_files) > 0: #concat 15min hdf files into hourly nc files
+            generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=hourly_pre_regrid_nc_file_pattern, remove_temp_files=remove_temp_abi_dir)
     # if path_list contains paths to directories --> get list of files in each directory
     if dir_list:
-        filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=False,
+        filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=False, hourly=True,
                                                          naming_convention=naming_convention)
         # Get list of files in subdirectories
         path_list[:] = [
