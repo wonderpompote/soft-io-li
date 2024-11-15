@@ -120,6 +120,9 @@ REGRID_ABI_DIRNAME = 'regrid_hourly_ABI'
 PRE_REGRID_ABI_DIRNAME = 'pre_regrid_ABI'
 ABI_PATH_PREFIX = 'ABI_GEO_L1B'
 ABI_GOESXX_PATTERN = 'GOES1[236-8]'
+ABI_GOES_WEST_SAT_VERSION = ['GOES17', 'GOES18']
+ABI_GOES_EAST_SAT_VERSION = ['GOES16']
+
 ABI_COORDS_DIRPATH = '/o3p/patj/ABI/coords_files'
 GOES_0750_C0_COORDS_FILE = 'GOES-0750.C0.4km.hdf'
 GOES_0750_C1_COORDS_FILE = 'GOES-0750.C1.4km.hdf'
@@ -128,6 +131,10 @@ GOESNG_1370_COORDS_FILE = 'GOESNG-1370.2km.hdf'
 
 GRID_RESOLUTION_STR = '05deg'
 GRID_RESOLUTION = 0.5
+FPOUT_LAT_MIN = -89.75
+FPOUT_LAT_MAX = 89.75
+FPOUT_LON_MIN = -179.25
+FPOUT_LON_MAX = 180.25
 
 YYYY_pattern = "[0-2][0-9][0-9][0-9]" # year
 DDD_pattern = "[0-3][0-9][0-9]" # day of year
@@ -164,14 +171,9 @@ SAT_SETTINGS = {
         raw_lon_cname: "flash_lon", # longitude coordinate name in pre regrid dataset
         attrs_to_keep: ['production_site', 'orbital_slot', 'platform_ID', 'instrument_type', 'instrument_ID',
                         'spatial_resolution', 'processing_level']
-    }
+    },
     # <OTHER_SATELLITE>: { ... }
 }
-
-FPOUT_LAT_MIN = -89.75
-FPOUT_LAT_MAX = 89.75
-FPOUT_LON_MIN = -179.25
-FPOUT_LON_MAX = 180.25
 
 
 

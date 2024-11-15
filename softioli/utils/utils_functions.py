@@ -122,6 +122,11 @@ def get_list_of_paths_between_two_values(dirpath, start_name, end_name, glob_pat
 
 
 def open_hdf4(url):
+    """
+    Takes hdf4 file url, opens it and returns it as an xarray dataset (keeping the attributes)
+    @param url: <str> path to the hdf4 file
+    @return: <xarray.Dataset>
+    """
     hdf = SD(str(url))
     dic = {}
     for dsets, (dims, *_) in hdf.datasets().items():
@@ -129,6 +134,7 @@ def open_hdf4(url):
         fill_value = hdf_v.getfillvalue()
         val = hdf_v.get()
         val = np.where(val == fill_value, np.nan, val)
-        dic[dsets] = (dims, val)
+        dic[dsets] = (dims, val, hdf_v.attributes())
     ds = xr.Dataset(dic)
+    ds = ds.assign_attrs(hdf.attributes())
     return ds

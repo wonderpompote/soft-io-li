@@ -76,7 +76,7 @@ if __name__ == '__main__':
     regrid_sat_files(path_list=sorted(args.file_list), sat_name=args.sat_name,
                      grid_res=args.regrid_res, grid_res_str=args.regrid_res_str,
                      dir_list=args.parent_dir,
-                     overwrite=args.overwrite, result_dir_path=args.res_path, naming_convention=naming_convention)
+                     overwrite=args.overwrite, result_file_path=args.res_path, naming_convention=naming_convention)
 
 """
 Examples: (??)
