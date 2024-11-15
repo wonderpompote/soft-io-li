@@ -130,6 +130,7 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
                                                lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                                lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX):
     if sat_name == cts.GOES_SATELLITE_ABI:
+        SatPathParser = ABIPathParser
         btemp_varname = 'brightness_temperature'
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -194,11 +195,11 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
 
 
 def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False):
-    # for each daily directory
+    # pour chaque daily dir
     for dir_p in path_list:
         dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True).get_start_date_pdTimestamp(
             ignore_missing_start_hour=False)
-        for h in range(24):  # for each hour
+        for h in range(24):
             # get filename pattern
             filename_pattern = generate_sat_filename_pattern(
                 sat_name=cts.GOES_SATELLITE_ABI,
@@ -208,16 +209,16 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
             )
             # get list of all 15-min files for the corresponding hour
             h_file_list = sorted(pathlib.Path(f'{dir_p}/temp').glob(filename_pattern))
-            if not h_file_list:  # if missing hour skip to next one
+            if not h_file_list:
                 continue
             h_abi_ds_list = []
             for h_file in h_file_list:
-                # open file + rename col names to correspond to coords_ds col names
+                # open file + rename col names to coorespond to coords_ds col names
                 with open_hdf4(str(h_file)).rename(dict(NbLines='Nlin', NbColumns='Ncol')) as abi_ds_wout_coords:
                     # get corresponding coords file_path
                     h_file_parser = ABIPathParser(file_url=h_file, regrid=False, hourly=False)
-                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite,
-                                                           file_version=h_file_parser.version)
+                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite_version,
+                                                           file_version=h_file_parser.file_version)
                     # combine coords dataset with abi dataset
                     with open_hdf4(str(coords_file_path)) as coords_ds:
                         b_temp_w_coords_ds = coords_ds.assign(
@@ -226,16 +227,20 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
                         b_temp_w_coords_ds = b_temp_w_coords_ds.expand_dims({
                             'time': [h_file_parser.get_start_date_pdTimestamp(
                                 ignore_missing_start_hour=False).to_datetime64()],
-                            'satellite': [h_file_parser.satellite]
+                            'satellite': [h_file_parser.satellite_version]
                         })
                         b_temp_w_coords_ds.attrs = abi_ds_wout_coords.attrs
                         h_abi_ds_list.append(b_temp_w_coords_ds[['Latitude', 'Longitude', 'brightness_temperature']])
             h_abi_ds = xr.merge(h_abi_ds_list, combine_attrs="drop_conflicts")
             h_abi_ds = h_abi_ds.rename_vars({'Latitude': 'latitude', 'Longitude': 'longitude'})
             h_abi_ds.attrs['raw_hdf_files'] = [f.name for f in h_file_list]
+            if len(h_abi_ds.satellite) > 1:  # if both goes-e and goes-w
+                satellite_version = '+'.join(h_abi_ds.satellite.values)
+            else:
+                satellite_version = h_file_parser.satellite_version
             result_hourly_filename = generate_sat_hourly_file_path(
                 date=h_file_parser.start_date,
-                sat_name=cts.GOES_SATELLITE_ABI, satellite=h_file_parser.satellite,
+                sat_name=cts.GOES_SATELLITE_ABI, satellite=satellite_version,
                 regrid=False, dir_path=None)
             h_abi_ds.to_netcdf(
                 path=result_hourly_filename, mode='w',

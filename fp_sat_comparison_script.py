@@ -96,7 +96,7 @@ if __name__ == '__main__':
     print('----------------------')
     logger().debug('----------------------')
     
-    fp_sat_ds = fs_comp.get_weighted_fp_sat_ds(fp_ds=fp_da, sat_ds=sat_ds)
+    fp_sat_ds = fs_comp.get_weighted_fp_sat_ds(fp_ds=fp_da, lightning_sat_ds=sat_ds)
     fp_sat_ds.to_netcdf(f'/o3p/patj/test-glm/fpout_sat_comp_tests/{timenow}_fp_sat_ds_WRONG-START-END-HOUR.nc')
     logger().debug(f'writing fp_sat_ds to /o3p/patj/test-glm/fpout_sat_comp_tests/{timenow}_fp_sat_ds_WRONG-START-END-HOUR.nc')
 

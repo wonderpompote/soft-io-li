@@ -174,12 +174,12 @@ def get_weighted_flash_count(spec001_mr_da, flash_count_da):
     return (spec001_mr_da * flash_count_da).sum(['latitude', 'longitude']) / 3600
 
 
-def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='auto',
+def get_weighted_fp_sat_ds(fp_ds, lightning_sat_ds, sum_height=True, load=False, chunks='auto',
                            max_chunk_size=1e8, assign_releases_position_coords=False):
     """
 
     @param fp_ds: <xarray.Dataset> or <pathlib.Path> (or <str>) path to existing fp out netcdf file
-    @param sat_ds: <xarray.Dataset>
+    @param lightning_sat_ds: <xarray.Dataset>
     @param sum_height:
     @param load:
     @param chunks:
@@ -197,11 +197,11 @@ def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='a
         else:
             raise TypeError(
                 f'Invalid fp_da ({fp_ds}). Expecting <xarray.Dataset> or path (<str> or <pathlib.Path>) to existing FLEXPART output file')
-    if not isinstance(sat_ds, xr.Dataset):
+    if not isinstance(lightning_sat_ds, xr.Dataset):
         raise TypeError(
-            f'Invalid sat_ds ({sat_ds}). Expecting <xarray.Dataset> object')
+            f'Invalid sat_ds ({lightning_sat_ds}). Expecting <xarray.Dataset> object')
     # merge fp da and sat ds
-    fp_sat_ds = xr.merge([fp_ds, sat_ds], combine_attrs='drop_conflicts')
+    fp_sat_ds = xr.merge([fp_ds, lightning_sat_ds], combine_attrs='drop_conflicts')
     # get weighted flash count
     fp_sat_ds['weighted_flash_count'] = get_weighted_flash_count(spec001_mr_da=fp_sat_ds['spec001_mr'],
                                                                  flash_count_da=fp_sat_ds['flash_count'])
@@ -209,14 +209,14 @@ def get_weighted_fp_sat_ds(fp_ds, sat_ds, sum_height=True, load=False, chunks='a
 
 
 # TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout (? pourquoi j'ai dit ça?)
-def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, sum_height=True, load=False,
+def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id_list, file_list=False, sum_height=True, load=False,
                          chunks='auto',
                          max_chunk_size=1e8, assign_releases_position_coords=False, grid_resolution=cts.GRID_RESOLUTION,
                          grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None,
                          weighted_ds_filename_suffix=''):
     if not file_list and isinstance(fp_path, str) or isinstance(fp_path, pathlib.Path):
         fp_path = [fp_path]
-    missing_dates_list = []
+    missing_dates_list = {'lightning': [], 'cloud': []}
     for index, fp_file in enumerate(fp_path):
         # fp_file expected to be in <flight_output_dir>/flexpart/output/... hence the <fp_path>.parent.parent to get to the flexpart directory
         if check_fp_status(pathlib.Path(fp_file).parent.parent):
@@ -234,19 +234,28 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
                 start_date, end_date = pd.Timestamp(fp_ds.time.min().values), pd.Timestamp(fp_ds.time.max().values)
                 #   step4: get sat_ds
                 try:
-                    sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=sat_name,
+                    lightning_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=lightning_sat_name,
                                               grid_resolution=grid_resolution,
                                               grid_res_str=grid_res_str)
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
                     for m_date in eval(str(e).split('\n')[1]):
-                        if m_date not in missing_dates_list:
-                            missing_dates_list.append(m_date)
+                        if m_date not in missing_dates_list['lightning']:
+                            missing_dates_list['lightning'].append(m_date)
                     continue
                 # setp5: get weighted fp_sat_ds
-                weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, sat_ds=sat_ds)
-                # TODO: step6: ajouter données ABI à weighted_fp_sat_ds
-                # TODO: blablablabla
+                weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, lightning_sat_ds=lightning_sat_ds)
+                try:
+                    bTemp_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=bTemp_sat_name,
+                                              grid_resolution=grid_resolution,
+                                              grid_res_str=grid_res_str)
+                except FileNotFoundError as e:
+                    print(f'<!> {e}')
+                    for m_date in eval(str(e).split('\n')[1]):
+                        if m_date not in missing_dates_list['cloud']:
+                            missing_dates_list['cloud'].append(m_date)
+                    continue
+                #TODO: merge btemp dans weighted sat ds
                 if save_weighted_ds:
                     if flights_output_dirpath is None:
                         Warning(f'Saving weighted ds to current directory ({pathlib.Path.cwd()})')
@@ -265,8 +274,9 @@ def fpout_sat_comparison(fp_path, sat_name, flights_id_list, file_list=False, su
         else:
             raise FileNotFoundError(
                 f'Expecting existing completed fp out file! {fp_file} does NOT exist and/or flexpart simulation has NOT been successful')
-
-    return sorted(missing_dates_list)
+    missing_dates_list['lightning'] = sorted(missing_dates_list['lightning'])
+    missing_dates_list['cloud'] = sorted(missing_dates_list['cloud'])
+    return missing_dates_list
 
 
 if __name__ == '__main__':
@@ -346,7 +356,7 @@ if __name__ == '__main__':
     print(sorted(args.flight_id_list))
 
     missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list),
-                                         sat_name=args.sat_name, file_list=True,
+                                         lightning_sat_name=args.sat_name, file_list=True,
                                          sum_height=(not args.dont_sum_height), load=args.load_fpout,
                                          chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,
                                          grid_resolution=args.grid_res, grid_res_str=args.grid_res_str,
@@ -354,9 +364,16 @@ if __name__ == '__main__':
                                          flights_output_dirpath=args.flights_output_dir,
                                          weighted_ds_filename_suffix=args.ds_fname_suffix)
 
-    if len(missing_dates) > 0:
+    if len(missing_dates["lightning"]) > 0:
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
         print(
-            f'{len(missing_dates)} missing GLM daily files, please download them before running the program again: \n{missing_dates}')
-        print('See logs above for more detail on which flights have not been computed')
+            f'{len(missing_dates["lightning"])} missing GLM daily files, please download them before running the program again: \n{missing_dates["lightning"]}')
+        print('See logs above for more details on which flights have not been computed')
+        print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+
+    if len(missing_dates["cloud"]) > 0:
+        print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+        print(
+            f'{len(missing_dates["cloud"])} missing ABI daily files, please download them before running the program again: \n{missing_dates["cloud"]}')
+        print('See logs above for more details on which flights have not been computed')
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
