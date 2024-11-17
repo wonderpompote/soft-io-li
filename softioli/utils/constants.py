@@ -114,7 +114,7 @@ PRE_REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{PRE_REGRID_GLM_DIRNAME}
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
 GLM_Gxx_PATTERN = 'G1[6-8]' # TODO: update if older/newer versions available
 
-GOES_SATELLITE_ABI = 'GOES-ABI'
+GOES_SATELLITE_ABI = 'GOES_ABI'
 ABI_ROOT_DIR = pathlib.Path('/o3p/patj/ABI')
 REGRID_ABI_DIRNAME = 'regrid_hourly_ABI'
 PRE_REGRID_ABI_DIRNAME = 'pre_regrid_ABI'

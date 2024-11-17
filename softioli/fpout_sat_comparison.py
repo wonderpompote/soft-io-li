@@ -14,7 +14,7 @@ from fpsim import check_fp_status
 
 import utils
 from utils import constants as cts
-from utils import GLMPathParser
+from utils import GLMPathParser, ABIPathParser
 import sat_regrid
 from utils.sat_utils import generate_sat_dir_path, get_list_of_dates_from_list_of_sat_path, generate_sat_dir_list_between_start_end_date, get_sat_files_list_between_start_end_date
 from utils.fp_utils import get_fpout_nc_file_path_from_fp_dir
@@ -109,6 +109,8 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
                                                                          satellite=sat_name, regrid=True)
     if sat_name == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
+    elif sat_name == cts.GOES_SATELLITE_ABI:
+        SatPathParser = ABIPathParser
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
@@ -139,7 +141,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
                 print()
             if not dry_run:
                 sat_regrid.regrid_sat_files(path_list=list(dir_to_regrid_list), sat_name=sat_name,
-                                            grid_res=grid_resolution, dir_list=True,
+                                            grid_res=grid_resolution, dir_list=True, print_debug=print_debug,
                                             grid_res_str=grid_res_str, overwrite=overwrite, naming_convention=None)
         # if we still have missing pre-regrid directories --> FileNotFoundError
         if missing_raw_daily_dir_list - dir_to_regrid_list:
@@ -210,7 +212,7 @@ def get_weighted_fp_sat_ds(fp_ds, lightning_sat_ds, sum_height=True, load=False,
 
 # TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout (? pourquoi j'ai dit ça?)
 def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id_list, file_list=False, sum_height=True, load=False,
-                         chunks='auto',
+                         chunks='auto', print_debug=False,
                          max_chunk_size=1e8, assign_releases_position_coords=False, grid_resolution=cts.GRID_RESOLUTION,
                          grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None,
                          weighted_ds_filename_suffix=''):
@@ -225,7 +227,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                                      max_chunk_size=max_chunk_size,
                                      assign_releases_position_coords=assign_releases_position_coords) \
                     as fp_ds:
-                if args.print_debug:
+                if print_debug:
                     print('\n\n##################################################')
                     print(f'Flight {flights_id_list[index]}')
                     print(f'Flexpart output: {fp_file}')
@@ -235,7 +237,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                 #   step4: get sat_ds
                 try:
                     lightning_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=lightning_sat_name,
-                                              grid_resolution=grid_resolution,
+                                              grid_resolution=grid_resolution, print_debug=print_debug,
                                               grid_res_str=grid_res_str)
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
@@ -248,7 +250,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                 # step 6: get brightness temperature ds
                 try:
                     bTemp_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=bTemp_sat_name,
-                                              grid_resolution=grid_resolution,
+                                              grid_resolution=grid_resolution, print_debug=print_debug,
                                               grid_res_str=grid_res_str)
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
@@ -310,8 +312,10 @@ if __name__ == '__main__':
 
     # satellite
     sat_group = parser.add_argument_group('Satellite parameters')
-    sat_group.add_argument('--sat-name', default=cts.GOES_SATELLITE_GLM,
-                           help=f'Satellite name (default={cts.GOES_SATELLITE_GLM})')
+    sat_group.add_argument('--lightning-sat-name', default=cts.GOES_SATELLITE_GLM,
+                           help=f'Lightning satellite name (default={cts.GOES_SATELLITE_GLM})')
+    sat_group.add_argument('--cloud-sat-name', default=cts.GOES_SATELLITE_ABI,
+                           help=f'Cloud brightness temperature satellite name (default={cts.GOES_SATELLITE_ABI})')
     sat_group.add_argument('--grid-res', default=cts.GRID_RESOLUTION,
                            help=f'Satellite grid resolution (default={cts.GRID_RESOLUTION})')
     sat_group.add_argument('--grid-res-str', default=cts.GRID_RESOLUTION_STR,
@@ -358,11 +362,12 @@ if __name__ == '__main__':
     print(sorted(args.flight_id_list))
 
     missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list),
-                                         lightning_sat_name=args.sat_name, file_list=True,
+                                         lightning_sat_name=args.lightning_sat_name,
+                                         bTemp_sat_name=args.cloud_sat_name, file_list=True,
                                          sum_height=(not args.dont_sum_height), load=args.load_fpout,
                                          chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,
                                          grid_resolution=args.grid_res, grid_res_str=args.grid_res_str,
-                                         save_weighted_ds=args.save_weighted_ds,
+                                         save_weighted_ds=args.save_weighted_ds, print_debug=args.print_debug,
                                          flights_output_dirpath=args.flights_output_dir,
                                          weighted_ds_filename_suffix=args.ds_fname_suffix)
 

@@ -194,7 +194,10 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
             print(f"Created netcdf file {result_file_path}")
 
 
-def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False):
+def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False, print_debug=False):
+    if print_debug:
+        print(f'List of pre regrid 15min directories to concat into hourly pre regrid files: \n{path_list}')
+        print()
     # pour chaque daily dir
     for dir_p in path_list:
         dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True).get_start_date_pdTimestamp(
@@ -254,7 +257,8 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
 
 def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
-                     result_file_path=None, naming_convention=None, remove_temp_abi_dir=False):
+                     result_file_path=None, naming_convention=None, remove_temp_abi_dir=False,
+                     print_debug=False):
     """
     Function to regrid a list of hourly satellite data files to a specific grid resolution
     :param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or daily directories to regrid
@@ -282,8 +286,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                 if pathlib.Path(f'{p}/temp').exists() and len(sorted(p.glob(hourly_pre_regrid_nc_file_pattern))) != 24:
                     path_to_concat_into_hourly_files.append(p)
             if len(path_to_concat_into_hourly_files) > 0:  # concat 15min hdf files into hourly nc files
-                generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=hourly_pre_regrid_nc_file_pattern,
-                                                                 remove_temp_files=remove_temp_abi_dir)
+                generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=path_to_concat_into_hourly_files,
+                                                                 remove_temp_files=remove_temp_abi_dir, print_debug=print_debug)
     else:
         raise ValueError(
             f'{sat_name} {cts.SAT_VALUE_ERROR}')

@@ -1,7 +1,7 @@
 import pandas as pd
 import pathlib
 
-from SatPathParser import SatPathParser
+from .SatPathParser import SatPathParser
 
 """
 Filenames:
