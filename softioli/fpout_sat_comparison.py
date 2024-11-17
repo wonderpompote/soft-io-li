@@ -245,6 +245,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                     continue
                 # setp5: get weighted fp_sat_ds
                 weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, lightning_sat_ds=lightning_sat_ds)
+                # step 6: get brightness temperature ds
                 try:
                     bTemp_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=bTemp_sat_name,
                                               grid_resolution=grid_resolution,
@@ -255,7 +256,8 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                         if m_date not in missing_dates_list['cloud']:
                             missing_dates_list['cloud'].append(m_date)
                     continue
-                #TODO: merge btemp dans weighted sat ds
+                weighted_fp_sat_ds = weighted_fp_sat_ds.merge(bTemp_sat_ds)
+
                 if save_weighted_ds:
                     if flights_output_dirpath is None:
                         Warning(f'Saving weighted ds to current directory ({pathlib.Path.cwd()})')
