@@ -128,9 +128,9 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     if missing_raw_daily_dir_list:
         if print_debug:
             print()
-            print(f"regrid_daily_dir_list : {regrid_daily_dir_list}")
+            print(f"regrid_daily_dir_list : {sorted(regrid_daily_dir_list)}")
             print()
-            print(f'missing_raw_daily_dir_list : {missing_raw_daily_dir_list}')
+            print(f'missing_raw_daily_dir_list : {sorted(missing_raw_daily_dir_list)}')
             print()
         # directories to regrid (pre-regrid directory exist but NOT regrid directory)
         dir_to_regrid_list = {d_path for d_path in missing_raw_daily_dir_list if d_path.exists()}
@@ -212,7 +212,7 @@ def get_weighted_fp_sat_ds(fp_ds, lightning_sat_ds, sum_height=True, load=False,
 
 # TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout (? pourquoi j'ai dit ça?)
 def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id_list, file_list=False, sum_height=True, load=False,
-                         chunks='auto', print_debug=False,
+                         chunks='auto', print_debug=False, dry_run=False,
                          max_chunk_size=1e8, assign_releases_position_coords=False, grid_resolution=cts.GRID_RESOLUTION,
                          grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None,
                          weighted_ds_filename_suffix=''):
@@ -238,7 +238,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                 try:
                     lightning_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=lightning_sat_name,
                                               grid_resolution=grid_resolution, print_debug=print_debug,
-                                              grid_res_str=grid_res_str)
+                                              grid_res_str=grid_res_str, dry_run=dry_run)
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
                     for m_date in eval(str(e).split('\n')[1]):
@@ -246,19 +246,21 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                             missing_dates_list['lightning'].append(m_date)
                     continue
                 # setp5: get weighted fp_sat_ds
-                weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, lightning_sat_ds=lightning_sat_ds)
+                if not dry_run:
+                    weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, lightning_sat_ds=lightning_sat_ds)
                 # step 6: get brightness temperature ds
                 try:
                     bTemp_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=bTemp_sat_name,
                                               grid_resolution=grid_resolution, print_debug=print_debug,
-                                              grid_res_str=grid_res_str)
+                                              grid_res_str=grid_res_str, dry_run=dry_run)
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
                     for m_date in eval(str(e).split('\n')[1]):
                         if m_date not in missing_dates_list['cloud']:
                             missing_dates_list['cloud'].append(m_date)
                     continue
-                weighted_fp_sat_ds = weighted_fp_sat_ds.merge(bTemp_sat_ds)
+                if not dry_run:
+                    weighted_fp_sat_ds = weighted_fp_sat_ds.merge(bTemp_sat_ds)
 
                 if save_weighted_ds:
                     if flights_output_dirpath is None:
@@ -338,6 +340,7 @@ if __name__ == '__main__':
     parser.add_argument('--dry-run', action='store_true',
                         help='dry run (fp_out and glm_out NOT loaded into memory and weighted flash count NOT calculated)')
     parser.add_argument('-d', '--print-debug', action='store_true', help='print debug (default=False)')
+    parser.add_argument('--overwrite', action='store_true', help='Indicates if existing files should be overwritten')
 
     args = parser.parse_args()
     print(args)
@@ -362,7 +365,7 @@ if __name__ == '__main__':
     print(sorted(args.flight_id_list))
 
     missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list),
-                                         lightning_sat_name=args.lightning_sat_name,
+                                         lightning_sat_name=args.lightning_sat_name, dry_run=args.dry_run,
                                          bTemp_sat_name=args.cloud_sat_name, file_list=True,
                                          sum_height=(not args.dont_sum_height), load=args.load_fpout,
                                          chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,

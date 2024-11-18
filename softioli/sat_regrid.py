@@ -257,22 +257,31 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
 
 def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
-                     result_file_path=None, naming_convention=None, remove_temp_abi_dir=False,
-                     print_debug=False):
+                     naming_convention=None, remove_temp_abi_dir=False, result_dir_path=None,
+                     print_debug=False, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
+                     lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX):
     """
     Function to regrid a list of hourly satellite data files to a specific grid resolution
-    :param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or daily directories to regrid
-    :param sat_name: <str> name of the satellite (only 'GOES_GLM' and 'GOES_ABI' supported for now)
-    :param grid_res: <float> grid resolution
-    :param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
-    :param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
-    :param overwrite: <bool> overwrite file if it already exists
-    :param result_file_path: <pathlib.Path> or <str> mostly for testing, directory in which resulting file should be stored, if None --> use default path
-    :param naming_convention: <str> file or directory naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD' or None (default)
-    :return:
+    @param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or daily directories to regrid
+    @param sat_name: <str> name of the satellite (only 'GOES_GLM' and 'GOES_ABI' supported for now)
+    @param grid_res: <float> grid resolution
+    @param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
+    @param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
+    @param overwrite: <bool> overwrite file if it already exists
+    @param naming_convention: <str> GLM file or directory naming convention (used for backward compatibility). Supported values: 'OLD_TEMP', 'OLD' or None (default)
+    @param remove_temp_abi_dir: <bool> if True, the temp directory containing all 15min hdf files will be deleted after being processed
+    @param result_dir_path: <str> or <pathlib.Path> mostly used for testing purposes, if == None the default directory path is used
+    @param print_debug: <bool>
+    @param lat_min:
+    @param lat_max:
+    @param lon_min:
+    @param lon_max:
+    @return:
     """
     if sat_name == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
+        if result_dir_path is None:
+            result_dir_path = cts.REGRID_GLM_ROOT_DIR
     elif sat_name == cts.GOES_SATELLITE_ABI:
         SatPathParser = ABIPathParser
         if dir_list:
@@ -287,7 +296,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                     path_to_concat_into_hourly_files.append(p)
             if len(path_to_concat_into_hourly_files) > 0:  # concat 15min hdf files into hourly nc files
                 generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=path_to_concat_into_hourly_files,
-                                                                 remove_temp_files=remove_temp_abi_dir, print_debug=print_debug)
+                                                                 remove_temp_files=remove_temp_abi_dir,
+                                                                 print_debug=print_debug)
     else:
         raise ValueError(
             f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -310,7 +320,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         # create result nc file path
         result_file_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, sat_name=sat_name, regrid=True,
                                                          satellite=pre_regrid_path_parsed.satellite_version,
-                                                         regrid_res_str=grid_res_str, dir_path=result_file_path)
+                                                         regrid_res_str=grid_res_str, dir_path=result_dir_path)
         # if directory/ies containing result nc file path does NOT exist --> create it/them
         if not result_file_path.parent.exists():
             result_file_path.parent.mkdir(parents=True)
@@ -318,12 +328,18 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
 
         # check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
         if not result_file_path.exists() or (result_file_path.exists() and overwrite):
+            print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
             if sat_name == cts.GOES_SATELLITE_GLM:
-                print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
                 generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url,
                                                           sat_name=sat_name,
                                                           grid_res=grid_res,
                                                           overwrite=overwrite, result_file_path=result_file_path,
-                                                          naming_convention=naming_convention)
+                                                          naming_convention=naming_convention,
+                                                          lat_min=lat_min, lat_max=lat_max, lon_min=lon_min,
+                                                          lon_max=lon_max)
             elif sat_name == cts.GOES_SATELLITE_ABI:
-                pass
+                generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url,
+                                                           sat_name=sat_name, grid_res=grid_res,
+                                                           overwrite=overwrite, result_file_path=result_file_path,
+                                                           lat_min=lat_min, lat_max=lat_max, lon_min=lon_min,
+                                                           lon_max=lon_max)
