@@ -5,8 +5,8 @@ from pandas import Timedelta
 
 from .utils_functions import date_to_pd_timestamp
 from . import constants as cts
-from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION, ABIPathParser
-
+from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
+from .ABIPathParser import ABIPathParser
 
 def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None,
                                   YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern):

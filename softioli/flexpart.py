@@ -224,4 +224,3 @@ if __name__ == "__main__":
         print(f'{len(error_flight_ids)} fligths for which the flexpart installation and/or simulation has been aborted: \n{error_flight_ids}')
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
 
-        # TODO: recup la liste des fichiers .nc créés ? ou au moins liste des dossiers flexpart/output our la partie 3
