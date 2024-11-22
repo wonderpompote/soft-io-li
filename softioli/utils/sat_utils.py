@@ -9,7 +9,7 @@ from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 from .ABIPathParser import ABIPathParser
 
 def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None,
-                                  YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern):
+                                  YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern, hdf=False):
     """
     Generate filename pattern for a specific satellite, naming convention and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
@@ -20,6 +20,7 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
     :param DDD: <str> or <int> day of the year
     :param start_HH: <str> or <int> start hour
     :param end_HH:  <str> or <int> end hour
+    :param hdf: <bool> indicates if hdf file extension (mostly used for raw ABI data not converted to netcdf)
     :return: <str> filename pattern for the satellite
     """
     # GLM
@@ -41,14 +42,16 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
             raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
     # ABI
     elif sat_name == cts.GOES_SATELLITE_ABI:
-        if not hourly: #GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_X_IR10x_V1-0x.hdf
-            filename_pattern = f'GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].hdf'
-        else: # ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc
-            filename_pattern = f"ABI_GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
+        if not hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_X_IR10x_V1-0x.hdf
+            ext = "nc" if not hdf else "hdf"
+            filename_pattern = f'GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].{ext}'
+        else:  # ABI_GEO_L1B-GOES1x_YYYY-MM-DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY-MM-DD_HH1-HH2.nc
+            filename_pattern = f"ABI_GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}_{start_HH}-{end_HH}.nc"
     else:
-        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
+        raise ValueError(
+            f'{sat_name} NOT supported yet. Supported satellite so far: "{cts.GOES_SATELLITE_GLM}", "{cts.GOES_SATELLITE_ABI}"')
 
-    if regrid and hourly and naming_convention is None:
+    if regrid and naming_convention is None and hourly:
         return f'{regrid_res_str}_{filename_pattern}'
     else:
         return filename_pattern

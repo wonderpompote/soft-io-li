@@ -5,10 +5,14 @@ from .SatPathParser import SatPathParser
 
 """
 Filenames:
-- PRE_REGRID_15min_hdf_FILE:
+- PRE_REGRID_15min_hdf_FILE: (won't be used)
 GOES-0750:      GEO_L1B-GOES1[23]_YYYY-MM-DDTHH-mm-ss_[NS]_IR107_V1-0[4-6].hdf
 GOESNG-0750:    GEO_L1B-GOES16_YYYY-MM-DDTHH-mm-ss_G_IR103_V1-06.hdf
 GOESNG-1370:    GEO_L1B-GOES1[67]_YYYY-MM-DDTHH-mm-ss_G_IR103_V1-06.hdf
+- PRE_REGRID_15min_nc_FILE:
+GOES-0750:      GEO_L1B-GOES1[23]_YYYY-MM-DDTHH-mm-ss_[NS]_IR107_V1-0[4-6].nc
+GOESNG-0750:    GEO_L1B-GOES16_YYYY-MM-DDTHH-mm-ss_G_IR103_V1-06.nc
+GOESNG-1370:    GEO_L1B-GOES1[67]_YYYY-MM-DDTHH-mm-ss_G_IR103_V1-06.nc
 - PRE_REGRID_1h_nc_FILE:
 directory: ABI_GEO_L1B_YYYY_MM_DD
 GOES-0750:      ABI_GEO_L1B-GOES1[23]_YYYY_MM_DD_HH1-HH2.nc
@@ -58,7 +62,7 @@ class ABIPathParser(SatPathParser):
         if self.directory: # ABI_GEO_L1B_YYYY_MM_DD or xxdeg_ABI_GEO_L1B_YYYY_MM_DD
             start_date = pd.Timestamp(f'{filename_split[-3]}-{filename_split[-2]}-{filename_split[-1]}')
             end_date = None
-        elif not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
+        elif not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf or .nc
             start_minute = filename_split[2].split('T')[1].split('-')[1]
             start_date = pd.Timestamp(filename_split[2], tz='UTC') + pd.Timedelta(int(start_minute), 'm')
             self.start_minute = start_minute
@@ -81,7 +85,7 @@ class ABIPathParser(SatPathParser):
             self.end_hour = end_date.hour
 
     def extract_file_version(self):
-        if not self.hourly and not self.directory:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
+        if not self.hourly and not self.directory:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf or .nc
             self.file_version = self.url.stem.split('_')[-1]
         else:
             self.file_version = None
@@ -99,7 +103,7 @@ class ABIPathParser(SatPathParser):
             self.satellite_version = None
         else:
             filename_split = self.url.stem.split('_')
-            if not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf
+            if not self.hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_[NSG]_IR10x_V1-0[4-6].hdf or .nc
                 self.satellite_version = filename_split[1].split('-')[1]
             else:  # ABI_GEO_L1B-GOES16_YYYY_MM_DD_HH1-HH2.nc or 05deg_ABI_GEO_L1B-GOES16_YYYY_MM_DD_HH1-HH2.nc
                 self.satellite_version = filename_split[-5].split('-')[1]

@@ -6,7 +6,7 @@ from shutil import rmtree
 import xarray as xr
 
 from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_filename_pattern, \
-    generate_sat_dirname_pattern, open_hdf4, ABIPathParser, get_abi_coords_file
+    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file
 from utils import constants as cts
 from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
@@ -126,7 +126,8 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
         print(f"{result_file_path} already exists")
 
 
-def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, result_file_path, overwrite,
+def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, result_file_path,
+                                               overwrite, rm_pre_regrid_file=False,
                                                lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                                lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX):
     if sat_name == cts.GOES_SATELLITE_ABI:
@@ -193,15 +194,13 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
             )
             print(f"Created netcdf file {result_file_path}")
 
+        if rm_pre_regrid_file: # remove associated pre-regrid file to free up space
+            pathlib.Path(pre_regrid_file_url).unlink()
 
-def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False, print_debug=False):
-    if print_debug:
-        print(f'List of pre regrid 15min directories to concat into hourly pre regrid files: \n{path_list}')
-        print()
+def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False):
     # pour chaque daily dir
     for dir_p in path_list:
-        dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True).get_start_date_pdTimestamp(
-            ignore_missing_start_hour=False)
+        dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True).get_start_date_pdTimestamp(ignore_missing_start_hour=False)
         for h in range(24):
             # get filename pattern
             filename_pattern = generate_sat_filename_pattern(
@@ -217,34 +216,31 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
             h_abi_ds_list = []
             for h_file in h_file_list:
                 # open file + rename col names to coorespond to coords_ds col names
-                with open_hdf4(str(h_file)).rename(dict(NbLines='Nlin', NbColumns='Ncol')) as abi_ds_wout_coords:
+                with xr.open_dataset(h_file).rename(dict(NbLines='Nlin', NbColumns='Ncol'))['Brightness_Temperature'] as abi_bTemp_da_wout_coords:
                     # get corresponding coords file_path
                     h_file_parser = ABIPathParser(file_url=h_file, regrid=False, hourly=False)
-                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite_version,
-                                                           file_version=h_file_parser.file_version)
+                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite_version, file_version=h_file_parser.file_version)
                     # combine coords dataset with abi dataset
-                    with open_hdf4(str(coords_file_path)) as coords_ds:
-                        b_temp_w_coords_ds = coords_ds.assign(
-                            brightness_temperature=abi_ds_wout_coords.Brightness_Temperature)
+                    with xr.open_dataset(coords_file_path)[['Latitude', 'Longitude']] as coords_ds:
+                        b_temp_w_coords_ds = coords_ds.assign(brightness_temperature=abi_bTemp_da_wout_coords)
                         # add file timestamp
                         b_temp_w_coords_ds = b_temp_w_coords_ds.expand_dims({
-                            'time': [h_file_parser.get_start_date_pdTimestamp(
-                                ignore_missing_start_hour=False).to_datetime64()],
+                            'time': [h_file_parser.get_start_date_pdTimestamp(ignore_missing_start_hour=False).to_datetime64()],
                             'satellite': [h_file_parser.satellite_version]
                         })
-                        b_temp_w_coords_ds.attrs = abi_ds_wout_coords.attrs
-                        h_abi_ds_list.append(b_temp_w_coords_ds[['Latitude', 'Longitude', 'brightness_temperature']])
+                        b_temp_w_coords_ds.attrs = abi_bTemp_da_wout_coords.attrs
+                        h_abi_ds_list.append(b_temp_w_coords_ds)
             h_abi_ds = xr.merge(h_abi_ds_list, combine_attrs="drop_conflicts")
-            h_abi_ds = h_abi_ds.rename_vars({'Latitude': 'latitude', 'Longitude': 'longitude'})
-            h_abi_ds.attrs['raw_hdf_files'] = [f.name for f in h_file_list]
-            if len(h_abi_ds.satellite) > 1:  # if both goes-e and goes-w
+            h_abi_ds = h_abi_ds.rename_vars({'Latitude': 'latitude', 'Longitude':'longitude'})
+            h_abi_ds.attrs['raw_nc_files'] = [f.name for f in h_file_list]
+            if len(h_abi_ds.satellite) > 1: # if both goes-e and goes-w
                 satellite_version = '+'.join(h_abi_ds.satellite.values)
             else:
                 satellite_version = h_file_parser.satellite_version
             result_hourly_filename = generate_sat_hourly_file_path(
-                date=h_file_parser.start_date,
-                sat_name=cts.GOES_SATELLITE_ABI, satellite=satellite_version,
-                regrid=False, dir_path=None)
+                                                    date=h_file_parser.start_date,
+                                                    sat_name=cts.GOES_SATELLITE_ABI, satellite=satellite_version,
+                                                    regrid=False, dir_path=None)
             h_abi_ds.to_netcdf(
                 path=result_hourly_filename, mode='w',
                 encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
@@ -259,7 +255,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
                      naming_convention=None, remove_temp_abi_dir=False, result_dir_path=None,
                      print_debug=False, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
-                     lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX):
+                     lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX, rm_pre_regrid_file=False):
     """
     Function to regrid a list of hourly satellite data files to a specific grid resolution
     @param path_list: <list> [ <str> or <pathlib.Path>, ... ] list of files or daily directories to regrid
@@ -296,8 +292,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                     path_to_concat_into_hourly_files.append(p)
             if len(path_to_concat_into_hourly_files) > 0:  # concat 15min hdf files into hourly nc files
                 generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=path_to_concat_into_hourly_files,
-                                                                 remove_temp_files=remove_temp_abi_dir,
-                                                                 print_debug=print_debug)
+                                                                 remove_temp_files=remove_temp_abi_dir)
     else:
         raise ValueError(
             f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -342,4 +337,4 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                                                            sat_name=sat_name, grid_res=grid_res,
                                                            overwrite=overwrite, result_file_path=result_file_path,
                                                            lat_min=lat_min, lat_max=lat_max, lon_min=lon_min,
-                                                           lon_max=lon_max)
+                                                           lon_max=lon_max, rm_pre_regrid_file=rm_pre_regrid_file)

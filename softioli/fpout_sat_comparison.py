@@ -90,7 +90,7 @@ def get_fp_out_ds_7days(fpout_path, sum_height=True, load=False, chunks='auto', 
 
 # TODO: suppr dry_run une fois que les tests sont finis
 # TODO: pour avoir un sat_ds avec PLUSIEURS sources sat --> sat_name = list, for loop et ensuite je merge tout ?
-def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RESOLUTION,
+def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RESOLUTION, rm_pre_regrid_file=False,
                      grid_res_str=cts.GRID_RESOLUTION_STR, overwrite=False, dry_run=False, print_debug=False):
     """
     Returns dataset with regridded satellite data between start and end date
@@ -142,7 +142,8 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
             if not dry_run:
                 sat_regrid.regrid_sat_files(path_list=list(dir_to_regrid_list), sat_name=sat_name,
                                             grid_res=grid_resolution, dir_list=True, print_debug=print_debug,
-                                            grid_res_str=grid_res_str, overwrite=overwrite, naming_convention=None)
+                                            grid_res_str=grid_res_str, overwrite=overwrite, naming_convention=None,
+                                            rm_pre_regrid_file=rm_pre_regrid_file)
         # if we still have missing pre-regrid directories --> FileNotFoundError
         if missing_raw_daily_dir_list - dir_to_regrid_list:
             # get the missing dates from the remaining missing directory paths to display them in the error message
@@ -215,7 +216,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                          chunks='auto', print_debug=False, dry_run=False, overwrite_weighted_ds=False,
                          max_chunk_size=1e8, assign_releases_position_coords=False, grid_resolution=cts.GRID_RESOLUTION,
                          grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None,
-                         weighted_ds_filename_suffix='', overwrite_sat_files=False):
+                         weighted_ds_filename_suffix='', overwrite_sat_files=False, rm_pre_regrid_abi_file=False):
     if not file_list and isinstance(fp_path, str) or isinstance(fp_path, pathlib.Path):
         fp_path = [fp_path]
     missing_dates_list = {'lightning': [], 'cloud': []}
@@ -251,7 +252,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                 try:
                     bTemp_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=bTemp_sat_name,
                                               grid_resolution=grid_resolution, print_debug=print_debug,
-                                              grid_res_str=grid_res_str, dry_run=dry_run, overwrite=overwrite_sat_files)
+                                              grid_res_str=grid_res_str, dry_run=dry_run, overwrite=overwrite_sat_files, rm_pre_regrid_file=rm_pre_regrid_abi_file)
                     bTemp_sat_ds_ok = True
                 except FileNotFoundError as e:
                     print(f'<!> {e}')
@@ -353,6 +354,7 @@ if __name__ == '__main__':
                         help='dry run (fp_out and glm_out NOT loaded into memory and weighted flash count NOT calculated)')
     parser.add_argument('-d', '--print-debug', action='store_true', help='print debug (default=False)')
     parser.add_argument('--overwrite-sat-files', action='store_true', help='Indicates if existing pre_regrid and regrid satellite files should be overwritten')
+    parser.add_argument('--rm-pre-regrid-abi-file', action='store_true', help='Indicates if pre_regrid hourly ABI file should be removed once the corresponding regrid file has been generated (to free up space)')
 
     args = parser.parse_args()
     print(args)
@@ -406,7 +408,8 @@ if __name__ == '__main__':
                                          save_weighted_ds=args.save_weighted_ds, print_debug=args.print_debug,
                                          flights_output_dirpath=args.flights_output_dir,
                                          weighted_ds_filename_suffix=args.ds_fname_suffix,
-                                         overwrite_weighted_ds=args.overwrite_weighted_ds, overwrite_sat_files=args.overwrite_sat_files)
+                                         overwrite_weighted_ds=args.overwrite_weighted_ds, overwrite_sat_files=args.overwrite_sat_files,
+                                         rm_pre_regrid_abi_file=args.rm_pre_regrid_abi_file)
 
     if len(flight_id_list_fp_not_ok) > 0:
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
