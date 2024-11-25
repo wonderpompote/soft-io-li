@@ -6,7 +6,7 @@ from shutil import rmtree
 import xarray as xr
 
 from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_filename_pattern, \
-    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file
+    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file, open_hdf4
 from utils import constants as cts
 from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
@@ -17,7 +17,7 @@ from utils import xarray_pandas_utils as xr_pd_utils
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, overwrite,
                                               result_file_path, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                               lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
-                                              naming_convention=None):
+                                              naming_convention=None, rm_pre_regrid_file=False):
     """
     Pre-process lightning satellite hourly data file to regrid it to specific resolution and obtain
     the following information for each grid cell:
@@ -125,6 +125,9 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     else:  # file already exists so no need to create it again
         print(f"{result_file_path} already exists")
 
+    if rm_pre_regrid_file:  # remove associated pre-regrid file to free up space
+        pathlib.Path(pre_regrid_file_url).unlink()
+
 
 def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, result_file_path,
                                                overwrite, rm_pre_regrid_file=False,
@@ -194,8 +197,11 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
             )
             print(f"Created netcdf file {result_file_path}")
 
-        if rm_pre_regrid_file: # remove associated pre-regrid file to free up space
-            pathlib.Path(pre_regrid_file_url).unlink()
+    else:  # file already exists so no need to create it again
+        print(f"{result_file_path} already exists")
+
+    if rm_pre_regrid_file:  # remove associated pre-regrid file to free up space
+        pathlib.Path(pre_regrid_file_url).unlink()
 
 def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False):
     # pour chaque daily dir
@@ -216,7 +222,7 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
             h_abi_ds_list = []
             for h_file in h_file_list:
                 # open file + rename col names to coorespond to coords_ds col names
-                with xr.open_dataset(h_file).rename(dict(NbLines='Nlin', NbColumns='Ncol'))['Brightness_Temperature'] as abi_bTemp_da_wout_coords:
+                with open_hdf4(str(h_file)).rename(dict(NbLines='Nlin', NbColumns='Ncol'))['Brightness_Temperature'] as abi_bTemp_da_wout_coords:
                     # get corresponding coords file_path
                     h_file_parser = ABIPathParser(file_url=h_file, regrid=False, hourly=False)
                     coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite_version, file_version=h_file_parser.file_version)
@@ -232,7 +238,7 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
                         h_abi_ds_list.append(b_temp_w_coords_ds)
             h_abi_ds = xr.merge(h_abi_ds_list, combine_attrs="drop_conflicts")
             h_abi_ds = h_abi_ds.rename_vars({'Latitude': 'latitude', 'Longitude':'longitude'})
-            h_abi_ds.attrs['raw_nc_files'] = [f.name for f in h_file_list]
+            h_abi_ds.attrs['raw_hdf_files'] = [f.name for f in h_file_list]
             if len(h_abi_ds.satellite) > 1: # if both goes-e and goes-w
                 satellite_version = '+'.join(h_abi_ds.satellite.values)
             else:
@@ -272,6 +278,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     @param lat_max:
     @param lon_min:
     @param lon_max:
+    @param rm_pre_regrid_file:
     @return:
     """
     if sat_name == cts.GOES_SATELLITE_GLM:
@@ -331,7 +338,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                                                           overwrite=overwrite, result_file_path=result_file_path,
                                                           naming_convention=naming_convention,
                                                           lat_min=lat_min, lat_max=lat_max, lon_min=lon_min,
-                                                          lon_max=lon_max)
+                                                          lon_max=lon_max, rm_pre_regrid_file=rm_pre_regrid_file)
             elif sat_name == cts.GOES_SATELLITE_ABI:
                 generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url,
                                                            sat_name=sat_name, grid_res=grid_res,

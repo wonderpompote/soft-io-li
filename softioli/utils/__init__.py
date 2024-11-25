@@ -1,6 +1,7 @@
 from .utils_functions import (
     date_to_pd_timestamp,
-    get_list_of_paths_between_two_values
+    get_list_of_paths_between_two_values,
+    open_hdf4
 )
 
 from .GLMPathParser import (
