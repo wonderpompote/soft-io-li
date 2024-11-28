@@ -67,8 +67,8 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
     # GLM
     if sat_name == cts.GOES_SATELLITE_GLM:
         if naming_convention is None:
-            # OR_GLM-L2-LCFA_YYYY_DDD
-            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{YYYY}_{DDD}'
+            # OR_GLM-L2-LCFA_YYYY_MM_DD
+            dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{YYYY}_{MM}_{DD}'
         elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
             #OR_GLM-L2-LCFA_Gxx_sYYYYDDD
             dirname_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.GLM_Gxx_PATTERN}_s{YYYY}{DDD}'
@@ -111,19 +111,19 @@ def generate_sat_dir_path(date, sat_name, regrid, regrid_res_str=cts.GRID_RESOLU
         root_dir_path = target_dir if target_dir is not None else cts.GLM_ROOT_DIR
         if regrid:
             return pathlib.Path(
-                f'{root_dir_path}/{cts.REGRID_GLM_DIRNAME}/{date.year}/{regrid_res_str}_{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
+                f'{root_dir_path}/{cts.REGRID_GLM_DIRNAME}/{date.year:04d}/{regrid_res_str}_{cts.GLM_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
         else:
             return pathlib.Path(
-                f'{root_dir_path}/{cts.PRE_REGRID_GLM_DIRNAME}/{date.year}/{cts.GLM_PATH_PREFIX}_{date.year}_{date.dayofyear:03d}')
+                f'{root_dir_path}/{cts.PRE_REGRID_GLM_DIRNAME}/{date.year}/{cts.GLM_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
     # ABI
     elif sat_name == cts.GOES_SATELLITE_ABI:
         root_dir_path = target_dir if target_dir is not None else cts.ABI_ROOT_DIR
         if regrid:
             return pathlib.Path(
-                f'{root_dir_path}/{cts.REGRID_ABI_DIRNAME}/{date.year}/{regrid_res_str}_{cts.ABI_PATH_PREFIX}_{date.year}_{date.month:02d}_{date.day:02d}')
+                f'{root_dir_path}/{cts.REGRID_ABI_DIRNAME}/{date.year:04d}/{regrid_res_str}_{cts.ABI_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
         else:
             return pathlib.Path(
-                f'{root_dir_path}/{cts.PRE_REGRID_ABI_DIRNAME}/{date.year}/{cts.ABI_PATH_PREFIX}_{date.year}_{date.month:02d}_{date.day:02d}')
+                f'{root_dir_path}/{cts.PRE_REGRID_ABI_DIRNAME}/{date.year:04d}/{cts.ABI_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
@@ -147,9 +147,9 @@ def generate_sat_hourly_file_path(date, sat_name, satellite, regrid, regrid_res_
     if not dir_path.exists():
         dir_path.mkdir(parents=True)
     if sat_name == cts.GOES_SATELLITE_GLM:
-        filename = f'{cts.GLM_PATH_PREFIX}_{satellite}_{date.year}_{date.dayofyear:03d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
+        filename = f'{cts.GLM_PATH_PREFIX}_{satellite}_{date.year:04d}_{date.dayofyear:03d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
     elif sat_name == cts.GOES_SATELLITE_ABI:
-        filename = f'{cts.ABI_PATH_PREFIX}-{satellite}_{date.year}_{date.month:02d}_{date.day:02d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
+        filename = f'{cts.ABI_PATH_PREFIX}-{satellite}_{date.year:04d}_{date.month:02d}_{date.day:02d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
     if regrid:
