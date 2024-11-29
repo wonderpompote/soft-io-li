@@ -125,7 +125,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     else:  # file already exists so no need to create it again
         print(f"{result_file_path} already exists")
 
-    if rm_pre_regrid_file:  # remove associated pre-regrid file to free up space
+    if rm_pre_regrid_file and result_file_path.exists():  # remove associated pre-regrid file to free up space
         pathlib.Path(pre_regrid_file_url).unlink()
 
 
@@ -200,7 +200,7 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
     else:  # file already exists so no need to create it again
         print(f"{result_file_path} already exists")
 
-    if rm_pre_regrid_file:  # remove associated pre-regrid file to free up space
+    if rm_pre_regrid_file and result_file_path.exists():  # remove associated pre-regrid file to free up space
         pathlib.Path(pre_regrid_file_url).unlink()
 
 def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False):

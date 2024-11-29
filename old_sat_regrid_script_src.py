@@ -81,11 +81,11 @@ if __name__ == '__main__':
 """
 Examples: (??)
 - test on single pre_regrid GLM file:
-python sat_regrid_script_src.py --logname <logname> -f <pre_regrid_file_path> --res-path <res_path> --overwrite
+python old_sat_regrid_script_src.py --logname <logname> -f <pre_regrid_file_path> --res-path <res_path> --overwrite
 - regrid ALL pre_regrid hourly GLM files in /o3p/macc/glm
 
 - tests parent dir
-python sat_regrid_script_src.py --logname new_tests_regrid_dir_parent -f /o3p/macc/glm/ --parent-dir --tests --old-temp-glm-filename
+python old_sat_regrid_script_src.py --logname new_tests_regrid_dir_parent -f /o3p/macc/glm/ --parent-dir --tests --old-temp-glm-filename
 """
 
 """ ---- POUBELLE ----
