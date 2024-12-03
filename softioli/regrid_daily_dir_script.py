@@ -1,8 +1,8 @@
 import argparse
 import pathlib
 
-from softioli import constants as cts
-from softioli.sat_regrid import regrid_sat_files
+from utils import constants as cts
+from sat_regrid import regrid_sat_files
 
 """
 recup fp ds
@@ -48,7 +48,12 @@ if __name__ == '__main__':
 
     args.dir_list = [pathlib.Path(d_path) for d_path in args.dir_list]
 
+    if args.print_debug:
+        print("launching regrid_sat_files on : {args.dir_list}")
+
     regrid_sat_files(path_list=args.dir_list, sat_name=args.sat_name, dir_list=True,
                      overwrite=args.overwrite, rm_pre_regrid_file=args.rm_pre_regrid_files,
-                     grid_res=args.grid_res, grid_res_str=args.grid_res_str,
-                     result_dir_path=args.result_dir_path)
+                     grid_res=args.regrid_res, grid_res_str=args.regrid_res_str,
+                     result_dir_path=args.result_dir_path, print_debug=args.print_debug)
+
+    print("end of file: regrid_daily_dir_file")

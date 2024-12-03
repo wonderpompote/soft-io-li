@@ -43,8 +43,8 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
     elif sat_name == cts.GOES_SATELLITE_ABI:
         if not hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_X_IR10x_V1-0x.hdf
             filename_pattern = f'GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].hdf'
-        else:  # ABI_GEO_L1B-GOES1x_YYYY-MM-DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY-MM-DD_HH1-HH2.nc
-            filename_pattern = f"ABI_GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}_{start_HH}-{end_HH}.nc"
+        else:  # ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc
+            filename_pattern = f"ABI_GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
     else:
         raise ValueError(
             f'{sat_name} NOT supported yet. Supported satellite so far: "{cts.GOES_SATELLITE_GLM}", "{cts.GOES_SATELLITE_ABI}"')

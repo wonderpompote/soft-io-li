@@ -203,10 +203,14 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
     if rm_pre_regrid_file and result_file_path.exists():  # remove associated pre-regrid file to free up space
         pathlib.Path(pre_regrid_file_url).unlink()
 
-def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False):
+def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False, overwrite=False, print_debug=False):
     # pour chaque daily dir
+    if print_debug:
+        print(f'generate_abi_hourly_nc_file_from_15min_hdf_files:\npath_list={path_list}\noverwrite={overwrite}')
     for dir_p in path_list:
         dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True).get_start_date_pdTimestamp(ignore_missing_start_hour=False)
+        if print_debug:
+            print(f'Directory date generate hourly pre regrid file: {dir_date}')
         for h in range(24):
             # get filename pattern
             filename_pattern = generate_sat_filename_pattern(
@@ -247,11 +251,15 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
                                                     date=h_file_parser.start_date,
                                                     sat_name=cts.GOES_SATELLITE_ABI, satellite=satellite_version,
                                                     regrid=False, dir_path=None)
-            h_abi_ds.to_netcdf(
-                path=result_hourly_filename, mode='w',
-                encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
-            )
-            print(f"Saved {result_hourly_filename}")
+            if not pathlib.Path(result_hourly_filename).exists() or (pathlib.Path(result_hourly_filename).exists() and overwrite):
+                h_abi_ds.to_netcdf(
+                    path=result_hourly_filename, mode='w',
+                    encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
+                )
+                print(f"Saved {result_hourly_filename}")
+            else:
+                print(f'{result_hourly_filename} already exists!')
+
         if remove_temp_files:
             rmtree(pathlib.Path(f'{dir_p}/temp'))
             print(f"Deleting {dir_p}/temp directory")
@@ -281,6 +289,10 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     @param rm_pre_regrid_file:
     @return:
     """
+    if print_debug:
+        print('--------------')
+        print(f'regrid sat files: \nsat={sat_name} \ndir_list={dir_list} \npath_list={path_list}')
+        print()
     if sat_name == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
         if result_dir_path is None:
@@ -295,11 +307,15 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
             for p in path_list:
                 p = pathlib.Path(p)
                 # if temp dir exists and not all hourly pre regrid nc files available
-                if pathlib.Path(f'{p}/temp').exists() and len(sorted(p.glob(hourly_pre_regrid_nc_file_pattern))) != 24:
+                if pathlib.Path(f'{p}/temp').exists() and len(sorted(p.glob(hourly_pre_regrid_nc_file_pattern))) == 0:
                     path_to_concat_into_hourly_files.append(p)
+            if print_debug:
+                print(f'{len(path_to_concat_into_hourly_files)} directories to concat into pre regrid hourly files')
+                print(f'path_to_concat_into_hourly_files: {path_to_concat_into_hourly_files}')
+                print()
             if len(path_to_concat_into_hourly_files) > 0:  # concat 15min hdf files into hourly nc files
-                generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=path_to_concat_into_hourly_files,
-                                                                 remove_temp_files=remove_temp_abi_dir)
+                generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=path_to_concat_into_hourly_files, print_debug=print_debug,
+                                                                 remove_temp_files=remove_temp_abi_dir, overwrite=overwrite)
     else:
         raise ValueError(
             f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -314,6 +330,10 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
             for dir_path in sorted(path_list)
             for file_path in dir_path.glob(filename_pattern)
         ]
+    if print_debug:
+        print(f'{len(path_list)} files to regrid')
+        print(f'path_list={path_list}')
+        print()
     for pre_regrid_file_url in path_list:
         # get pre-regrid file start date (year, day, hour) with <sat>PathParser
         pre_regrid_path_parsed = SatPathParser(file_url=pre_regrid_file_url, regrid=False, hourly=True,
@@ -345,3 +365,5 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                                                            overwrite=overwrite, result_file_path=result_file_path,
                                                            lat_min=lat_min, lat_max=lat_max, lon_min=lon_min,
                                                            lon_max=lon_max, rm_pre_regrid_file=rm_pre_regrid_file)
+        else:
+            print(f'Regrid file {result_file_path} already exists')
