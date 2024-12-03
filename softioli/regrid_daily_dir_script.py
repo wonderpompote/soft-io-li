@@ -37,7 +37,7 @@ if __name__ == '__main__':
                         help='For testing purposes, root directory in which regrid files should be stored (if None, path by default will be used)')
 
     parser.add_argument('--overwrite', '-o', action='store_true',
-                        help='indicates if regrid file should be overwritten if it already exists', default=False)
+                        help='indicates if regrid file should be overwritten if it already exists')
     parser.add_argument('--rm-pre-regrid-files', action='store_true', help='Indicates if pre regrid hourly files '
                                                                            'should be deleted once the corresponding '
                                                                            'regrid file has been generated (to save '

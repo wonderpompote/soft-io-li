@@ -91,7 +91,7 @@ class GLMPathParser(SatPathParser):
                 }
             else:  # (xxdeg_)OR_GLM-L2-LCFA_YYYY_MM_DD
                 date = pd.Timestamp(f'{filename_split[-3]}-{filename_split[-2]}-{filename_split[-1]}')
-                start_hour = None
+                start_hour = 0
                 end_hour = None
         # if file
         elif not self.hourly:
@@ -132,6 +132,8 @@ class GLMPathParser(SatPathParser):
             self.day_of_year = date.dayofyear
         if self.month is None:
             self.month = date.month
+        if self.day is None:
+            self.day = date.day
         if self.start_hour is None:
             self.start_hour = start_hour
         if self.end_hour is None:

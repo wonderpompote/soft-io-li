@@ -8,8 +8,8 @@ from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 from .ABIPathParser import ABIPathParser
 
-def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None,
-                                  YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern):
+def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None, sat_version_pattern=None,
+                                  YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern, sss=cts.sss_pattern):
     """
     Generate filename pattern for a specific satellite, naming convention and regrid resolution (to be used with pathlib glob function)
     :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
@@ -24,9 +24,12 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
     """
     # GLM
     if sat_name == cts.GOES_SATELLITE_GLM:
-        if naming_convention is None:
+        sat_version_pattern = cts.GLM_Gxx_PATTERN if sat_version_pattern is None else sat_version_pattern
+        if not hourly: # OR_GLM-L2-LCFA_Gxx_sYYYYDDDHHmmsss_e2YYYYDDDHHmmsss_cYYYYDDDHHmmsss.nc
+            filename_pattern = f'{cts.GLM_PATH_PREFIX}_{sat_version_pattern}_s{YYYY}{DDD}{start_HH}{mm}{sss}_e{YYYY}{DDD}{end_HH}{cts.mm_pattern}{cts.sss_pattern}_c{YYYY}{DDD}{cts.HH_pattern}{cts.mm_pattern}{cts.sss_pattern}.nc'
+        elif naming_convention is None:
             # OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH-HH.nc
-            filename_pattern = f'{cts.GLM_PATH_PREFIX}_{cts.GLM_Gxx_PATTERN}_{YYYY}_{DDD}_{start_HH}-{end_HH}.nc'
+            filename_pattern = f'{cts.GLM_PATH_PREFIX}_{sat_version_pattern}_{YYYY}_{DDD}_{start_HH}-{end_HH}.nc'
         elif naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
             # GLM_array_DDD_temp_HH.nc
             filename_pattern = f'GLM_array_{DDD}_temp_{start_HH}.nc'
@@ -41,10 +44,11 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
             raise ValueError(f'Usupported naming convention for {sat_name} satellite. Supported values: "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}", "{OLD_GLM_NOTATION}" or None')
     # ABI
     elif sat_name == cts.GOES_SATELLITE_ABI:
+        sat_version_pattern = cts.ABI_GOESXX_PATTERN if sat_version_pattern is None else sat_version_pattern
         if not hourly:  # GEO_L1B-GOES1x_YYYY-MM-DDTHH-mm-ss_X_IR10x_V1-0x.hdf
-            filename_pattern = f'GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].hdf'
+            filename_pattern = f'GEO_L1B-{sat_version_pattern}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].hdf'
         else:  # ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc
-            filename_pattern = f"ABI_GEO_L1B-{cts.ABI_GOESXX_PATTERN}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
+            filename_pattern = f"ABI_GEO_L1B-{sat_version_pattern}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
     else:
         raise ValueError(
             f'{sat_name} NOT supported yet. Supported satellite so far: "{cts.GOES_SATELLITE_GLM}", "{cts.GOES_SATELLITE_ABI}"')
