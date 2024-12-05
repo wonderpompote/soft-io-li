@@ -123,7 +123,7 @@ class GLMPathParser(SatPathParser):
             hour_split = filename_split[-1].split('-')
             date = pd.Timestamp(
                 datetime.datetime.strptime(f'{filename_split[-3]}_{filename_split[-2]}_{hour_split[0]}', '%Y_%j_%H'))
-            start_hour = int(hour_split[0]),
+            start_hour = int(hour_split[0])
             end_hour = int(hour_split[1])
 
         if self.year is None:

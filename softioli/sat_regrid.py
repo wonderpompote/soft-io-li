@@ -336,6 +336,9 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         print()
     for pre_regrid_file_url in path_list:
         # get pre-regrid file start date (year, day, hour) with <sat>PathParser
+        if print_debug:
+            print('---')
+            print(f'pre_regrid_file_url: {pre_regrid_file_url}')
         pre_regrid_path_parsed = SatPathParser(file_url=pre_regrid_file_url, regrid=False, hourly=True,
                                                naming_convention=naming_convention)
         pre_regrid_file_date = pre_regrid_path_parsed.get_start_date_pdTimestamp(ignore_missing_start_hour=False)
