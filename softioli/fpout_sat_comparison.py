@@ -301,7 +301,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                             if not weighted_ds_filepath.exists() or overwrite_weighted_ds:
                                 # create lightning comparison dirpath if it doesn't exist yet
                                 weighted_ds_dirpath.mkdir(exist_ok=True)
-                                weighted_fp_sat_ds.load().to_netcdf(path=weighted_ds_filepath, mode='w')
+                                weighted_fp_sat_ds.to_netcdf(path=weighted_ds_filepath, mode='w')
                                 print(
                                     f'Saved {weighted_ds_dirpath}/weighted_fp_sat_ds{weighted_ds_filename_suffix}.nc file')
                             else:

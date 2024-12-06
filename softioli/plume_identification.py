@@ -92,7 +92,7 @@ def apply_LiNOx_plume_filters(ds, cruise_only, CO_q3=None, NOx_q3=None, use_q3_d
     return ds
 
 
-def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH, write_plume_info_to_csv=True, filename_suffix=''):
+def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH, write_plume_info_to_csv=True, filename_suffix='', print_debug=False):
     """
     Merge plumes together if gap between them is smaller than minimum plume length + remove plumes with length smaller than minimum plume length
     @param ds:
@@ -132,7 +132,7 @@ def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH
                                  'id_meanings': ['not_a_plume', 'plume_too_small', 'plume_id']}
 
     if write_plume_info_to_csv and flight_output_dirpath is not None:
-        write_plume_info_to_csv_file(ds, output_dirpath=flight_output_dirpath, filename_suffix=filename_suffix)
+        write_plume_info_to_csv_file(ds, output_dirpath=flight_output_dirpath, filename_suffix=filename_suffix, print_debug=print_debug)
 
     return ds
 
@@ -213,7 +213,7 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                     flight_output_dirpath = None
 
                 plume_ds = find_plumes(ds=filtered_flight_ds, min_plume_length=end_of_plume_duration,
-                                       flight_output_dirpath=flight_output_dirpath,
+                                       flight_output_dirpath=flight_output_dirpath, print_debug=print_debug,
                                        write_plume_info_to_csv=save_output, filename_suffix=file_suffix)
 
                 if save_output and plume_ds_to_netcdf:

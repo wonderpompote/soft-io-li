@@ -28,7 +28,7 @@ def get_excess_mean_by_region(var_da, excess_da):
     return (var_da - excess_da).groupby('geo_region').mean()
 
 
-def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_background_ds_path=CO_O3_BACKGROUND_DS_PATH):
+def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_background_ds_path=CO_O3_BACKGROUND_DS_PATH, print_debug=False):
     if not (np.isnan(ds[NOx_PLUME_ID_VARNAME].where(ds[NOx_PLUME_ID_VARNAME] > 0)).all()):
         lon_varname, lat_varname = get_lon_lat_varnames(ds)
         CO_varname = get_CO_varname(flight_program=ds.attrs[PROGRAM_ATTR], smoothed=True, tropo=True)
@@ -69,6 +69,10 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
             }
             if ds.attrs[PROGRAM_ATTR] == CORE and not np.isnan(plume_ds[RHL_VARNAME]).all():
                 plume_info_dict['RHL_mean'] = np.nanmean(plume_ds[RHL_VARNAME].values)
+            elif print_debug:
+                print('~~~~~~')
+                print('No RHL measurements for this plume')
+                print('~~~~~~')
             plume_info_list.append(plume_info_dict)
 
         output_dirpath = pathlib.Path(output_dirpath)
