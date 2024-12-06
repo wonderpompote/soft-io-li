@@ -295,8 +295,6 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         print()
     if sat_name == cts.GOES_SATELLITE_GLM:
         SatPathParser = GLMPathParser
-        if result_dir_path is None:
-            result_dir_path = cts.REGRID_GLM_ROOT_DIR
     elif sat_name == cts.GOES_SATELLITE_ABI:
         SatPathParser = ABIPathParser
         if dir_list:

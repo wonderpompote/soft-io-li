@@ -118,7 +118,7 @@ def generate_sat_dir_path(date, sat_name, regrid, regrid_res_str=cts.GRID_RESOLU
                 f'{root_dir_path}/{cts.REGRID_GLM_DIRNAME}/{date.year:04d}/{regrid_res_str}_{cts.GLM_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
         else:
             return pathlib.Path(
-                f'{root_dir_path}/{cts.PRE_REGRID_GLM_DIRNAME}/{date.year}/{cts.GLM_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
+                f'{root_dir_path}/{cts.PRE_REGRID_GLM_DIRNAME}/{date.year:04d}/{cts.GLM_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
     # ABI
     elif sat_name == cts.GOES_SATELLITE_ABI:
         root_dir_path = target_dir if target_dir is not None else cts.ABI_ROOT_DIR
