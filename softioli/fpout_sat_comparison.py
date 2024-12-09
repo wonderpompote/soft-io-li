@@ -406,10 +406,22 @@ if __name__ == '__main__':
         args.flight_id_list = list(set(args.flight_id_list + flight_range_list))
 
     # get list
-    fp_path_list = [
-        get_fpout_nc_file_path_from_fp_dir(fp_dirpath=f'{args.flights_output_dir}/{flight_id}/{args.fp_output_dirname}')
-        for flight_id in args.flight_id_list
-    ]
+    fp_path_list = []
+    for flight_id in args.flight_id_list:
+        print(f'flight_id in for flight_id in args.flight_id_list: {flight_id}')
+        if flight_id is not None and (args.flights_output_dir / flight_id).exists():
+            print(f'flight_id after if flight_id is not None and output_dir/flight_id exists: {flight_id}')
+            fp_dirpath = f'{args.flights_output_dir}/{flight_id}/{args.fp_output_dirname}'
+            print(f'fp_dirpath: {fp_dirpath}')
+            print(f'flight_id after fp_dirpath: {flight_id}')
+            fpout_nc_filepath = get_fpout_nc_file_path_from_fp_dir(
+                fp_dirpath=fp_dirpath)
+            fp_path_list.append(fpout_nc_filepath)
+
+
+
+    if args.print_debug:
+        print(f'fp_path_list get_fpout_nc_file_path_from_fp_dir: {fp_path_list}')
 
     # in case we have invalid flexpart outputs
     flight_id_list_fp_not_ok = []

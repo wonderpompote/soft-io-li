@@ -41,5 +41,10 @@ def get_fpout_nc_file_path_from_fp_dir(fp_dirpath, fp_output_dirname='output',
     # check si fp success
     if check_fp_status(fp_dirpath):
         fp_output_dirpath = pathlib.Path(f'{fp_dirpath}/{fp_output_dirname}')
-        # va chercher le fichier nc dans /output avec glob
-        return sorted(fp_output_dirpath.glob(f'{nc_file_glob_pattern}'))[0]
+        nc_files = sorted(fp_output_dirpath.glob(nc_file_glob_pattern))
+        if nc_files:
+            return nc_files[0]
+        else:
+            raise FileNotFoundError(f"No matching .nc files in {fp_output_dirpath}")
+    else:
+        raise RuntimeError(f"Flexpart output status check failed for {fp_dirpath}")
