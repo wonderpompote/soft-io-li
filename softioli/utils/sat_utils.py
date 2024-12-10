@@ -1,5 +1,5 @@
+from collections import defaultdict
 import pathlib
-
 import pandas as pd
 from pandas import Timedelta
 
@@ -7,6 +7,15 @@ from .utils_functions import date_to_pd_timestamp
 from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 from .ABIPathParser import ABIPathParser
+
+
+def get_SatPathParser(sat_name):
+    if sat_name == cts.GOES_SATELLITE_GLM:
+        return GLMPathParser
+    elif sat_name == cts.GOES_SATELLITE_ABI:
+        return ABIPathParser
+    else:
+        raise ValueError(f'Could not find corresponding SatPathParser, "{sat_name}" {cts.SAT_VALUE_ERROR}')
 
 def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None, sat_version_pattern=None,
                                   YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern, sss=cts.sss_pattern):
@@ -174,12 +183,7 @@ def get_list_of_dates_from_list_of_sat_path(path_list, directory, sat_name, regr
     @return: <list> [ <pd.Timestamp> or <str>, ... ] list of all the dates as pd.Timestamps or str
     """
     date_list = []
-    if sat_name == cts.GOES_SATELLITE_GLM:
-        SatPathParser = GLMPathParser
-    elif sat_name == cts.GOES_SATELLITE_ABI:
-        SatPathParser = ABIPathParser
-    else:
-        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
+    SatPathParser = get_SatPathParser(sat_name)
     for p in path_list:
         date = SatPathParser(p, regrid=regrid, directory=directory, hourly=hourly) \
             .get_start_date_pdTimestamp(ignore_missing_start_hour=True)
@@ -255,15 +259,10 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
 
 # TODO: add check dir_list contient que des pathlib.PurePath objects (?)
 def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sat_name, regrid, hourly=True):
-    if sat_name == cts.GOES_SATELLITE_GLM:
-        SatPathParser = GLMPathParser
-    elif sat_name == cts.GOES_SATELLITE_ABI:
-        SatPathParser = ABIPathParser
-    else:
-        raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
+    SatPathParser = get_SatPathParser(sat_name)
     start_date, end_date = date_to_pd_timestamp(start_date), date_to_pd_timestamp(end_date)
     file_list = []
-    dir_list = sorted(dir_list)
+    dir_list = sorted([pathlib.Path(dir_p) for dir_p in dir_list])
     fname_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid, hourly=hourly)
     for file in dir_list[0].glob(fname_pattern):
         fparser = SatPathParser(file_url=file, regrid=regrid, hourly=hourly)
@@ -277,6 +276,15 @@ def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sa
     for dir_path in dir_list[1:-1]:
         file_list.extend(dir_path.glob(fname_pattern))
     return sorted(file_list)
+
+
+def get_list_of_sat_files_grouped_by_date(sat_files_list, sat_name, regrid, print_debug=False):
+    SatPathParser = get_SatPathParser(sat_name)
+    files_by_date_dict = defaultdict(list)
+    for sat_file in sat_files_list:
+        sat_file_date = SatPathParser(sat_file, regrid).get_start_date_pdTimestamp()
+        files_by_date_dict[sat_file_date].append(sat_file)
+    return files_by_date_dict
 
 
 def get_abi_coords_file(sat_version, file_version, print_debug=False):
@@ -297,3 +305,4 @@ def get_abi_coords_file(sat_version, file_version, print_debug=False):
     if print_debug:
         print(f'Using coords_file: {coords_file}')
     return pathlib.Path(f'{cts.ABI_COORDS_DIRPATH}/{coords_file}')
+

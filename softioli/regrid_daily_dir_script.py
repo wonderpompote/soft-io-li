@@ -49,7 +49,7 @@ if __name__ == '__main__':
     args.dir_list = [pathlib.Path(d_path) for d_path in args.dir_list]
 
     if args.print_debug:
-        print("launching regrid_sat_files on : {args.dir_list}")
+        print(f"launching regrid_sat_files on : {args.dir_list}")
 
     regrid_sat_files(path_list=args.dir_list, sat_name=args.sat_name, dir_list=True,
                      overwrite=args.overwrite, rm_pre_regrid_file=args.rm_pre_regrid_files,

@@ -14,10 +14,9 @@ from fpsim import check_fp_status
 
 import utils
 from utils import constants as cts
-from utils import GLMPathParser, ABIPathParser, get_list_of_paths_between_two_values
 import sat_regrid
 from utils.sat_utils import generate_sat_dir_path, get_list_of_dates_from_list_of_sat_path, \
-    generate_sat_dir_list_between_start_end_date, get_sat_files_list_between_start_end_date
+    generate_sat_dir_list_between_start_end_date, get_sat_files_list_between_start_end_date, get_SatPathParser, get_list_of_sat_files_grouped_by_date
 from utils.fp_utils import get_fpout_nc_file_path_from_fp_dir
 
 
@@ -108,10 +107,16 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     # list of daily directories containing the hourly satellite data files between start and end date
     regrid_daily_dir_list = generate_sat_dir_list_between_start_end_date(start_date=start_date, end_date=end_date,
                                                                          satellite=sat_name, regrid=True)
+    merge_sats_for_same_hour = False
+    SatPathParser = get_SatPathParser(sat_name)
     if sat_name == cts.GOES_SATELLITE_GLM:
-        SatPathParser = GLMPathParser
+        # GOES EAST AND WEST GLM DATA AVAILABLE
+        if start_date >= cts.MIN_GOES_EAST_WEST_DATE_GLM:
+            merge_sats_for_same_hour = True
     elif sat_name == cts.GOES_SATELLITE_ABI:
-        SatPathParser = ABIPathParser
+        # GOES EAST AND WEST ABI DATA AVAILABLE
+        if start_date >= cts.MIN_GOES_EAST_WEST_DATE_ABI:
+            merge_sats_for_same_hour = True
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
@@ -158,19 +163,42 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     regrid_daily_file_list = get_sat_files_list_between_start_end_date(dir_list=sorted(regrid_daily_dir_list),
                                                                        start_date=start_date, end_date=end_date,
                                                                        sat_name=sat_name, regrid=True)
-    #TODO: ici  s'occuper de la coupe mais COMMEEENNNNNT
-    # si satellite machin and start_date > min date goes_e+w
-    # recup list de fichiers as start_date et si duplicates --> recup les index
-    # pour chaque paire d'index on prend les fichiers, fait la coupe et on les stocke dans une liste de ds ?
-    # ensuite supprime les index doublons
-    # open mfdataset puis merge avec les trucs de la liste ?
     if print_debug:
         print(f'Regrid daily file list: {short_list_repr(sorted(regrid_daily_file_list))}')
         print()
+
     if not dry_run:
-        # create a dataset merging all the regrid hourly files
-        sat_ds = xr.open_mfdataset(regrid_daily_file_list, parallel=True,
-                                   combine_attrs='drop_conflicts')  # TODO: <?> utiliser dask: ajouter parallel=True
+        # if several sat data files for the same hour --> preprocess them before merging
+        if merge_sats_for_same_hour:
+            merged_ds = []
+            sat_versions = set()
+            # get list of files grouped by date
+            files_by_date_dict = get_list_of_sat_files_grouped_by_date(sat_files_list=regrid_daily_file_list, sat_name=sat_name, regrid=True)
+            # for each date where
+            for date, file_list in sorted(files_by_date_dict.items()):
+                if len(file_list) == 1: # if just one file --> add it directly without pre-processing
+                    f_parsed_sat_version = SatPathParser(file_list[0], regrid=True).satellite_version
+                    sat_versions.add(f_parsed_sat_version)
+                    merged_ds.append(xr.open_dataset(file_list[0]))
+                else: # if more than one file, preprocess each one (for now only expecting 2 files for a single date)
+                    for f in file_list:
+                        f_parsed_sat_version = SatPathParser(f, regrid=True).satellite_version
+                        sat_versions.add(f_parsed_sat_version)
+                        # only keep values >= -100° longitude for GOES-EAST
+                        if f_parsed_sat_version in cts.GOES_EAST_SAT_VERSION:
+                            f_ds = xr.open_dataset(f)
+                            merged_ds.append(f_ds.where(f_ds.longitude >= -100, drop=True))
+                        # only keep values < -100° longitude for GOES-EAST
+                        elif f_parsed_sat_version in cts.GOES_WEST_SAT_VERSION:
+                            f_ds = xr.open_dataset(f)
+                            merged_ds.append(f_ds.where(f_ds.longitude < -100, drop=True))
+            sat_ds = xr.merge(merged_ds, combine_attrs='drop_conflicts')
+            sat_ds.attrs[cts.SAT_VERSION_ATTRS_NAME] = sat_versions
+        else:
+            # create a dataset merging all the regrid hourly files
+            sat_ds = xr.open_mfdataset(regrid_daily_file_list, parallel=True,
+                                       combine_attrs='drop_conflicts')  # TODO: <?> utiliser dask: ajouter parallel=True
+
         return sat_ds
 
 

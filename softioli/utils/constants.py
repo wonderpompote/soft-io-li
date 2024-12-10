@@ -105,6 +105,10 @@ MIN_NPARTS = 50000
 
 #----- part 3 -----
 DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
+SAT_VERSION_ATTRS_NAME = 'satellite_version'
+
+GOES_WEST_SAT_VERSION = ['GOES17', 'G17', 'GOES18', 'G18']
+GOES_EAST_SAT_VERSION = ['GOES16', 'G16']
 
 GOES_SATELLITE_GLM = 'GOES_GLM'
 GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm')
@@ -123,8 +127,6 @@ PRE_REGRID_ABI_DIRNAME = 'pre_regrid_ABI'
 ABI_PATH_PREFIX = 'ABI_GEO_L1B'
 ABI_GOESXX_PATTERN = 'GOES1[236-8]*'
 MIN_GOES_EAST_WEST_DATE_ABI = Timestamp('12/02/2019')
-ABI_GOES_WEST_SAT_VERSION = ['GOES17', 'GOES18']
-ABI_GOES_EAST_SAT_VERSION = ['GOES16']
 
 ABI_COORDS_DIRPATH = '/o3p/patj/ABI/coords_files'
 GOES_0750_C0_COORDS_FILE_HDF = 'GOES-0750.C0.4km.hdf'
@@ -152,7 +154,7 @@ mm_pattern = "[0-5][0-9]" # minutes
 sss_pattern = "[0-9][0-9][0-9]"
 
 # TODO: update when other satellites OK
-SAT_VALUE_ERROR = f' not supported yet. Supported satellites so far: "{GOES_SATELLITE_GLM}", "{GOES_SATELLITE_ABI}"'
+SAT_VALUE_ERROR = f'not supported yet. Supported satellites so far: "{GOES_SATELLITE_GLM}", "{GOES_SATELLITE_ABI}"'
 
 
 # sat settings dict keys
