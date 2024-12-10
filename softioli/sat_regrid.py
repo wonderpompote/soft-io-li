@@ -6,7 +6,7 @@ from shutil import rmtree
 import xarray as xr
 
 from utils import GLMPathParser, generate_sat_hourly_file_path, generate_sat_filename_pattern, \
-    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file, open_hdf4
+    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file, open_hdf4, get_SatPathParser
 from utils import constants as cts
 from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
@@ -38,8 +38,8 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     """
     if not sat_name in cts.SAT_SETTINGS:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
-    if sat_name == cts.GOES_SATELLITE_GLM:
-        SatPathParser = GLMPathParser
+
+    SatPathParser = get_SatPathParser(sat_name)
 
     # get pre-regrid file start date (year, day, hour) with <sat>PathParser
     pre_regrid_path_parsed = SatPathParser(file_url=pre_regrid_file_url, regrid=False,
@@ -115,6 +115,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
         target_ds = target_ds.expand_dims(
             {'time': [pre_regrid_path_parsed.get_start_date_pdTimestamp(ignore_missing_start_hour=False)]})
         target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()
+        target_ds.attrs[cts.SAT_VERSION_ATTRS_NAME] = pre_regrid_path_parsed.satellite_version
         # TODO: réduire units de l'heure pour prendre moins de place (pas besoin de nanoseconds en soit)
         target_ds.to_netcdf(
             path=result_file_path, mode='w',
@@ -133,8 +134,8 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
                                                overwrite, rm_pre_regrid_file=False,
                                                lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                                lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX):
+    SatPathParser = get_SatPathParser(sat_name)
     if sat_name == cts.GOES_SATELLITE_ABI:
-        SatPathParser = ABIPathParser
         btemp_varname = 'brightness_temperature'
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -157,7 +158,7 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
                 .where(pre_regrid_ds['longitude'].notnull())
             # convert to dataframe to be able to groupby
             df = pre_regrid_ds.to_dataframe().reset_index()[
-                ['time', 'satellite', 'latitude', 'longitude', btemp_varname]]
+                ['time', 'latitude', 'longitude', btemp_varname]]
             # only keep mean value for each latitude, longitude, satellite, 15 min (time) group
             df_gpby_mean = df.groupby(['time', 'longitude', 'latitude'], sort=True).mean()
             result_ds = xr.Dataset.from_dataframe(df_gpby_mean)
@@ -228,17 +229,13 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
             h_abi_ds = xr.merge(h_abi_ds_list, combine_attrs="drop_conflicts")
             h_abi_ds = h_abi_ds.rename_vars({'Latitude': 'latitude', 'Longitude': 'longitude'})
             h_abi_ds.attrs['raw_hdf_files'] = [f.name for f in h_file_list]
-            """if len(h_abi_ds.satellite) > 1: # if both goes-e and goes-w
-                satellite_version = '+'.join(h_abi_ds.satellite.values)
-            else:
-                satellite_version = h_file_parser.satellite_version"""
             for sat in h_abi_ds.satellite:
                 result_hourly_filename = generate_sat_hourly_file_path(
                                                         date=h_file_parser.start_date,
                                                         sat_name=cts.GOES_SATELLITE_ABI, satellite=sat.values,
                                                         regrid=False, dir_path=None)
                 h_abi_ds_sat = h_abi_ds.sel(satellite=sat).drop_vars('satellite')
-                h_abi_ds_sat = h_abi_ds_sat.assign_attrs({'satellite_version': str(sat.values)})
+                h_abi_ds_sat = h_abi_ds_sat.assign_attrs({cts.SAT_VERSION_ATTRS_NAME: str(sat.values)})
                 if not pathlib.Path(result_hourly_filename).exists() or (pathlib.Path(result_hourly_filename).exists() and overwrite):
                     h_abi_ds_sat.to_netcdf(
                         path=result_hourly_filename, mode='w',
@@ -281,10 +278,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         print('--------------')
         print(f'regrid sat files: \nsat={sat_name} \ndir_list={dir_list} \npath_list={path_list}')
         print()
-    if sat_name == cts.GOES_SATELLITE_GLM:
-        SatPathParser = GLMPathParser
-    elif sat_name == cts.GOES_SATELLITE_ABI:
-        SatPathParser = ABIPathParser
+    SatPathParser = get_SatPathParser(sat_name)
+    if sat_name == cts.GOES_SATELLITE_ABI:
         if dir_list:
             # check that we have all our hourly pre_regrid nc files
             path_to_concat_into_hourly_files = []

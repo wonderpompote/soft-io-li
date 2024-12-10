@@ -17,7 +17,8 @@ from .sat_utils import (
     get_list_of_dates_from_list_of_sat_path,
     generate_sat_dirname_pattern,
     get_list_of_sat_files,
-    get_abi_coords_file
+    get_abi_coords_file,
+    get_SatPathParser
 )
 
 from .ABIPathParser import (
