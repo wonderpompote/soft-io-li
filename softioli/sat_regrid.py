@@ -146,6 +146,7 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
         longitude = np.arange(lon_min, lon_max + grid_res, grid_res)
         lat_da = xr.DataArray(latitude, coords={"latitude": latitude}, dims=['latitude'])
         lon_da = xr.DataArray(longitude, coords={'longitude': longitude}, dims=['longitude'])
+
         with xr.open_dataset(pre_regrid_file_url) as pre_regrid_ds:
             # replace longitude and latitude values with correct resolution using nearest routine
             pre_regrid_ds['latitude'] = lat_da \
@@ -158,33 +159,17 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
             df = pre_regrid_ds.to_dataframe().reset_index()[
                 ['time', 'satellite', 'latitude', 'longitude', btemp_varname]]
             # only keep mean value for each latitude, longitude, satellite, 15 min (time) group
-            df_gpby_mean = df.groupby(['time', 'satellite', 'longitude', 'latitude'], sort=True).mean()
+            df_gpby_mean = df.groupby(['time', 'longitude', 'latitude'], sort=True).mean()
             result_ds = xr.Dataset.from_dataframe(df_gpby_mean)
             # only keep min value for the hour
             result_ds = result_ds.min('time')
-            # in case we have data from several satellites
-            if len(result_ds.satellite) > 1:
-                # if both GOES-E and GOES-W, cut at 100° longitude and merge
-                if any(sat in result_ds.satellite.values for sat in cts.ABI_GOES_EAST_SAT_VERSION) \
-                        and any(sat in result_ds.satellite.values for sat in cts.ABI_GOES_WEST_SAT_VERSION):
-                    east_west_ds_list = []
-                    for sat in result_ds.satellite:
-                        if sat in cts.ABI_GOES_EAST_SAT_VERSION:
-                            east_west_ds_list.append(result_ds.sel(satellite=sat) \
-                                                     .where(result_ds.longitude >= -100, drop=True))
-                        elif sat in cts.ABI_GOES_WEST_SAT_VERSION:
-                            east_west_ds_list.append(result_ds.sel(satellite=sat) \
-                                                     .where(result_ds.longitude < -100, drop=True))
-                    # combine the two and drop satellite variable (went from dim to var because we used sel above)
-                    result_ds = xr.combine_by_coords(east_west_ds_list).drop_vars('satellite')
-            else:  # remove satellite dimension, not needed if only one satellite
-                result_ds = result_ds.squeeze(drop=True)
             # add time dimension
             result_ds = result_ds.expand_dims({'time': [pre_regrid_ds.time[0].values]})
+            # ensure all latitude and longitude values are included to avoid non monotonic latitude error when opening multiple files with different versions
+            result_ds = result_ds.reindex(latitude=latitude, longitude=longitude, fill_value=np.nan)
             # add atributes
             new_attrs = {
                 'grid_resolution': f'{grid_res}° x {grid_res}°',
-                'satellites': [str(sat) for sat in pre_regrid_ds.satellite.values],
                 'regrid_file_creation_date': pd.Timestamp.now().isoformat()
             }
             new_attrs.update(pre_regrid_ds.attrs)
@@ -225,11 +210,11 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
                 continue
             h_abi_ds_list = []
             for h_file in h_file_list:
-                # open file + rename col names to coorespond to coords_ds col names
+                # open file + rename col names to correspond to coords_ds col names
                 with open_hdf4(str(h_file)).rename(dict(NbLines='Nlin', NbColumns='Ncol'))['Brightness_Temperature'] as abi_bTemp_da_wout_coords:
                     # get corresponding coords file_path
                     h_file_parser = ABIPathParser(file_url=h_file, regrid=False, hourly=False)
-                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite_version, file_version=h_file_parser.file_version)
+                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite_version, file_version=h_file_parser.file_version, print_debug=print_debug)
                     # combine coords dataset with abi dataset
                     with xr.open_dataset(coords_file_path)[['Latitude', 'Longitude']] as coords_ds:
                         b_temp_w_coords_ds = coords_ds.assign(brightness_temperature=abi_bTemp_da_wout_coords)
@@ -241,24 +226,27 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
                         b_temp_w_coords_ds.attrs = abi_bTemp_da_wout_coords.attrs
                         h_abi_ds_list.append(b_temp_w_coords_ds)
             h_abi_ds = xr.merge(h_abi_ds_list, combine_attrs="drop_conflicts")
-            h_abi_ds = h_abi_ds.rename_vars({'Latitude': 'latitude', 'Longitude':'longitude'})
+            h_abi_ds = h_abi_ds.rename_vars({'Latitude': 'latitude', 'Longitude': 'longitude'})
             h_abi_ds.attrs['raw_hdf_files'] = [f.name for f in h_file_list]
-            if len(h_abi_ds.satellite) > 1: # if both goes-e and goes-w
+            """if len(h_abi_ds.satellite) > 1: # if both goes-e and goes-w
                 satellite_version = '+'.join(h_abi_ds.satellite.values)
             else:
-                satellite_version = h_file_parser.satellite_version
-            result_hourly_filename = generate_sat_hourly_file_path(
-                                                    date=h_file_parser.start_date,
-                                                    sat_name=cts.GOES_SATELLITE_ABI, satellite=satellite_version,
-                                                    regrid=False, dir_path=None)
-            if not pathlib.Path(result_hourly_filename).exists() or (pathlib.Path(result_hourly_filename).exists() and overwrite):
-                h_abi_ds.to_netcdf(
-                    path=result_hourly_filename, mode='w',
-                    encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
-                )
-                print(f"Saved {result_hourly_filename}")
-            else:
-                print(f'{result_hourly_filename} already exists!')
+                satellite_version = h_file_parser.satellite_version"""
+            for sat in h_abi_ds.satellite:
+                result_hourly_filename = generate_sat_hourly_file_path(
+                                                        date=h_file_parser.start_date,
+                                                        sat_name=cts.GOES_SATELLITE_ABI, satellite=sat.values,
+                                                        regrid=False, dir_path=None)
+                h_abi_ds_sat = h_abi_ds.sel(satellite=sat).drop_vars('satellite')
+                h_abi_ds_sat = h_abi_ds_sat.assign_attrs({'satellite_version': str(sat.values)})
+                if not pathlib.Path(result_hourly_filename).exists() or (pathlib.Path(result_hourly_filename).exists() and overwrite):
+                    h_abi_ds_sat.to_netcdf(
+                        path=result_hourly_filename, mode='w',
+                        encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
+                    ) #TODO: est-ce que drop sat dimension du coup ? parce que pour la coupe faut que je sache qui est qui
+                    print(f"Saved {result_hourly_filename}")
+                else:
+                    print(f'{result_hourly_filename} already exists!')
 
         if remove_temp_files:
             rmtree(pathlib.Path(f'{dir_p}/temp'))

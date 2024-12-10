@@ -279,7 +279,7 @@ def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sa
     return sorted(file_list)
 
 
-def get_abi_coords_file(sat_version, file_version):
+def get_abi_coords_file(sat_version, file_version, print_debug=False):
     if sat_version in ['GOES12', 'GOES13']:
         if file_version is not None:
             if file_version <= "V1-05":
@@ -294,4 +294,6 @@ def get_abi_coords_file(sat_version, file_version):
         raise ValueError(
             f'{sat_version} unsupported. Supported ABI satellites so far: "GOES12", "GOES13", "GOES16", "GOES17", "GOES18"')
 
+    if print_debug:
+        print(f'Using coords_file: {coords_file}')
     return pathlib.Path(f'{cts.ABI_COORDS_DIRPATH}/{coords_file}')

@@ -1,4 +1,5 @@
 import pathlib
+from pandas import Timestamp
 
 #----- output -----
 OUTPUT_ROOT_DIR = pathlib.Path('/o3p/patj/SOFT-IO-LI_output')
@@ -113,6 +114,7 @@ REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{REGRID_GLM_DIRNAME}')
 PRE_REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{PRE_REGRID_GLM_DIRNAME}')
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
 GLM_Gxx_PATTERN = 'G1[6-8]*' # TODO: update if older/newer versions available
+MIN_GOES_EAST_WEST_DATE_GLM = Timestamp('15/10/2019')
 
 GOES_SATELLITE_ABI = 'GOES_ABI'
 ABI_ROOT_DIR = pathlib.Path('/o3p/patj/ABI')
@@ -120,6 +122,7 @@ REGRID_ABI_DIRNAME = 'regrid_hourly_ABI'
 PRE_REGRID_ABI_DIRNAME = 'pre_regrid_ABI'
 ABI_PATH_PREFIX = 'ABI_GEO_L1B'
 ABI_GOESXX_PATTERN = 'GOES1[236-8]*'
+MIN_GOES_EAST_WEST_DATE_ABI = Timestamp('12/02/2019')
 ABI_GOES_WEST_SAT_VERSION = ['GOES17', 'GOES18']
 ABI_GOES_EAST_SAT_VERSION = ['GOES16']
 

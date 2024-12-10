@@ -158,6 +158,12 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     regrid_daily_file_list = get_sat_files_list_between_start_end_date(dir_list=sorted(regrid_daily_dir_list),
                                                                        start_date=start_date, end_date=end_date,
                                                                        sat_name=sat_name, regrid=True)
+    #TODO: ici  s'occuper de la coupe mais COMMEEENNNNNT
+    # si satellite machin and start_date > min date goes_e+w
+    # recup list de fichiers as start_date et si duplicates --> recup les index
+    # pour chaque paire d'index on prend les fichiers, fait la coupe et on les stocke dans une liste de ds ?
+    # ensuite supprime les index doublons
+    # open mfdataset puis merge avec les trucs de la liste ?
     if print_debug:
         print(f'Regrid daily file list: {short_list_repr(sorted(regrid_daily_file_list))}')
         print()
