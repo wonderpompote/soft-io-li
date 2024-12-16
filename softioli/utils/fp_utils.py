@@ -27,7 +27,6 @@ def get_timestamp_next_hour(timestamp):
     return pd.Timestamp(timestamp).floor('h') + pd.Timedelta(1,'h')
 
 
-#TODO: <!> le pattern fonctionne PAS
 def get_fpout_nc_file_path_from_fp_dir(fp_dirpath, fp_output_dirname='output',
                                        nc_file_glob_pattern=f'grid_time_{YYYY_pattern}*.nc'):
     """

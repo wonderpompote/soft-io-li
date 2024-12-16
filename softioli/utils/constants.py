@@ -117,16 +117,16 @@ PRE_REGRID_GLM_DIRNAME = 'pre_regrid_glm'
 REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{REGRID_GLM_DIRNAME}')
 PRE_REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{PRE_REGRID_GLM_DIRNAME}')
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
-GLM_Gxx_PATTERN = 'G1[6-8]*' # TODO: update if older/newer versions available
-MIN_GOES_EAST_WEST_DATE_GLM = Timestamp('15/10/2019')
+GLM_Gxx_PATTERN = 'G1[6-8]' # TODO: update if older/newer versions available
+MIN_GOES_EAST_WEST_DATE_GLM = Timestamp('2019-10-15T0000')
 
 GOES_SATELLITE_ABI = 'GOES_ABI'
 ABI_ROOT_DIR = pathlib.Path('/o3p/patj/ABI')
 REGRID_ABI_DIRNAME = 'regrid_hourly_ABI'
 PRE_REGRID_ABI_DIRNAME = 'pre_regrid_ABI'
 ABI_PATH_PREFIX = 'ABI_GEO_L1B'
-ABI_GOESXX_PATTERN = 'GOES1[236-8]*'
-MIN_GOES_EAST_WEST_DATE_ABI = Timestamp('12/02/2019')
+ABI_GOESXX_PATTERN = 'GOES1[236-8]'
+MIN_GOES_EAST_WEST_DATE_ABI = Timestamp('2019-02-12T0000')
 
 ABI_COORDS_DIRPATH = '/o3p/patj/ABI/coords_files'
 GOES_0750_C0_COORDS_FILE_HDF = 'GOES-0750.C0.4km.hdf'
@@ -137,6 +137,11 @@ GOES_0750_C0_COORDS_FILE = 'GOES-0750.C0.4km.nc'
 GOES_0750_C1_COORDS_FILE = 'GOES-0750.C1.4km.nc'
 GOESNG_0750_COORDS_FILE = 'GOESNG-0750.2km.nc'
 GOESNG_1370_COORDS_FILE = 'GOESNG-1370.2km.nc'
+
+NLDN = 'NLDN'
+NLDN_PATH_PREFIX = 'NLDN'
+NLDN_ROOT_DIR = pathlib.Path('/o3p/patj/nldn')
+NLDN_REGRID_DIRNAME = 'regrid_hourly_nldn'
 
 GRID_RESOLUTION_STR = '05deg'
 GRID_RESOLUTION = 0.5
@@ -154,7 +159,7 @@ mm_pattern = "[0-5][0-9]" # minutes
 sss_pattern = "[0-9][0-9][0-9]"
 
 # TODO: update when other satellites OK
-SAT_VALUE_ERROR = f'not supported yet. Supported satellites so far: "{GOES_SATELLITE_GLM}", "{GOES_SATELLITE_ABI}"'
+SAT_VALUE_ERROR = f'not supported yet. Supported satellites so far: "{GOES_SATELLITE_GLM}", "{GOES_SATELLITE_ABI}" and "{NLDN}" for specific dates'
 
 
 # sat settings dict keys

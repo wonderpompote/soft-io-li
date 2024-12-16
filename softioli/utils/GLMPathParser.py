@@ -2,14 +2,14 @@ import datetime
 import pandas as pd
 import pathlib
 
-from .SatPathParser import SatPathParser
+from .PathParser import PathParser
 
 # naming conventions
 OLD_GLM_NOTATION = 'OLD'  # GLM_array(_05deg)_DDD for dirs and # GLM_array(_xxdeg)_DDD_HH1-HH2.nc for files
 OLD_GLM_PRE_REGRID_TEMP_NOTATION = 'OLD_TEMP'  # OR_GLM-L2-LCFA_Gxx_sYYYYDDD for dirs GLM_array_DDD_temp_HH.nc for files
 
 
-class GLMPathParser(SatPathParser):
+class GLMPathParser(PathParser):
     """
     expecting url of the form (default notation):
         FILES:

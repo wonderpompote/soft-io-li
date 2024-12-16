@@ -7,7 +7,7 @@ from shutil import rmtree
 import xarray as xr
 
 from utils import generate_sat_hourly_file_path, generate_sat_filename_pattern, \
-    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file, open_hdf4, get_SatPathParser
+    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file, open_hdf4, get_PathParser
 from utils import constants as cts
 from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
@@ -40,10 +40,10 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     if not sat_name in cts.SAT_SETTINGS:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
-    SatPathParser = get_SatPathParser(sat_name)
+    PathParser = get_PathParser(sat_name)
 
     # get pre-regrid file start date (year, day, hour) with <sat>PathParser
-    pre_regrid_path_parsed = SatPathParser(file_url=pre_regrid_file_url, regrid=False,
+    pre_regrid_path_parsed = PathParser(file_url=pre_regrid_file_url, regrid=False,
                                            naming_convention=naming_convention)
 
     result_file_path = pathlib.Path(result_file_path)
@@ -135,7 +135,7 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
                                                overwrite, rm_pre_regrid_file=False,
                                                lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                                lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX):
-    SatPathParser = get_SatPathParser(sat_name)
+    PathParser = get_PathParser(sat_name)
     if sat_name == cts.GOES_SATELLITE_ABI:
         btemp_varname = 'brightness_temperature'
     else:
@@ -238,13 +238,13 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
                                                         sat_name=cts.GOES_SATELLITE_ABI, satellite=sat,
                                                         regrid=False, dir_path=None)
                 h_abi_ds_sat = xr.merge(ds_list, combine_attrs="drop_conflicts")
-                h_abi_ds_sat[cts.SAT_VERSION_ATTRS_NAME] = sat
-                h_abi_ds_sat['raw_hdf_files'] = hdf_file_list[sat]
+                h_abi_ds_sat.attrs[cts.SAT_VERSION_ATTRS_NAME] = sat
+                h_abi_ds_sat.attrs['raw_hdf_files'] = hdf_file_list[sat]
                 if not pathlib.Path(result_hourly_filename).exists() or (pathlib.Path(result_hourly_filename).exists() and overwrite):
                     h_abi_ds_sat.to_netcdf(
                         path=result_hourly_filename, mode='w',
                         encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
-                    ) #TODO: est-ce que drop sat dimension du coup ? parce que pour la coupe faut que je sache qui est qui
+                    )
                     print(f"Saved {result_hourly_filename}")
                 else:
                     print(f'{result_hourly_filename} already exists!')
@@ -282,7 +282,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         print('--------------')
         print(f'regrid sat files: \nsat={sat_name} \ndir_list={dir_list} \npath_list={path_list}')
         print()
-    SatPathParser = get_SatPathParser(sat_name)
+    PathParser = get_PathParser(sat_name)
     if sat_name == cts.GOES_SATELLITE_ABI:
         if dir_list:
             # check that we have all our hourly pre_regrid nc files
@@ -326,7 +326,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         if print_debug:
             print('---')
             print(f'pre_regrid_file_url: {pre_regrid_file_url}')
-        pre_regrid_path_parsed = SatPathParser(file_url=pre_regrid_file_url, regrid=False, hourly=True,
+        pre_regrid_path_parsed = PathParser(file_url=pre_regrid_file_url, regrid=False, hourly=True,
                                                naming_convention=naming_convention)
         pre_regrid_file_date = pre_regrid_path_parsed.get_start_date_pdTimestamp(ignore_missing_start_hour=False)
         # create result nc file path

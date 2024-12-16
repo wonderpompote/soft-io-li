@@ -1,7 +1,7 @@
 import pandas as pd
 import pathlib
 
-from .SatPathParser import SatPathParser
+from .PathParser import PathParser
 
 """
 Filenames:
@@ -23,7 +23,7 @@ GOESNG-0750 + GOESNG-1370:    05deg_ABI_GEO_L1B-GOES16+GOES1[78]_YYYY_MM_DD_HH1-
 """
 
 
-class ABIPathParser(SatPathParser):
+class ABIPathParser(PathParser):
 
     def __init__(self, file_url, regrid, hourly=True, directory=False, year=None, month=None, day=None, start_hour=None, start_minute=None, end_hour=None,
                  file_version=None, regrid_res_str=None, satellite=None, naming_convention=None):

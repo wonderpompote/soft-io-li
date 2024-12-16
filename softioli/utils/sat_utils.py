@@ -7,15 +7,18 @@ from .utils_functions import date_to_pd_timestamp
 from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 from .ABIPathParser import ABIPathParser
+from .NLDNPathParser import NLDNPathParser
 
 
-def get_SatPathParser(sat_name):
+def get_PathParser(sat_name):
     if sat_name == cts.GOES_SATELLITE_GLM:
         return GLMPathParser
     elif sat_name == cts.GOES_SATELLITE_ABI:
         return ABIPathParser
+    elif sat_name == cts.NLDN:
+        return NLDNPathParser
     else:
-        raise ValueError(f'Could not find corresponding SatPathParser, "{sat_name}" {cts.SAT_VALUE_ERROR}')
+        raise ValueError(f'Could not find corresponding PathParser, "{sat_name}" {cts.SAT_VALUE_ERROR}')
 
 def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR, hourly=True, naming_convention=None, sat_version_pattern=None,
                                   YYYY=cts.YYYY_pattern, DDD=cts.DDD_pattern, MM=cts.MM_pattern, DD=cts.DD_pattern, start_HH=cts.HH_pattern, end_HH=cts.HH_pattern, mm=cts.mm_pattern, sss=cts.sss_pattern):
@@ -58,6 +61,9 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
             filename_pattern = f'GEO_L1B-{sat_version_pattern}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].hdf'
         else:  # ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc
             filename_pattern = f"ABI_GEO_L1B-{sat_version_pattern}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
+    elif sat_name == cts.NLDN:
+        if hourly:
+            filename_pattern = f"{cts.NLDN_PATH_PREFIX}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
     else:
         raise ValueError(
             f'{sat_name} NOT supported yet. Supported satellite so far: "{cts.GOES_SATELLITE_GLM}", "{cts.GOES_SATELLITE_ABI}"')
@@ -97,6 +103,9 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
     # ABI
     elif sat_name == cts.GOES_SATELLITE_ABI: #ABI_GEO_L1B_YYYY_MM_DD
         dirname_pattern = f"ABI_GEO_L1B_{YYYY}_{MM}_{DD}"
+    # NLDN
+    elif sat_name == cts.NLDN:
+        dirname_pattern = f'{cts.NLDN_PATH_PREFIX}_{YYYY}_{MM}_{DD}'
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
@@ -183,53 +192,15 @@ def get_list_of_dates_from_list_of_sat_path(path_list, directory, sat_name, regr
     @return: <list> [ <pd.Timestamp> or <str>, ... ] list of all the dates as pd.Timestamps or str
     """
     date_list = []
-    SatPathParser = get_SatPathParser(sat_name)
+    PathParser = get_PathParser(sat_name)
     for p in path_list:
-        date = SatPathParser(p, regrid=regrid, directory=directory, hourly=hourly) \
+        date = PathParser(p, regrid=regrid, directory=directory, hourly=hourly) \
             .get_start_date_pdTimestamp(ignore_missing_start_hour=True)
         if date_str:
             date = date.strftime(date_str_format)
         date_list.append(date)
 
     return date_list
-
-
-# TODO: jsp si ça me sert vraiment dans le code au final
-def get_list_of_sat_files(sat_dir_path, parent_dir, sat_name, regrid, regrid_res_str=cts.GRID_RESOLUTION_STR):
-    """
-    Function returning a list of all satellite data files in a given directory (or in the subdirectories of a parent directory)
-    @param sat_dir_path: <list> [ <pathlib.Path>, ... ] or <pathlib.Path> or <str>
-    @param parent_dir: <bool> indicates if sat_dir_path points to a parent directory
-    @param sat_name: <str> satellite name (supported so far: 'GOES_GLM')
-    @param regrid: <bool> indicates if sat files to be listed are regridded
-    @param regrid_res_str: <str> grid resolution if regrid=True
-    @return: <list> [ <pathlib.Path>, ... ]
-    """
-    # check if sat_dir_path is a single path (puts it in list, easier to loop through)
-    if isinstance(sat_dir_path, (pathlib.PurePath, str)):
-        sat_dir_path = [pathlib.Path(sat_dir_path)]
-    # if not single path AND not list --> TypeError
-    elif not isinstance(sat_dir_path, list):
-        raise TypeError('Expecting list of pathlib.Path (or str) objects or single pathlib.Path (or str) object')
-
-    # if parent directory --> get path of all subdirectories containing sat files
-    if parent_dir:
-        dirname_pattern = generate_sat_dirname_pattern(sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str)
-        dir_list = []
-        for parent_dir_path in sat_dir_path:
-            # check that parent_dir_path is a pathlib.Path object (needed for glob function)
-            parent_dir_path = pathlib.Path(parent_dir_path)
-            dir_list.extend(parent_dir_path.glob(dirname_pattern))
-        sat_dir_path = dir_list
-    # get list of files
-    filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid, regrid_res_str=regrid_res_str)
-    file_list = []
-    for dir_path in sat_dir_path:
-        if not parent_dir: # if not parent dir, make sure dir_path is a pathlib object
-            dir_path = pathlib.Path(dir_path)
-        file_list.extend(dir_path.glob(filename_pattern))
-
-    return sorted(file_list)
 
 
 def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite, regrid,
@@ -258,18 +229,18 @@ def generate_sat_dir_list_between_start_end_date(start_date, end_date, satellite
 
 
 # TODO: add check dir_list contient que des pathlib.PurePath objects (?)
-def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sat_name, regrid, hourly=True):
-    SatPathParser = get_SatPathParser(sat_name)
+def get_data_files_list_between_start_end_date(dir_list, start_date, end_date, sat_name, regrid, hourly=True):
+    PathParser = get_PathParser(sat_name)
     start_date, end_date = date_to_pd_timestamp(start_date), date_to_pd_timestamp(end_date)
     file_list = []
     dir_list = sorted([pathlib.Path(dir_p) for dir_p in dir_list])
     fname_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=regrid, hourly=hourly)
     for file in dir_list[0].glob(fname_pattern):
-        fparser = SatPathParser(file_url=file, regrid=regrid, hourly=hourly)
+        fparser = PathParser(file_url=file, regrid=regrid, hourly=hourly)
         if fparser.start_hour >= start_date.hour:
             file_list.append(file)
     for file in dir_list[-1].glob(fname_pattern):
-        fparser = SatPathParser(file_url=file, regrid=regrid, hourly=hourly)
+        fparser = PathParser(file_url=file, regrid=regrid, hourly=hourly)
         if fparser.start_hour <= end_date.hour:
             file_list.append(file)
     # for the days: start_day < day < end_day --> get all files matching generic filename pattern
@@ -279,10 +250,10 @@ def get_sat_files_list_between_start_end_date(dir_list, start_date, end_date, sa
 
 
 def get_list_of_sat_files_grouped_by_date(sat_files_list, sat_name, regrid, print_debug=False):
-    SatPathParser = get_SatPathParser(sat_name)
+    PathParser = get_PathParser(sat_name)
     files_by_date_dict = defaultdict(list)
     for sat_file in sat_files_list:
-        sat_file_date = SatPathParser(sat_file, regrid).get_start_date_pdTimestamp()
+        sat_file_date = PathParser(sat_file, regrid).get_start_date_pdTimestamp()
         files_by_date_dict[sat_file_date].append(sat_file)
     return files_by_date_dict
 

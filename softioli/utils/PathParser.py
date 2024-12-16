@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class SatPathParser(ABC):
+class PathParser(ABC):
 
      @abstractmethod
      def extract_date(self):
