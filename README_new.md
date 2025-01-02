@@ -47,7 +47,7 @@ SOFT-IO-LI is split into three seperate programmes. The result are stored in a f
 
 ```
 
-1. plume_identification.py
+## 1. plume_identification.py
 
 This searches the IAGOS database for new flights measuring either NOx
 (using the pack P2b IAGOS CORE) or NO and NO2 (using the pack PC2 CARIBIC).
@@ -62,28 +62,28 @@ width of < 27.5 km  are excluded and by removing unusual and sudden spikes.
 The final plumes are then analysed and saved into a seperate csv file for each
 flight. For each plume identified the following information is saved:
 
-Plume ID \
-UTC time start \
-UTC time end \
-Longitude start \
-Longitude end \
-Latitude start \
-Latitude end \
-Pressure start \
-Pressure end \
-O3 mean \
-O3 excess std (for each geographical region) \
-O3 excess mean (for each geographical region) \
-CO mean \
-CO excess std (for each geographical region) \
-CO excess mean (for each geographical region) \
-NOx mean \
-NOx excess std \
-NOx excess mean \
+- Plume ID \
+- UTC time start \
+- UTC time end \
+- Longitude start \
+- Longitude end \
+- Latitude start \
+- Latitude end \
+- Pressure start \
+- Pressure end \
+- O3 mean \
+- O3 excess std (for each geographical region) \
+- O3 excess mean (for each geographical region) \
+- CO mean \
+- CO excess std (for each geographical region) \
+- CO excess mean (for each geographical region) \
+- NOx mean \
+- NOx excess std \
+- NOx excess mean \
 
-If plumes are found and validated then the csv file containing the information for each plume is saved in path/to/result/dir/<flight_id>/. 
+If plumes are found and validated then the csv file containing the information for each plume is saved in **path/to/result/dir/<flight_id>/**.
 
-For each flight with valid NOx measurements, a plot representing the flight variable is stored in path/to/result/dir/<flight_id>/. It is a good idea to check these plots to make sure the plumes look sensible, so far so good.
+For each flight with valid NOx measurements, a plot representing the flight variable is stored in **path/to/result/dir/<flight_id>/**. It is a good idea to check these plots to make sure the plumes look sensible, so far so good.
 
 The plume_identification.py script can be launched using the following options:
 ```
@@ -111,7 +111,7 @@ output parameters:
   -o, --output-dirname-suffix OUTPUT_DIRNAME_SUFFIX
                         Output dirname suffix (default=plume_detection_COq3-110-115-120_NOxq3-0.283)
   --filename-suffix FILENAME_SUFFIX
-                        suffix to add to each file (default = "_COq3-<CO_q3>_NOxq3-<NOx_q3>"
+                        suffix to add to each file (default = "_COq3-<CO_q3>_NOxq3-<NOx_q3>")
   --flight-dirname-suffix FLIGHT_DIRNAME_SUFFIX
                         suffix to add to flight output directory name
   -d, --print-debug     print debug (default=False)
@@ -120,7 +120,52 @@ output parameters:
   --show-fig            Indicates if flight plot should be shown during execution (<!> stops program execution until plot is closed <!>) (default=False)
 ```
 
-2. FLEXPART_auto.ipynb
+## 2. flexpart.py
+
+The flexpart.py script can be launched with the following options:
+```
+python flexpart.py --help
+usage: flexpart.py [-h] -fo FLIGHTS_OUTPUT_DIR [--flight-dirname-suffix FLIGHT_DIRNAME_SUFFIX] [-o FP_OUTPUT_DIRNAME] [--overwrite] [-d] [-a] [--flight-list] [--flight-range] [-s START_ID] [-e END_ID]
+                   [--flight-id-list FLIGHT_ID_LIST [FLIGHT_ID_LIST ...]] [-x EXCLUDE_FLIGHT_IDS [EXCLUDE_FLIGHT_IDS ...]] [-t TIMESTEP] [-sd SIMU_DURATION] [-gr GRID_RES] [--run-simu]
+                   [--slurm-partition SLURM_PARTITION]
+
+options:
+  -h, --help            show this help message and exit
+  -d, --print-debug     print debug (default=False)
+
+Output directory:
+  -fo FLIGHTS_OUTPUT_DIR, --flights-output-dir FLIGHTS_OUTPUT_DIR
+                        Path to output directory (directory containing all flight output directories)
+  --flight-dirname-suffix FLIGHT_DIRNAME_SUFFIX
+                        suffix to add to flight output directory name
+  -o FP_OUTPUT_DIRNAME, --fp-output-dirname FP_OUTPUT_DIRNAME
+                        Name of the directory where the flexpart output will be stored (default="flexpart")
+  --overwrite           Indicates if existing flexpart output directory should be overwritten (default=False)
+
+Flights:
+  -a, --all-flights     Indicates if all flights in output dir should be taken into account
+  --flight-list         Indicates if a list of flight ids/names will be passed
+  --flight-range        Indicates if start and end flight ids/names will be passed
+  -s START_ID, --start-id START_ID
+                        Start flight name/id (in case we only want to retrieve NOx flights between two flight ids)
+  -e END_ID, --end-id END_ID
+                        End flight name/id (in case we only want to retrieve NOx flights between two flight ids)
+  --flight-id-list FLIGHT_ID_LIST [FLIGHT_ID_LIST ...]
+                        List of flight ids/names (default = None)
+  -x EXCLUDE_FLIGHT_IDS [EXCLUDE_FLIGHT_IDS ...], --exclude-flight-ids EXCLUDE_FLIGHT_IDS [EXCLUDE_FLIGHT_IDS ...]
+                        Flight ids to exclude
+
+Flexpart parameters:
+  -t TIMESTEP, --timestep TIMESTEP
+                        Timestep for the flexpart simulation (loutstep), (default="1h")
+  -sd SIMU_DURATION, --simu-duration SIMU_DURATION
+                        Flexpart simulation duration in days, (default=10)
+  -gr GRID_RES, --grid-res GRID_RES
+                        Flexpart output grid resolution (default=0.5)
+  --run-simu            Indicates if flexpart simulation should be run <!> only use when running a few flexpart simulations, use job arrays if you need to run many simulations
+  --slurm-partition SLURM_PARTITION
+                        Slurm partition on which flexpart should be run (default="o3pwork")
+```
 
 FLEXPART_auto uses the contents of FLEXPART_templates to create a FLEXPART
 directory for each flight.
