@@ -175,11 +175,11 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
         airports_list = cts.SOFTIOLI_AIRPORTS
     else:
         airports_list = None
-    NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(iagos_cat_path=cts.IAGOSv3_CAT_PATH,
-                                                                 start_flight_id=start_flight_id,
+    NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(start_flight_id=start_flight_id,
                                                                  end_flight_id=end_flight_id, flight_type=flight_type,
-                                                                 flight_id_list=flight_id_list, airports_list=airports_list,
-                                                                 print_debug=print_debug)
+                                                                 flight_id_list=flight_id_list,
+                                                                 airports_list=airports_list, print_debug=print_debug,
+                                                                 iagos_cat_path=cts.IAGOSv3_CAT_PATH)
 
     if save_output:
         output_dirpath = create_root_output_dir(date=timenow, dirname_suffix=output_dirname_suffix,
