@@ -7,7 +7,7 @@ TIMESTAMP_FORMAT = "%Y-%m-%d_%H%M"
 ARRIVALTIME_FORMAT_CSV_FILENAME = '%Y%m%d-%H%M'
 
 #----- part 1 -----
-IAGOSv3_CAT_PATH = pathlib.Path('/o3p/iagos/catalogues_v3/iagos_L2.parquet')
+IAGOSv3_L2_CAT_PATH = pathlib.Path('/o3p/iagos/catalogues_v3/iagos_L2.parquet')
 IAGOSv3_PV_PATH = pathlib.Path('/o3p/iagos/iagosv3/L4/')
 IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
 IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'

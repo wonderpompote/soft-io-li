@@ -103,7 +103,7 @@ def get_valid_data(var_list, ds, valid_data_flag_value=0, print_debug=False):
 # TODO: filtrer par date aussi ??
 def get_NOx_flights_from_catalogue(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None,
                                    airports_list=cts.SOFTIOLI_AIRPORTS, print_debug=False,
-                                   iagos_cat_path=cts.IAGOSv3_CAT_PATH):
+                                   iagos_cat_path=cts.IAGOSv3_L2_CAT_PATH):
     """
     Returns list of NOx flights urls (from iagos v3 catalogue)
     :param iagos_cat_path:

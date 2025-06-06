@@ -138,7 +138,7 @@ def find_plumes(ds, flight_output_dirpath, min_plume_length=cts.MIN_PLUME_LENGTH
 
 
 
-def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None, only_softioli=False,
+def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None, flight_id_list=None, only_softioli=False, flight_url_list=None,
                      cruise_only=True, CO_q3=None, NOx_q3=None, use_q3_ds=False, print_debug=False, save_output=True,
                      filtered_ds_to_netcdf=False, plume_ds_to_netcdf=False, end_of_plume_duration=100,
                      plot_flight=False, show_region_names=False, save_fig=False, show_fig=False, file_suffix='',
@@ -170,16 +170,23 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
     :param timenow: <str> date
     :return:
     """
-    # get NOx flights url (L2 files)
-    if only_softioli:
-        airports_list = cts.SOFTIOLI_AIRPORTS
+    if flight_url_list is None:
+        # get NOx flights url (L2 files)
+        if only_softioli:
+            airports_list = cts.SOFTIOLI_AIRPORTS
+        else:
+            airports_list = None
+        NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(start_flight_id=start_flight_id,
+                                                                     end_flight_id=end_flight_id, flight_type=flight_type,
+                                                                     flight_id_list=flight_id_list,
+                                                                     airports_list=airports_list, print_debug=print_debug,
+                                                                     iagos_cat_path=cts.IAGOSv3_L2_CAT_PATH)
     else:
-        airports_list = None
-    NOx_flights_url = iagos_utils.get_NOx_flights_from_catalogue(start_flight_id=start_flight_id,
-                                                                 end_flight_id=end_flight_id, flight_type=flight_type,
-                                                                 flight_id_list=flight_id_list,
-                                                                 airports_list=airports_list, print_debug=print_debug,
-                                                                 iagos_cat_path=cts.IAGOSv3_CAT_PATH)
+        NOx_flights_url = []
+        for flight_path in flight_url_list:
+            if pathlib.Path(flight_path).is_file(): #TODO: check extension ?
+                NOx_flights_url.append(flight_path)
+
 
     if save_output:
         output_dirpath = create_root_output_dir(date=timenow, dirname_suffix=output_dirname_suffix,
@@ -258,6 +265,8 @@ if __name__ == "__main__":
                        help='Indicates if a list of flight ids/names will be passed')
     mutually_ex_group.add_argument('--flight-range', action='store_true',
                        help='Indicates if start and end flight ids/names will be passed')
+    mutually_ex_group.add_argument('--flight-urls', action='store_true',
+                                   help='Indicates if list of flight urls will be passed')
 
     flights_group = parser.add_argument_group('flights info')
     flights_group.add_argument('--only-softioli', action='store_true', help='Indicates if only flights within the softioli regions of interests should be taken into account')
@@ -266,6 +275,7 @@ if __name__ == "__main__":
     flights_group.add_argument('-e', '--end-id',
                         help='End flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
     flights_group.add_argument('--flight-id-list', nargs='+', help='List of flight ids/names (default = None)')
+    flights_group.add_argument('--flight-url-list', nargs='+', help='List of flight urls (default = None)')
 
     #parser.add_argument('--end-of-plume', nargs='+', type=int, help='End of plume duration (default=100)', default=[100])
 
@@ -273,9 +283,10 @@ if __name__ == "__main__":
 
     output_group.add_argument('--dont-save-output', action='store_true', help='Indicates if output should NOT be saved')
 
-    output_group.add_argument('-o', '--output-dirname-suffix', help='Output dirname suffix (default=plume_detection_COq3-110-115-120_NOxq3-0.283)',
-                        default='plume_detection_COq3-110-115-120_NOxq3-0.283')
+    output_group.add_argument('--root-output-dir', help=f'Path to root output directory (default=:{cts.OUTPUT_ROOT_DIR})', default=cts.OUTPUT_ROOT_DIR)
 
+    output_group.add_argument('-o', '--output-dirname-suffix', help='Output dirname suffix (default=plume_detection_COq3-{cts.CO_Q3}_NOxq3-{cts.NOx_Q3})',
+                        default=f'plume_detection_COq3-{cts.CO_Q3}_NOxq3-{cts.NOx_Q3}')
     output_group.add_argument('--filename-suffix', help='suffix to add to each file (default = "_COq3-<CO_q3>_NOxq3-<NOx_q3>"')
     output_group.add_argument('--flight-dirname-suffix', default='',
                               help='suffix to add to flight output directory name')
@@ -297,7 +308,7 @@ if __name__ == "__main__":
     timenow = timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')
 
     get_LiNOX_plumes(
-        flight_id_list=args.flight_id_list,
+        flight_id_list=args.flight_id_list, flight_url_list=args.flight_url_list,
         start_flight_id=args.start_id, end_flight_id=args.end_id,
         only_softioli=args.only_softioli,
 
@@ -305,6 +316,7 @@ if __name__ == "__main__":
 
         print_debug=args.print_debug, save_output=not args.dont_save_output, timenow=timenow, show_region_names=False,
 
+        root_output_dirpath=args.root_output_dir,
         output_dirname_suffix=args.output_dirname_suffix,
         flight_dirname_suffix=args.flight_dirname_suffix,
         file_suffix=args.filename_suffix if args.filename_suffix else f'_COq3-{cts.CO_Q3}_NOxq3-{cts.NOx_Q3}',
