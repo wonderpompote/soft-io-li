@@ -209,6 +209,16 @@ def keep_cruise(ds, print_debug=False):
     return ds
 
 
+def remove_PBL(ds, print_debug=False):
+    if print_debug:
+        print(f'{cts.NOx_SMOOTHED_VARNAME}.notnull().sum() BEFORE PBL filter: {ds[cts.NOx_SMOOTHED_VARNAME].notnull().sum().values}')
+    ds = ds.where(ds[f'{cts.AIRPRESS_VARNAME}_validity_flag'] == 0).where(ds[cts.AIRPRESS_VARNAME] < 70000)
+    if print_debug:
+        print(f'{cts.NOx_SMOOTHED_VARNAME}.notnull().sum() AFTER PBL filter: {ds[cts.NOx_SMOOTHED_VARNAME].notnull().sum().values}')
+        print('---')
+    return ds
+
+
 def keep_tropo(ds, var_list, print_debug=False):
     for var in var_list:
         if print_debug:

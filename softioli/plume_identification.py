@@ -62,6 +62,8 @@ def apply_LiNOx_plume_filters(ds, cruise_only, CO_q3=None, NOx_q3=None, use_q3_d
     # only keep cruise data
     if cruise_only:
         ds = iagos_utils.keep_cruise(ds=ds, print_debug=print_debug)
+    else: # else remove PBL only
+        ds = iagos_utils.remove_PBL(ds=ds, print_debug=print_debug)
 
     # remove stratospheric influence
     ds = iagos_utils.keep_tropo(ds=ds, print_debug=print_debug,
@@ -300,6 +302,7 @@ if __name__ == "__main__":
     output_group.add_argument('--show-fig', action='store_true', help='Indicates if flight plot should be shown during execution (<!> stops program execution until plot is closed <!>) (default=False)')
 
     parser.add_argument('-c', '--CO-q3', type=int, help=f'CO q3, default = {cts.CO_Q3} (value stored in constant file)')
+    parser.add_argument('--cruise-only', action='store_true', help='Indicates if only cruise values should be analysed (if False, all measurements made outside of the PBL will be analysed)')
 
     args = parser.parse_args()
 
