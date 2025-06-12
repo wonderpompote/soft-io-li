@@ -90,13 +90,15 @@ def get_valid_data(var_list, ds, valid_data_flag_value=0, print_debug=False):
     :return: <xarray.Dataset>
     """
     for varname in var_list:
-        if print_debug:
-            print(f'{varname}.notnull().sum() BEFORE val flag filter: {ds[varname].notnull().sum().values}')
         if varname in ds.keys():
+            if print_debug:
+                print(f'{varname}.notnull().sum() BEFORE val flag filter: {ds[varname].notnull().sum().values}')
             ds[varname] = ds[varname].where(ds[f'{varname}_validity_flag'] == valid_data_flag_value)
-        if print_debug:
-            print(f'{varname}.notnull().sum() AFTER val flag filter: {ds[varname].notnull().sum().values}')
-            print('---')
+            if print_debug:
+                print(f'{varname}.notnull().sum() AFTER val flag filter: {ds[varname].notnull().sum().values}')
+                print('---')
+        else:
+             warnings.warn(f'{varname} not found in dataset')
     return ds
 
 

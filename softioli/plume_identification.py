@@ -315,6 +315,7 @@ if __name__ == "__main__":
         start_flight_id=args.start_id, end_flight_id=args.end_id,
         only_softioli=args.only_softioli,
 
+        cruise_only=args.cruise_only,
         CO_q3=args.CO_q3,
 
         print_debug=args.print_debug, save_output=not args.dont_save_output, timenow=timenow, show_region_names=False,
