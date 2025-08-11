@@ -25,7 +25,8 @@ def install_softioli_fp_simulation(flight_name, flights_output_dirpath, flight_d
                                    timestep=cts.FP_LOUTSTEP, duration=cts.FP_DURATION,
                                    grid_resolution=cts.GRID_RESOLUTION, outheight_min=cts.FP_OUTHEIGHT_MIN,
                                    outheight_max=cts.FP_OUTHEIGHT_MAX, outheight_step=cts.FP_OUTHEIGHT_STEP,
-                                   print_debug=False, overwrite=False, fp_output_dirname='flexpart'):
+                                   print_debug=False, overwrite=False, fp_output_dirname='flexpart',
+                                   meteo_fields_dir=cts.METEO_FIELDS_DIR):
     # get flight_output directory
     flight_output_dir = create_flight_output_dir(output_dirpath=flights_output_dirpath, flight_name=flight_name,
                                                  missing_ok=False, dirname_suffix=flight_dirname_suffix)
@@ -96,7 +97,7 @@ def install_softioli_fp_simulation(flight_name, flights_output_dirpath, flight_d
         command=command,
         releases_df=releases_df,
         outgrid=outgrid,
-        meteo_fields_dir='/o3p/wolp/ECMWF/ERA5/050deg_1h_T319_eta1/',  # 05deg ERA5 data
+        meteo_fields_dir=meteo_fields_dir,  # 05deg ERA5 data
         horizontal_resol=grid_resolution,
         overwrite=overwrite
     )
@@ -147,6 +148,9 @@ if __name__ == "__main__":
     # fp out grid resolution
     fp_group.add_argument('-gr', '--grid-res', default=cts.GRID_RESOLUTION, type=float,
                           help=f'Flexpart output grid resolution (default={cts.GRID_RESOLUTION})')
+    # meteo fields directory (ERA5)
+    fp_group.add_argument('--era5-dir', default=cts.METEO_FIELDS_DIR,
+                          help=f'Path to ERA5 data directory (default={cts.METEO_FIELDS_DIR})')
     # run simu
     fp_group.add_argument('--run-simu', action='store_true', help='Indicates if flexpart simulation should be run <!> only use when running a few flexpart simulations, use job arrays if you need to run many simulations')
     # slurm node on which fp simu should be launched
@@ -195,7 +199,8 @@ if __name__ == "__main__":
                                                            flight_dirname_suffix=args.flight_dirname_suffix,
                                                            fp_output_dirname=args.fp_output_dirname,
                                                            duration=args.simu_duration, grid_resolution=args.grid_res,
-                                                           print_debug=args.print_debug, overwrite=args.overwrite)
+                                                           print_debug=args.print_debug, overwrite=args.overwrite,
+                                                           meteo_fields_dir=args.era5_dir)
             # run simulation
             if args.run_simu:
                 if args.print_debug:

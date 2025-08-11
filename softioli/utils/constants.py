@@ -10,7 +10,6 @@ ARRIVALTIME_FORMAT_CSV_FILENAME = '%Y%m%d-%H%M'
 IAGOSv3_L2_CAT_PATH = pathlib.Path('/o3p/iagos/catalogues_v3/iagos_L2.parquet')
 IAGOSv3_PV_PATH = pathlib.Path('/o3p/iagos/iagosv3/L4/')
 IAGOSv3_PV_FILE_PREFIX = 'IAGOS_ECMWF'
-IAGOSv3_PV_PATH = '/o3p/iagos/iagosv3/L4/'
 
 # as found from IAGOS v3 catalogue in August 2024 --> <!> might need to be updated if new flights to new airports are added to the database
 SOFTIOLI_AIRPORTS = ['SCL, Santiago, Chile',
@@ -95,6 +94,8 @@ FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported valu
 
 
 #----- part 2 -----
+METEO_FIELDS_DIR = '/o3p/patj/ECMWF/ERA5/050deg_1h_T319_eta1/'
+
 FP_LOUTSTEP = '1h' # flexpart timestep
 FP_DURATION = 10 #days
 FP_OUTHEIGHT_MIN = 500 #m
