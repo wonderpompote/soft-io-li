@@ -139,10 +139,18 @@ GOES_0750_C1_COORDS_FILE = 'GOES-0750.C1.4km.nc'
 GOESNG_0750_COORDS_FILE = 'GOESNG-0750.2km.nc'
 GOESNG_1370_COORDS_FILE = 'GOESNG-1370.2km.nc'
 
+MTG_LI = 'MTG_LI'
+MTG_LI_ROOT_DIR = pathlib.Path('/o3p/patj/MTG_LI')
+REGRID_MTG_LI_DIRNAME = 'regrid_hourly_MTG_LI'
+PRE_REGRID_MTG_LI_DIRNAME = 'pre_regrid_hourly_MTG_LI'
+MTG_LI_PATH_PREFIX = 'MTG_I1_LI'
+
 NLDN = 'NLDN'
 NLDN_PATH_PREFIX = 'NLDN'
 NLDN_ROOT_DIR = pathlib.Path('/o3p/patj/nldn')
 NLDN_REGRID_DIRNAME = 'regrid_hourly_nldn'
+
+SUPPORTED_LI_SATELLITES_LIST = [GOES_SATELLITE_GLM, MTG_LI]
 
 GRID_RESOLUTION_STR = '05deg'
 GRID_RESOLUTION = 0.5
@@ -160,7 +168,7 @@ mm_pattern = "[0-5][0-9]" # minutes
 sss_pattern = "[0-9][0-9][0-9]"
 
 # TODO: update when other satellites OK
-SAT_VALUE_ERROR = f'not supported yet. Supported satellites so far: "{GOES_SATELLITE_GLM}", "{GOES_SATELLITE_ABI}" and "{NLDN}" for specific dates'
+SAT_VALUE_ERROR = f'not supported yet. Supported satellites so far: "{GOES_SATELLITE_GLM}", "{GOES_SATELLITE_ABI}" and "{MTG_LI}" for specific dates'
 
 
 # sat settings dict keys
@@ -171,12 +179,14 @@ raw_lon_cname = "pre_regrid_lon_coordname"
 attrs_to_keep = "attrs_to_keep"
 
 # hist parameters
-f_en_min_bin = -15 # log
-f_en_max_bin = -10
-f_en_hist_step = 0.1
-f_ar_min_bin = 1.5 # log
-f_ar_max_bin = 4.5
-f_ar_hist_step = 0.1
+## flash energy unit before log operation: J
+f_en_J_min_bin = -15 # log
+f_en_J_max_bin = -10
+f_en_J_hist_step = 0.1
+## flash area unit before log operation: km2
+f_ar_km2_min_bin = 1.5 # log
+f_ar_km2_max_bin = 4.5
+f_ar_km2_hist_step = 0.1
 
 # TODO: complete with other satellite data + add dataset_name (mais là pas OK parce que nom fichier 20sec, PAS hourly)
 SAT_SETTINGS = {
@@ -188,6 +198,13 @@ SAT_SETTINGS = {
         attrs_to_keep: ['production_site', 'orbital_slot', 'platform_ID', 'instrument_type', 'instrument_ID',
                         'spatial_resolution', 'processing_level']
     },
+    MTG_LI: {
+        flash_energy_varname: "radiance", #TODO: deal with units = mW.m-2.sr-1
+        flash_area_varname: "flash_footprint", #TODO: post-processing to convert it into surface (km2)
+        raw_lat_cname: "latitude", # latitude coordinate name in pre regrid dataset
+        raw_lon_cname: "longitude", # longitude coordinate name in pre regrid dataset
+        attrs_to_keep: ['', 'processing_level']
+    }
     # <OTHER_SATELLITE>: { ... }
 }
 

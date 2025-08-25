@@ -7,7 +7,7 @@ from .utils_functions import date_to_pd_timestamp
 from . import constants as cts
 from . import GLMPathParser, OLD_GLM_PRE_REGRID_TEMP_NOTATION, OLD_GLM_NOTATION
 from .ABIPathParser import ABIPathParser
-from .NLDNPathParser import NLDNPathParser
+from .MTGLIPathParser import MTGLIPathParser
 
 
 def get_PathParser(sat_name):
@@ -15,8 +15,10 @@ def get_PathParser(sat_name):
         return GLMPathParser
     elif sat_name == cts.GOES_SATELLITE_ABI:
         return ABIPathParser
-    elif sat_name == cts.NLDN:
-        return NLDNPathParser
+    elif sat_name == cts.MTG_LI:
+        return MTGLIPathParser
+    #elif sat_name == cts.NLDN:
+    #    return NLDNPathParser
     else:
         raise ValueError(f'Could not find corresponding PathParser, "{sat_name}" {cts.SAT_VALUE_ERROR}')
 
@@ -61,6 +63,13 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
             filename_pattern = f'GEO_L1B-{sat_version_pattern}_{YYYY}-{MM}-{DD}T{start_HH}-{mm}-{mm}_[NSG]_IR10[37]_V1-0[4-6].hdf'
         else:  # ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc or xxdeg_ABI_GEO_L1B-GOES1x_YYYY_MM_DD_HH1-HH2.nc
             filename_pattern = f"ABI_GEO_L1B-{sat_version_pattern}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
+    # MTG-LI
+    elif sat_name == cts.MTG_LI:
+        if not hourly: # W_XX-EUMETSAT-Darmstadt,IMG+SAT,MTI1+LI-2-LFL--FD--CHK-BODY---NC4E_C_EUMT_YYYYMMDDHHmmss_L2PF_OPE_YYYYMMDDHHmmss1_YYYYMMDDHHmmss2_N__T/C/O_xxxx_xxxx.nc
+            filename_pattern = f'W_XX-EUMETSAT-Darmstadt,IMG+SAT,MTI1+LI-2-LFL--FD--CHK-BODY---NC4E_C_EUMT_{YYYY}{MM}{DD}{start_HH}{mm}{mm}_L2PF_OPE_{YYYY}{MM}{DD}{start_HH}{mm}{mm}_{YYYY}{MM}{DD}{start_HH}{mm}{mm}_N__[T,C,O]_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].nc'
+        else:
+            filename_pattern = f'MTG_I1_LI_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc'
+    # NLDN
     elif sat_name == cts.NLDN:
         if hourly:
             filename_pattern = f"{cts.NLDN_PATH_PREFIX}_{YYYY}_{MM}_{DD}_{start_HH}-{end_HH}.nc"
@@ -68,7 +77,7 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
         raise ValueError(
             f'{sat_name} NOT supported yet. Supported satellite so far: "{cts.GOES_SATELLITE_GLM}", "{cts.GOES_SATELLITE_ABI}"')
 
-    if regrid and naming_convention is None and hourly:
+    if regrid and hourly and naming_convention is None:
         return f'{regrid_res_str}_{filename_pattern}'
     else:
         return filename_pattern
@@ -103,6 +112,9 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
     # ABI
     elif sat_name == cts.GOES_SATELLITE_ABI: #ABI_GEO_L1B_YYYY_MM_DD
         dirname_pattern = f"ABI_GEO_L1B_{YYYY}_{MM}_{DD}"
+    # MTG-LI
+    elif sat_name == cts.MTG_LI: # MTG_I1_LI_YYYYMMDD
+        dirname_pattern = f'MTG_I1_LI_{YYYY}{MM}{DD}'
     # NLDN
     elif sat_name == cts.NLDN:
         dirname_pattern = f'{cts.NLDN_PATH_PREFIX}_{YYYY}_{MM}_{DD}'
@@ -129,6 +141,7 @@ def generate_sat_dir_path(date, sat_name, regrid, regrid_res_str=cts.GRID_RESOLU
     # check date
     date = date_to_pd_timestamp(date)
     # now that we have the pandas.Timestamp we can generate the path
+    # GLM
     if sat_name == cts.GOES_SATELLITE_GLM:
         root_dir_path = target_dir if target_dir is not None else cts.GLM_ROOT_DIR
         if regrid:
@@ -146,6 +159,14 @@ def generate_sat_dir_path(date, sat_name, regrid, regrid_res_str=cts.GRID_RESOLU
         else:
             return pathlib.Path(
                 f'{root_dir_path}/{cts.PRE_REGRID_ABI_DIRNAME}/{date.year:04d}/{cts.ABI_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}')
+    # MTG-LI
+    elif sat_name == cts.MTG_LI:
+        root_dir_path = target_dir if target_dir is not None else cts.MTG_LI_ROOT_DIR
+        if regrid:
+            return pathlib.Path(f'{root_dir_path}/{cts.REGRID_MTG_LI_DIRNAME}/{date.year:04d}/{regrid_res_str}_{cts.MTG_LI_PATH_PREFIX}_{date.year:04d}{date.month:02d}{date.day:02d}')
+        else:
+            return pathlib.Path(
+                f'{root_dir_path}/{cts.PRE_REGRID_MTG_LI_DIRNAME}/{date.year:04d}/{cts.MTG_LI_PATH_PREFIX}_{date.year:04d}{date.month:02d}{date.day:02d}')
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
@@ -168,10 +189,15 @@ def generate_sat_hourly_file_path(date, sat_name, satellite, regrid, regrid_res_
                                      target_dir=dir_path)
     if not dir_path.exists():
         dir_path.mkdir(parents=True)
+    # GLM
     if sat_name == cts.GOES_SATELLITE_GLM:
         filename = f'{cts.GLM_PATH_PREFIX}_{satellite}_{date.year:04d}_{date.dayofyear:03d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
+    # ABI
     elif sat_name == cts.GOES_SATELLITE_ABI:
         filename = f'{cts.ABI_PATH_PREFIX}-{satellite}_{date.year:04d}_{date.month:02d}_{date.day:02d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
+    # MTG-Li
+    elif sat_name == cts.MTG_LI:
+        filename = f'{cts.MTG_LI_PATH_PREFIX}_{date.year:04d}_{date.month:02d}_{date.day:02d}_{date.hour:02d}-{(date + Timedelta(hours=1)).hour:02d}.nc'
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
     if regrid:

@@ -14,7 +14,15 @@ from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_ar
 from utils import xarray_pandas_utils as xr_pd_utils
 
 
-# TODO: gérer quand goes w et goes e
+def generate_flash_count_ds(_ds, data_var_name, res_var_name, grid_res):
+    # flash count <!> result = xarray.Dataset
+    count_ds = xr_pd_utils.count_using_pandas(_ds=_ds, data_var_name=data_var_name, res_var_name=res_var_name)
+    count_ds['flash_count'].attrs[
+        'long_name'] = f'Number of flash occurrences in a {grid_res}° x {grid_res}° x 1h grid cell'
+    return count_ds
+
+
+# TODO: gérer quand goes w et goes e + refacto
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, overwrite,
                                               result_file_path, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                               lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
@@ -58,7 +66,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
             attrs={'grid_resolution': f'{grid_res}° x {grid_res}°',
                    'pre_regrid_satellite_file': pre_regrid_path_parsed.url.name}
         )
-        #       STEP 4.2: open pre-regrid glm file
+        #       STEP 4.2: open pre-regrid sat file
         with xr.open_dataset(pre_regrid_file_url) as lightning_sat_ds:
             # assign new longitude and latitude coords with chosen grid resolution using nearest method
             _ds_assigncoords_lonlat = lightning_sat_ds.assign_coords({
@@ -77,40 +85,68 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                     new_attrs[attr] = lightning_sat_ds.attrs.get(attr, '')
             new_attrs['pre_regrid_satellite_file'] = pre_regrid_path_parsed.url.name
             target_ds = target_ds.assign_attrs(new_attrs)
+
             # apply operations (count + hist) on flash energy and flash area variables
             flash_energy = SAT_SETTINGS[sat_name][flash_energy_varname]
             flash_area = SAT_SETTINGS[sat_name][flash_area_varname]
-            # only keep relevant variables and coords
-            _ds = _ds_assigncoords_lonlat[[flash_energy, flash_area]] \
-                .reset_coords(names=['latitude', 'longitude'], drop=False) \
-                .reset_coords(drop=True)
-            # flash count <!> result = xarray.Dataset
-            count_ds = xr_pd_utils.count_using_pandas(_ds[[flash_energy, 'latitude', 'longitude']],
-                                                      data_var_name=flash_energy, res_var_name='flash_count')
-            count_ds['flash_count'].attrs[
-                'long_name'] = f'Number of flash occurrences in a {grid_res}° x {grid_res}° x 1h grid cell'
-            # flash energy histogram <!> result = xarray.DataArray
-            _ds['flash_energy_log'] = np.log10(_ds[flash_energy])
-            flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
-                _ds[['flash_energy_log', 'latitude', 'longitude']], data_var_name='flash_energy_log',
-                min_bin_edge=cts.f_en_min_bin, max_bin_edge=cts.f_en_max_bin,
-                step=cts.f_en_hist_step, res_var_name='flash_energy_log_hist')
-            flash_en_hist_ds['flash_energy_log_hist'].attrs.update({
-                'long_name': f'Number of flash occurrences in log10(flash_energy) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
-                'comment': 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
-            })
-            # flash area histogram
-            _ds['flash_area_log'] = np.log10(_ds[flash_area])
-            flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
-                _ds[['flash_area_log', 'latitude', 'longitude']], data_var_name='flash_area_log',
-                min_bin_edge=cts.f_ar_min_bin, max_bin_edge=cts.f_ar_max_bin,
-                step=cts.f_ar_hist_step, res_var_name='flash_area_log_hist')
-            flash_area_hist_ds['flash_area_log_hist'].attrs.update({
-                'long_name': f'Number of flash occurrences in log10(flash_area) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
-                'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
-            })
+            ds_to_merge_list = []
+            count_ds = None
+
+            if not flash_energy and not flash_area:
+                raise ValueError(f'Expecting at least one variable equivalent to flash energy or flash area, got: flash_energy_varname={SAT_SETTINGS[sat_name][flash_energy_varname]} and flash_area_varname={SAT_SETTINGS[sat_name][flash_area_varname]}')
+
+            if flash_energy:
+                # only keep relevant variables and coords
+                _ds = _ds_assigncoords_lonlat[flash_energy] \
+                    .reset_coords(names=['latitude', 'longitude'], drop=False) \
+                    .reset_coords(drop=True)
+                if not count_ds:
+                    count_ds = generate_flash_count_ds(_ds=_ds[[flash_energy, 'latitude', 'longitude']],
+                                                       data_var_name=flash_energy, res_var_name='flash_count', grid_res=grid_res)
+                    ds_to_merge_list.append(count_ds)
+                # flash energy histogram <!> result = xarray.DataArray
+                if _ds[flash_energy].attrs['units'].upper() == 'J':
+                    _ds['flash_energy_log'] = np.log10(_ds[flash_energy])
+                    flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
+                        _ds[['flash_energy_log', 'latitude', 'longitude']], data_var_name='flash_energy_log',
+                        min_bin_edge=cts.f_en_J_min_bin, max_bin_edge=cts.f_en_J_max_bin,
+                        step=cts.f_en_J_hist_step, res_var_name='flash_energy_log_hist')
+                    flash_en_hist_ds['flash_energy_log_hist'].attrs.update({
+                        'long_name': f'Number of flash occurrences in log10(flash_energy) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
+                        'comment': 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
+                    })
+                    ds_to_merge_list.append(flash_en_hist_ds)
+                else:  # TODO: handle other flash energy variable units
+                    raise Warning(f'flash_energy unit ({_ds[flash_energy].attrs["units"]}), not supported yet')
+
+            if flash_area: # flash_area and not flash_energy
+                # only keep relevant variables and coords
+                _ds = _ds_assigncoords_lonlat[flash_area] \
+                    .reset_coords(names=['latitude', 'longitude'], drop=False) \
+                    .reset_coords(drop=True)
+                if not count_ds:
+                    # flash count <!> result = xarray.Dataset
+                    count_ds = generate_flash_count_ds(_ds=_ds[[flash_area, 'latitude', 'longitude']],
+                                                       data_var_name=flash_area, res_var_name='flash_count', grid_res=grid_res)
+                    ds_to_merge_list.append(count_ds)
+                # flash area histogram
+                if _ds[flash_area].attrs['units'].upper() == 'km2':
+                    _ds['flash_area_log'] = np.log10(_ds[flash_area])
+                    flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
+                        _ds[['flash_area_log', 'latitude', 'longitude']], data_var_name='flash_area_log',
+                        min_bin_edge=cts.f_ar_km2_min_bin, max_bin_edge=cts.f_ar_km2_max_bin,
+                        step=cts.f_ar_km2_hist_step, res_var_name='flash_area_log_hist')
+                    flash_area_hist_ds['flash_area_log_hist'].attrs.update({
+                        'long_name': f'Number of flash occurrences in log10(flash_area) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
+                        'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
+                    })
+                    ds_to_merge_list.append(flash_area_hist_ds)
+                else:  # TODO: handle other flash area variable units
+                    raise Warning(f'flash area variable unit ({_ds[flash_area].attrs["units"]}), not supported yet')
+
             # merge count and hist ds with target ds
-            target_ds = xr.merge([count_ds, flash_en_hist_ds, flash_area_hist_ds, target_ds],
+            ds_to_merge_list.append(target_ds)
+            target_ds = xr.merge(ds_to_merge_list,
                                  combine_attrs='no_conflicts')
         # add pre-regrid file date to regrid date + add regrid file creation date attr
         target_ds = target_ds.expand_dims(
@@ -283,7 +319,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         print(f'regrid sat files: \nsat={sat_name} \ndir_list={dir_list} \npath_list={path_list}')
         print()
     PathParser = get_PathParser(sat_name)
-    if sat_name == cts.GOES_SATELLITE_ABI:
+    if sat_name == cts.GOES_SATELLITE_ABI: # concat 15 min hdf files into hourly nc files
         if dir_list:
             # check that we have all our hourly pre_regrid nc files
             path_to_concat_into_hourly_files = []
@@ -301,8 +337,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
             if len(path_to_concat_into_hourly_files) > 0:  # concat 15min hdf files into hourly nc files
                 generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=path_to_concat_into_hourly_files, print_debug=print_debug,
                                                                  remove_temp_files=remove_temp_abi_dir, overwrite=overwrite)
-    elif sat_name == cts.GOES_SATELLITE_GLM:
-        pass
+    elif sat_name in cts.SUPPORTED_LI_SATELLITES_LIST:
+        pass # pass because concat into hourly files already done with bash script when retrieving GLM/MTG-LI data
     else:
         raise ValueError(
             f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -341,7 +377,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         # check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
         if not result_file_path.exists() or (result_file_path.exists() and overwrite):
             print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
-            if sat_name == cts.GOES_SATELLITE_GLM:
+            if sat_name in cts.SUPPORTED_LI_SATELLITES_LIST:
                 generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url,
                                                           sat_name=sat_name,
                                                           grid_res=grid_res,

@@ -208,11 +208,13 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
 
         return sat_ds
 
+    else:
+        return None
 
+# TODO
 def get_nldn_ds(start_date, end_date, grid_resolution=cts.GRID_RESOLUTION, grid_res_str=cts.GRID_RESOLUTION_STR,
                 dry_run=False, print_debug=False):
     # recup la liste des dossiers NLDN entre start et end date
-
     pass
 
 def get_weighted_flash_count(spec001_mr_da, flash_count_da):
