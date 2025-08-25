@@ -24,6 +24,10 @@ from .ABIPathParser import (
     ABIPathParser
 )
 
+from .MTGLIPathParser import (
+    MTGLIPathParser
+)
+
 from . import constants
 
 from . import xarray_pandas_utils
