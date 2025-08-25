@@ -117,6 +117,8 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
         # GOES EAST AND WEST ABI DATA AVAILABLE
         if start_date >= cts.MIN_GOES_EAST_WEST_DATE_ABI:
             merge_sats_for_same_hour = True
+    elif sat_name == cts.MTG_LI:
+        pass
     else:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
 
@@ -506,7 +508,7 @@ if __name__ == '__main__':
     if len(missing_dates["lightning"]) > 0:
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
         print(
-            f'{len(missing_dates["lightning"])} missing GLM daily files, please download them before running the program again: \n{missing_dates["lightning"]}')
+            f'{len(missing_dates["lightning"])} missing {args.lightning_sat_name} daily files, please download them before running the program again: \n{missing_dates["lightning"]}')
         print('See logs above for more details on which flights have not been computed')
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
 
