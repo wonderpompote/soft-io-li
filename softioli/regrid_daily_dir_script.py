@@ -22,8 +22,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--dir-list', nargs="+", required=True,
                         help='List of daily directory paths that need to be regridded')
-    parser.add_argument('--sat-name', required=True, choices=[cts.GOES_SATELLITE_ABI, cts.GOES_SATELLITE_GLM],
-                        help=f'Satellite name, supported values: {cts.GOES_SATELLITE_ABI} or {cts.GOES_SATELLITE_GLM}')
+    parser.add_argument('--sat-name', required=True, choices=[cts.GOES_SATELLITE_ABI, cts.GOES_SATELLITE_GLM, cts.MTG_LI],
+                        help=f'Satellite name, supported values: {cts.GOES_SATELLITE_ABI}, {cts.GOES_SATELLITE_GLM} or {cts.MTG_LI}')
 
     parser.add_argument('-d', '--print-debug', action='store_true')
 

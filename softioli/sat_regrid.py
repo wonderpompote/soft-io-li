@@ -5,6 +5,7 @@ import pathlib
 import pandas as pd
 from shutil import rmtree
 import xarray as xr
+import warnings
 
 from utils import generate_sat_hourly_file_path, generate_sat_filename_pattern, \
     generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file, open_hdf4, get_PathParser
@@ -117,7 +118,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                     })
                     ds_to_merge_list.append(flash_en_hist_ds)
                 else:  # TODO: handle other flash energy variable units
-                    raise Warning(f'flash_energy unit ({_ds[flash_energy].attrs["units"]}), not supported yet')
+                    warnings.warn(f'flash_energy unit ({_ds[flash_energy].attrs["units"]}), not supported yet')
 
             if flash_area: # flash_area and not flash_energy
                 # only keep relevant variables and coords
@@ -142,7 +143,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                     })
                     ds_to_merge_list.append(flash_area_hist_ds)
                 else:  # TODO: handle other flash area variable units
-                    raise Warning(f'flash area variable unit ({_ds[flash_area].attrs["units"]}), not supported yet')
+                    warnings.warn(f'flash area variable unit ({_ds[flash_area].attrs["units"]}), not supported yet')
 
             # merge count and hist ds with target ds
             ds_to_merge_list.append(target_ds)

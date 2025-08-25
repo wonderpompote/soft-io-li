@@ -21,7 +21,7 @@ xxdeg_MTG_I1_LI_YYYY_MM_DD_HH1-HH2.nc
 class MTGLIPathParser(PathParser):
 
     def __init__(self, file_url, regrid, hourly=True, directory=False, year=None, month=None, day=None, start_hour=None, start_minute=None, end_hour=None,
-                 file_version=None, regrid_res_str=None, satellite=None):
+                 file_version=None, regrid_res_str=None, satellite='', naming_convention=None):
         self.url = pathlib.Path(file_url)
         self.hourly = hourly
         self.regrid = regrid

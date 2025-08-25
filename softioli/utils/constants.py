@@ -200,10 +200,10 @@ SAT_SETTINGS = {
     },
     MTG_LI: {
         flash_energy_varname: "radiance", #TODO: deal with units = mW.m-2.sr-1
-        flash_area_varname: "flash_footprint", #TODO: post-processing to convert it into surface (km2)
+        flash_area_varname: "", #"flash_footprint", #TODO: post-processing to convert it into surface (km2)
         raw_lat_cname: "latitude", # latitude coordinate name in pre regrid dataset
         raw_lon_cname: "longitude", # longitude coordinate name in pre regrid dataset
-        attrs_to_keep: ['', 'processing_level']
+        attrs_to_keep: ['product_id', 'type', 'institution', 'facility_or_tool', 'platform', 'processing_level']
     }
     # <OTHER_SATELLITE>: { ... }
 }
