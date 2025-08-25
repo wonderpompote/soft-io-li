@@ -211,11 +211,6 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
     else:
         return None
 
-# TODO
-def get_nldn_ds(start_date, end_date, grid_resolution=cts.GRID_RESOLUTION, grid_res_str=cts.GRID_RESOLUTION_STR,
-                dry_run=False, print_debug=False):
-    # recup la liste des dossiers NLDN entre start et end date
-    pass
 
 def get_weighted_flash_count(spec001_mr_da, flash_count_da):
     """
@@ -266,12 +261,12 @@ def get_weighted_fp_sat_ds(fp_ds, lightning_sat_ds, sum_height=True, load=False,
 
 # TODO: fp_sat_comp doit savoir TOUT SEUL quelles données sat on va chercher en fonction de ce qui est dispo et tout (? pourquoi j'ai dit ça?)
 def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id_list, file_list=False, sum_height=True,
-                         load=False,
+                         load=False, no_could_sat=False,
                          chunks='auto', print_debug=False, dry_run=False, overwrite_weighted_ds=False,
                          max_chunk_size=1e8, assign_releases_position_coords=False, grid_resolution=cts.GRID_RESOLUTION,
                          grid_res_str=cts.GRID_RESOLUTION_STR, save_weighted_ds=False, flights_output_dirpath=None,
                          weighted_ds_filename_suffix='', overwrite_sat_files=False, rm_pre_regrid_abi_file=False,
-                         rm_pre_regrid_glm_file=False):
+                         rm_pre_regrid_li_file=False):
     if not file_list and isinstance(fp_path, str) or isinstance(fp_path, pathlib.Path):
         fp_path = [fp_path]
     missing_dates_list = {'lightning': [], 'cloud': []}
@@ -302,7 +297,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                                                             grid_resolution=grid_resolution, print_debug=print_debug,
                                                             grid_res_str=grid_res_str, dry_run=dry_run,
                                                             overwrite=overwrite_sat_files,
-                                                            rm_pre_regrid_file=rm_pre_regrid_glm_file)
+                                                            rm_pre_regrid_file=rm_pre_regrid_li_file)
                         if print_debug:
                             print('Lightning sat OK')
                             print(lightning_sat_ds)
@@ -315,30 +310,32 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                                 missing_dates_list['lightning'].append(m_date)
 
                 # step 5: get brightness temperature ds
-                try:
-                    bTemp_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=bTemp_sat_name,
-                                                    grid_resolution=grid_resolution, print_debug=print_debug,
-                                                    grid_res_str=grid_res_str, dry_run=dry_run,
-                                                    overwrite=overwrite_sat_files,
-                                                    rm_pre_regrid_file=rm_pre_regrid_abi_file)
-                    if print_debug:
-                            print('Cloud sat OK')
-                            print(bTemp_sat_ds)
-                    bTemp_sat_ds_ok = True
-                except FileNotFoundError as e:
-                    print(f'<!> {e}')
-                    bTemp_sat_ds_ok = False
-                    for m_date in eval(str(e).split('\n')[1]):
-                        if m_date not in missing_dates_list['cloud']:
-                            missing_dates_list['cloud'].append(m_date)
-                    continue
+                if not no_could_sat:
+                    try:
+                        bTemp_sat_ds = get_satellite_ds(start_date=start_date, end_date=end_date, sat_name=bTemp_sat_name,
+                                                        grid_resolution=grid_resolution, print_debug=print_debug,
+                                                        grid_res_str=grid_res_str, dry_run=dry_run,
+                                                        overwrite=overwrite_sat_files,
+                                                        rm_pre_regrid_file=rm_pre_regrid_abi_file)
+                        if print_debug:
+                                print('Cloud sat OK')
+                                print(bTemp_sat_ds)
+                        bTemp_sat_ds_ok = True
+                    except FileNotFoundError as e:
+                        print(f'<!> {e}')
+                        bTemp_sat_ds_ok = False
+                        for m_date in eval(str(e).split('\n')[1]):
+                            if m_date not in missing_dates_list['cloud']:
+                                missing_dates_list['cloud'].append(m_date)
+                        continue
                 # setp6: get weighted fp_sat_ds
-                if (not dry_run and lightning_sat_ds_ok and bTemp_sat_ds_ok) or (not dry_run and no_glm and bTemp_sat_ds_ok):
+                if (not dry_run and lightning_sat_ds_ok and bTemp_sat_ds_ok) or (not dry_run and no_glm and bTemp_sat_ds_ok) or (not dry_run and lightning_sat_ds_ok and no_could_sat):
                     if no_glm:
                         weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, lightning_sat_ds=None, no_glm=True)
                     else:
                         weighted_fp_sat_ds = get_weighted_fp_sat_ds(fp_ds=fp_ds, lightning_sat_ds=lightning_sat_ds)
-                    weighted_fp_sat_ds = weighted_fp_sat_ds.merge(bTemp_sat_ds)
+                    if not no_could_sat:
+                        weighted_fp_sat_ds = weighted_fp_sat_ds.merge(bTemp_sat_ds)
                     if print_debug:
                         print("Cloud temperature data added to weighted ds")
                         print()
@@ -405,6 +402,7 @@ if __name__ == '__main__':
     sat_group = parser.add_argument_group('Satellite parameters')
     sat_group.add_argument('--lightning-sat-name', default=cts.GOES_SATELLITE_GLM,
                            help=f'Lightning satellite name (default={cts.GOES_SATELLITE_GLM})')
+    sat_group.add_argument('--no-cloud-sat', action='store_true', help=f'Indicates if cloud sat data should be ignored')
     sat_group.add_argument('--cloud-sat-name', default=cts.GOES_SATELLITE_ABI,
                            help=f'Cloud brightness temperature satellite name (default={cts.GOES_SATELLITE_ABI})')
     sat_group.add_argument('--grid-res', default=cts.GRID_RESOLUTION,
@@ -412,7 +410,7 @@ if __name__ == '__main__':
     sat_group.add_argument('--grid-res-str', default=cts.GRID_RESOLUTION_STR,
                            help=f'Satellite grid resolution string, format="<res>deg" (default={cts.GRID_RESOLUTION_STR})')
 
-    # flexpart output parameters
+    # flexpart output parametersi
     fp_group = parser.add_argument_group('Flexpart output parameters')
     fp_group.add_argument('--dont-sum-height', action='store_true',
                           help='Indicates if flexpart output should NOT be summed over altitude (by default it is because satellite data does not have altitude information)')
@@ -487,7 +485,7 @@ if __name__ == '__main__':
 
     missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(args.flight_id_list),
                                          lightning_sat_name=args.lightning_sat_name, dry_run=args.dry_run,
-                                         bTemp_sat_name=args.cloud_sat_name, file_list=True,
+                                         bTemp_sat_name=args.cloud_sat_name, no_could_sat=args.no_cloud_sat, file_list=True,
                                          sum_height=(not args.dont_sum_height), load=args.load_fpout,
                                          chunks='auto', max_chunk_size=1e8, assign_releases_position_coords=False,
                                          grid_resolution=args.grid_res, grid_res_str=args.grid_res_str,
@@ -497,7 +495,7 @@ if __name__ == '__main__':
                                          overwrite_weighted_ds=args.overwrite_weighted_ds,
                                          overwrite_sat_files=args.overwrite_sat_files,
                                          rm_pre_regrid_abi_file=args.rm_pre_regrid_abi_file,
-                                         rm_pre_regrid_glm_file=args.rm_pre_regrid_glm_file)
+                                         rm_pre_regrid_li_file=args.rm_pre_regrid_glm_file)
 
     if len(flight_id_list_fp_not_ok) > 0:
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
