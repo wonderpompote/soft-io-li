@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import pathlib
+import traceback
 
 from common.utils import timestamp_now_formatted
 import fpsim
@@ -31,7 +32,10 @@ def install_softioli_fp_simulation(flight_name, flights_output_dirpath, flight_d
     flight_output_dir = create_flight_output_dir(output_dirpath=flights_output_dirpath, flight_name=flight_name,
                                                  missing_ok=False, dirname_suffix=flight_dirname_suffix)
     # get csv file
-    plume_csv_filename = list(flight_output_dir.glob(f'{flight_name}_arrivaltime-*.csv'))[0]
+    try:
+        plume_csv_filename = list(flight_output_dir.glob(f'{flight_name}_arrivaltime-*.csv'))[0]
+    except IndexError: # if IndexError --> csv file was not found
+        raise FileNotFoundError(f'IndexError caused by missing {flight_name}_arrivaltime-*.csv file')
     arrival_timestamp = fp_utils.get_arrival_timestamp_from_plume_csv_filename(plume_csv_filename)
     if print_debug:
         print(f'Plume info csv: {plume_csv_filename}')
@@ -68,7 +72,7 @@ def install_softioli_fp_simulation(flight_name, flights_output_dirpath, flight_d
         min_max_dic[f'{col}_max'] = plume_df[[f'start_{col}', f'end_{col}']].max(axis=1) + 0.25
     # get min and max pressure +/- 5000 Pa
     min_max_dic['press_min'] = plume_df[['start_press', 'end_press']].min(axis=1) - 5000
-    min_max_dic['press_max'] = plume_df[['start_press', 'end_press']].min(axis=1) + 5000
+    min_max_dic['press_max'] = plume_df[['start_press', 'end_press']].max(axis=1) + 5000
     # Concatenate min max df into a single DataFrame
     min_max_plume_df = pd.concat(min_max_dic.values(), axis=1, keys=min_max_dic.keys())
     # convert dates (str) to timestamp
@@ -213,7 +217,7 @@ if __name__ == "__main__":
             ok_flight_ids.append(flight_id)
 
         except Exception as e:
-            print(f'<!> {e}')
+            print(f'<!> {traceback.format_exc()}')
             error_flight_ids.append(flight_id)
             continue
 
@@ -228,4 +232,5 @@ if __name__ == "__main__":
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
         print(f'{len(error_flight_ids)} fligths for which the flexpart installation and/or simulation has been aborted: \n{error_flight_ids}')
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+
 
