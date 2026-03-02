@@ -4,7 +4,7 @@ import pandas as pd
 import pathlib
 import traceback
 
-from common.utils import timestamp_now_formatted
+from common.utils import list_from_file, short_list_repr
 import fpsim
 
 from utils import constants as cts
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     dir_group.add_argument('--flight-dirname-suffix', default='',
                            help='suffix to add to flight output directory name')
     dir_group.add_argument('-o', '--fp-output-dirname', default='flexpart',
-                           help='Name of the directory where the flexpart output will be stored (default="flexpart")')
+                           help='Name of the directory where the flexpart-related files and output will be stored (default="flexpart")')
     dir_group.add_argument('--overwrite', action='store_true',
                            help='Indicates if existing flexpart output directory should be overwritten (default=False)')
 
@@ -128,19 +128,17 @@ if __name__ == "__main__":
     # flight list
     flight_group = parser.add_argument_group('Flights')
     flight_group.add_argument('-a',  '--all-flights', action='store_true', help='Indicates if all flights in output dir should be taken into account')
-    flight_group.add_argument('--flight-list', action='store_true',
-                              help='Indicates if a list of flight ids/names will be passed')
+    # list
+    flight_group.add_argument('--flight-id-list',
+                              help='Path to txt file containing list of flight ids (1 flight/line) (default = None)')
+    flight_group.add_argument('-x', '--exclude-flight-ids', nargs='+', help='Flight ids to exclude')
+    # range
     flight_group.add_argument('--flight-range', action='store_true',
                               help='Indicates if start and end flight ids/names will be passed')
-    # range
     flight_group.add_argument('-s', '--start-id',
                               help='Start flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
     flight_group.add_argument('-e', '--end-id',
                               help='End flight name/id (in case we only want to retrieve NOx flights between two flight ids)')
-    # list
-    flight_group.add_argument('--flight-id-list', nargs='+', default=[],
-                              help='List of flight ids/names (default = None)')
-    flight_group.add_argument('-x', '--exclude-flight-ids', nargs='+', help='Flight ids to exclude')
 
     # flexpart parameters
     fp_group = parser.add_argument_group('Flexpart parameters')
@@ -171,7 +169,7 @@ if __name__ == "__main__":
                                                                  subdir_glob_pattern='*.csv')
 
         # only keep flight names from list of flight paths (without duplicates)
-        args.flight_id_list = sorted([flight_path.name for flight_path in all_flights_list])
+        flights_list = sorted([flight_path.name for flight_path in all_flights_list])
 
     elif args.flight_range: # get list of flights containing potential plumes (flights with plume info csv file)
         flight_range_list = get_list_of_paths_between_two_values(args.flights_output_dir, start_name=args.start_id,
@@ -179,23 +177,24 @@ if __name__ == "__main__":
                                                                  glob_pattern=f'{cts.YYYY_pattern}{cts.MM_pattern}{cts.DD_pattern}*',
                                                                  subdir_glob_pattern='*.csv')
         # only keep flight names from list of flight paths
-        flight_range_list = [flight_path.name for flight_path in flight_range_list]
-        args.flight_id_list = list(set(args.flight_id_list + flight_range_list))
+        flights_list = set([flight_path.name for flight_path in flight_range_list])
+
+    else:
+        flights_list = list_from_file(args.flight_id_list, header=0, ignore_blank_lines=True)
 
     if args.exclude_flight_ids is not None:
-        args.flight_id_list = sorted(set(args.flight_id_list) - set(args.exclude_flight_ids))
-
-    if args.fp_output_dirname != "flexpart":
-        args.fp_output_dirname = f"flexpart_{timestamp_now_formatted(cts.TIMESTAMP_FORMAT, tz='CET')}_{args.fp_output_dirname}"
+        flights_list = sorted(set(flights_list) - set(args.exclude_flight_ids))
 
     error_flight_ids = []
     ok_flight_ids = []
 
-    for flight_id in sorted(args.flight_id_list):
-        if args.print_debug:
-            print('##################################################')
-            print(f'flight {flight_id}')
-            print('##################################################')
+    if args.print_debug:
+        print(f'{len(flights_list)} in flights_list: {short_list_repr(flights_list)}')
+
+    for flight_id in sorted(flights_list):
+        print('##################################################')
+        print(f'flight {flight_id}')
+        print('##################################################')
         try:
             # install fp simulation
             fpsim_dirpath = install_softioli_fp_simulation(flight_name=flight_id,
@@ -207,9 +206,8 @@ if __name__ == "__main__":
                                                            meteo_fields_dir=args.era5_dir)
             # run simulation
             if args.run_simu:
-                if args.print_debug:
-                    print('---')
-                    print(f'Running fp simulation on partition {args.slurm_partition} from directory: {fpsim_dirpath}')
+                print('---')
+                print(f'Running fp simulation on partition {args.slurm_partition} from directory: {fpsim_dirpath}')
                 fpsim.run_simulation(
                     sim_dir=fpsim_dirpath,
                     slurm_partition=args.slurm_partition,
@@ -232,5 +230,3 @@ if __name__ == "__main__":
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
         print(f'{len(error_flight_ids)} fligths for which the flexpart installation and/or simulation has been aborted: \n{error_flight_ids}')
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-
-
