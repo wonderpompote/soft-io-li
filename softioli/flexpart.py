@@ -211,6 +211,7 @@ if __name__ == "__main__":
                 fpsim.run_simulation(
                     sim_dir=fpsim_dirpath,
                     slurm_partition=args.slurm_partition,
+                    extra_sbatch_args=None
                 )
             ok_flight_ids.append(flight_id)
 

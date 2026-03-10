@@ -1,7 +1,8 @@
 # trucs jupyter notebooks
 .ipynb_checkpoints/
-# trucs python
+# trucs python et pycharm
 *.pyc
 __pycache__/
+.idea
 # Pawel libs
 libs/
