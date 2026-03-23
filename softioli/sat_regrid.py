@@ -15,11 +15,10 @@ from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_ar
 from utils import xarray_pandas_utils as xr_pd_utils
 
 
-def generate_flash_count_ds(_ds, data_var_name, res_var_name, grid_res):
+def generate_flash_count_ds(_df, data_var_name, res_var_name, grid_res):
     # flash count <!> result = xarray.Dataset
-    count_ds = xr_pd_utils.count_using_pandas(_ds=_ds, data_var_name=data_var_name, res_var_name=res_var_name)
-    count_ds['flash_count'].attrs[
-        'long_name'] = f'Number of flash occurrences in a {grid_res}° x {grid_res}° x 1h grid cell'
+    count_ds = xr_pd_utils.count_using_pandas(_df=_df, data_var_name=data_var_name, res_var_name=res_var_name)
+    count_ds['flash_count'].attrs['long_name'] = f'Number of flash occurrences in a {grid_res}° x {grid_res}° x 1h grid cell'
     return count_ds
 
 
@@ -101,15 +100,17 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                 _ds = _ds_assigncoords_lonlat[flash_energy] \
                     .reset_coords(names=['latitude', 'longitude'], drop=False) \
                     .reset_coords(drop=True)
+                # convert to pandas DataFrame for easier data processing
+                _df = _ds[[flash_energy, 'latitude', 'longitude']].to_dataframe().reset_index(drop=True)
                 if not count_ds:
-                    count_ds = generate_flash_count_ds(_ds=_ds[[flash_energy, 'latitude', 'longitude']],
-                                                       data_var_name=flash_energy, res_var_name='flash_count', grid_res=grid_res)
+                    count_ds = generate_flash_count_ds(_df=_df, data_var_name=flash_energy,
+                                                       res_var_name='flash_count', grid_res=grid_res)
                     ds_to_merge_list.append(count_ds)
                 # flash energy histogram <!> result = xarray.DataArray
                 if _ds[flash_energy].attrs['units'].upper() == 'J':
-                    _ds['flash_energy_log'] = np.log10(_ds[flash_energy])
+                    _df['flash_energy_log'] = np.log10(_df[flash_energy])
                     flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
-                        _ds[['flash_energy_log', 'latitude', 'longitude']], data_var_name='flash_energy_log',
+                        _df, data_var_name='flash_energy_log',
                         min_bin_edge=cts.f_en_J_min_bin, max_bin_edge=cts.f_en_J_max_bin,
                         step=cts.f_en_J_hist_step, res_var_name='flash_energy_log_hist')
                     flash_en_hist_ds['flash_energy_log_hist'].attrs.update({
@@ -125,18 +126,21 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                 _ds = _ds_assigncoords_lonlat[flash_area] \
                     .reset_coords(names=['latitude', 'longitude'], drop=False) \
                     .reset_coords(drop=True)
+                # convert to pandas DataFrame for easier data processing
+                _df = _ds[[flash_area, 'latitude', 'longitude']].to_dataframe().reset_index(drop=True)
                 if not count_ds:
                     # flash count <!> result = xarray.Dataset
-                    count_ds = generate_flash_count_ds(_ds=_ds[[flash_area, 'latitude', 'longitude']],
-                                                       data_var_name=flash_area, res_var_name='flash_count', grid_res=grid_res)
+                    count_ds = generate_flash_count_ds(_df=_df, data_var_name=flash_area,
+                                                       res_var_name='flash_count', grid_res=grid_res)
                     ds_to_merge_list.append(count_ds)
                 # flash area histogram
                 if _ds[flash_area].attrs['units'].upper() == 'km2':
-                    _ds['flash_area_log'] = np.log10(_ds[flash_area])
+                    _df['flash_area_log'] = np.log10(_df[flash_area])
                     flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
-                        _ds[['flash_area_log', 'latitude', 'longitude']], data_var_name='flash_area_log',
+                        _df, data_var_name='flash_area_log',
                         min_bin_edge=cts.f_ar_km2_min_bin, max_bin_edge=cts.f_ar_km2_max_bin,
-                        step=cts.f_ar_km2_hist_step, res_var_name='flash_area_log_hist')
+                        step=cts.f_ar_km2_hist_step, res_var_name='flash_area_log_hist'
+                    )
                     flash_area_hist_ds['flash_area_log_hist'].attrs.update({
                         'long_name': f'Number of flash occurrences in log10(flash_area) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
                         'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
@@ -154,11 +158,11 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
             {'time': [pre_regrid_path_parsed.get_start_date_pdTimestamp(ignore_missing_start_hour=False)]})
         target_ds.attrs['regrid_file_creation_date'] = datetime.now().isoformat()
         target_ds.attrs[cts.SAT_VERSION_ATTRS_NAME] = pre_regrid_path_parsed.satellite_version
-        # TODO: réduire units de l'heure pour prendre moins de place (pas besoin de nanoseconds en soit)
-        target_ds.to_netcdf(
-            path=result_file_path, mode='w',
-            encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
-        )
+        encoding = {"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
+        # zlib compression to reduce file size since it contains mostly zeros
+        for var in target_ds.data_vars:
+            encoding[var] = {"zlib": True, "complevel": 4}
+        target_ds.to_netcdf(path=result_file_path, mode='w', encoding=encoding)
         print(f"Created netcdf file {result_file_path}")
 
     else:  # file already exists so no need to create it again
@@ -344,21 +348,22 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         raise ValueError(
             f'{sat_name} {cts.SAT_VALUE_ERROR}')
     # if path_list contains paths to directories --> get list of files in each directory
+    file_list = list(path_list)
     if dir_list:
         filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=False, hourly=True,
                                                          naming_convention=naming_convention)
         # Get list of files in subdirectories
-        path_list[:] = [
+        file_list = [
             file_path
 
             for dir_path in sorted(path_list)
             for file_path in dir_path.glob(filename_pattern)
         ]
     if print_debug:
-        print(f'{len(path_list)} files to regrid')
-        print(f'path_list={path_list}')
+        print(f'{len(file_list)} files to regrid')
+        print(f'{file_list=}')
         print()
-    for pre_regrid_file_url in path_list:
+    for pre_regrid_file_url in file_list:
         # get pre-regrid file start date (year, day, hour) with <sat>PathParser
         if print_debug:
             print('---')
@@ -376,7 +381,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
             print(f"Creating directory {result_file_path.parent}")
 
         # check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
-        if not result_file_path.exists() or (result_file_path.exists() and overwrite):
+        if overwrite or not result_file_path.exists():
             print(f"\nGenerating hourly regrid file for: {pre_regrid_file_url}")
             if sat_name in cts.SUPPORTED_LI_SATELLITES_LIST:
                 generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url,

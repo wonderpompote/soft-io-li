@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 class PathParser(ABC):
 
      @abstractmethod
-     def extract_date(self):
+     def extract_date_from_filename(self):
          pass
 
      @abstractmethod

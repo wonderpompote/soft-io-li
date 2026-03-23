@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--regrid-res-str', help=f'grid resolution (str), default = "{cts.GRID_RESOLUTION_STR}"',
                         default=cts.GRID_RESOLUTION_STR)
     parser.add_argument('--regrid-res', help=f'grid resolution (float), default = {cts.GRID_RESOLUTION}',
-                        default=cts.GRID_RESOLUTION)
+                        default=cts.GRID_RESOLUTION, type=float)
 
     parser.add_argument('--result-dir-path',
                         help='For testing purposes, root directory in which regrid files should be stored (if None, path by default will be used)')

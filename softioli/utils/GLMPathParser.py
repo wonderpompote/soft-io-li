@@ -4,25 +4,20 @@ import pathlib
 
 from .PathParser import PathParser
 
-# naming conventions
-OLD_GLM_NOTATION = 'OLD'  # GLM_array(_05deg)_DDD for dirs and # GLM_array(_xxdeg)_DDD_HH1-HH2.nc for files
-OLD_GLM_PRE_REGRID_TEMP_NOTATION = 'OLD_TEMP'  # OR_GLM-L2-LCFA_Gxx_sYYYYDDD for dirs GLM_array_DDD_temp_HH.nc for files
-
-
 class GLMPathParser(PathParser):
     """
     expecting url of the form (default notation):
         FILES:
         - OR_GLM-L2-LCFA_G16_sYYYYDDDHHMMSSS_eYYYYDDDHHMMSSS_cYYYYDDDHHMMSSS.nc (raw 20sec)
-        - OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc (raw hourly)
-        - xxdeg_OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc (regrid hourly)
+        - OR_GLM-L2-LCFA_Gxx_YYYY_MM_DD_HH1-HH2.nc (raw hourly)
+        - xxdeg_OR_GLM-L2-LCFA_Gxx_YYYY_MM_DD_HH1-HH2.nc (regrid hourly)
         DIRECTORIES:
         - OR_GLM-L2-LCFA_YYYY_MM_DD (<!> NO satellite nb, in pre_regrid_hourly_glm dir)
         - xxdeg_OR_GLM-L2-LCFA_YYYY_MM_DD (<!> NO satellite nb, in regrid_hourly_glm dir)
     """
 
-    def __init__(self, file_url, regrid, hourly=True, year=None, day_of_year=None, month=None, day=None, start_hour=None, end_hour=None,
-                 regrid_res_str=None, satellite_version=None, directory=False, naming_convention=None):
+    def __init__(self, file_url, regrid, hourly=True, year=None, month=None, day=None, day_of_year=None, start_hour=None, end_hour=None,
+                 regrid_res_str=None, satellite_version=None, directory=False):
         """
 
         @param file_url: str or pathlib object
@@ -31,13 +26,11 @@ class GLMPathParser(PathParser):
         @param year: <int> or <str>
         @param month: <int> or <str>
         @param day: <int> or <str>
-        @param day_of_year: <int> or <str>
         @param start_hour: <int> or <str>
         @param end_hour: <int> or <str>
         @param regrid_res_str: <str> usually '05deg'
         @param satellite_version: <str>
         @param directory: <bool>
-        @param naming_convention: <str>, Describes the file/directory naming convention. Supported values: 'OLD', 'OLD_TEMP' or None (if default notation)
         """
         self.url = pathlib.Path(file_url)  # pathlib.Path object
         self.hourly = hourly
@@ -46,21 +39,16 @@ class GLMPathParser(PathParser):
         self.satellite_version = satellite_version
         # file/dir name related attributes
         self.directory = directory
-        if naming_convention not in {OLD_GLM_NOTATION, OLD_GLM_PRE_REGRID_TEMP_NOTATION, None}:
-            raise ValueError(
-                f'Naming convention {naming_convention} NOT supported. Expecting "{OLD_GLM_NOTATION}", "{OLD_GLM_PRE_REGRID_TEMP_NOTATION}" or None')
-        else:
-            self.naming_convention = naming_convention
         # date attributes
         self.year = int(year) if year is not None else year
-        self.day_of_year = int(day_of_year) if day_of_year is not None else day_of_year
         self.month = int(month) if month is not None else month
         self.day = int(day) if day is not None else day
+        self.day_of_year = int(day_of_year) if day_of_year is not None else day_of_year
         self.start_hour = int(start_hour) if start_hour is not None else start_hour
         self.end_hour = int(end_hour) if end_hour is not None else end_hour
         # if we're missing at least 1 date info --> extract date from filename
-        if any(val is None for val in [self.year, self.day_of_year, self.start_hour, self.month, self.day]):
-            self.extract_date()
+        if any(val is None for val in [self.year, self.start_hour, self.month, self.day, self.day_of_year]):
+            self.extract_date_from_filename()
         # extract missing values
         if end_hour is None and self.hourly and start_hour is not None:
             self.end_hour = start_hour + 1
@@ -70,29 +58,15 @@ class GLMPathParser(PathParser):
             self.extract_satellite()
         self.start_datetime = self.get_start_date_pdTimestamp()
 
-    def extract_date(self):
+    def extract_date_from_filename(self):
         filename = self.url.stem
         filename_split = filename.split('_')
         # if directory
         if self.directory:
-            if self.naming_convention == OLD_GLM_NOTATION:  # GLM_array(_05deg)_DDD
-                date = {
-                    "year": None,
-                    "day_of_year": int(filename_split[-1]),
-                    "start_hour": None,
-                    "end_hour": None
-                }
-            elif self.naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:  # OR_GLM-L2-LCFA_Gxx_sYYYYDDD
-                date = {
-                    "year": filename_split[-1][1:5],  # YYYY part of sYYYYDDD
-                    "day_of_year": filename_split[-1][5:8],  # DDD part of sYYYYDDD
-                    "start_hour": None,
-                    "end_hour": None
-                }
-            else:  # (xxdeg_)OR_GLM-L2-LCFA_YYYY_MM_DD
-                date = pd.Timestamp(f'{filename_split[-3]}-{filename_split[-2]}-{filename_split[-1]}')
-                start_hour = 0
-                end_hour = None
+            # (xxdeg_)OR_GLM-L2-LCFA_YYYY_MM_DD
+            date = pd.Timestamp(f'{filename_split[-3]}-{filename_split[-2]}-{filename_split[-1]}')
+            start_hour = 0
+            end_hour = None
         # if file
         elif not self.hourly:
             # if not hourly --> raw 20 sec file
@@ -102,34 +76,15 @@ class GLMPathParser(PathParser):
             date = pd.Timestamp(datetime.datetime.strptime(f'{start_date[1:5]}_{start_date[5:8]}_{start_date[8:10]}', '%Y_%j_%H'))
             start_hour = start_date[8:10]
             end_hour = None
-        elif self.naming_convention == OLD_GLM_NOTATION:  # GLM_array(_xxdeg)_DDD_HH1-HH2.nc
-            # if old_glm_filename --> year = 2018
+        else:
+            # (xxdeg_)OR_GLM-L2-LCFA_Gxx_YYYY_MM_DD_HH1-HH2.nc
             hour_split = filename_split[-1].split('-')
-            date = {
-                "year": 2018,
-                "day_of_year": int(filename_split[-2]),
-                "start_hour": int(hour_split[0]),
-                "end_hour": int(hour_split[1])
-            }
-        elif self.naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:  # GLM_array_DDD_temp_HH.nc
-            # if old_glm_filename --> year = 2018
-            date = {
-                "year": 2018,
-                "day_of_year": int(filename_split[-3]),
-                "start_hour": int(filename_split[-1]),
-                "end_hour": int(filename_split[-1]) + 1
-            }
-        else:  # (xxdeg_)OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc
-            hour_split = filename_split[-1].split('-')
-            date = pd.Timestamp(
-                datetime.datetime.strptime(f'{filename_split[-3]}_{filename_split[-2]}_{hour_split[0]}', '%Y_%j_%H'))
+            date = pd.Timestamp(f'{filename_split[-4]}-{filename_split[-3]}-{filename_split[-2]}T{hour_split[0]}')
             start_hour = int(hour_split[0])
             end_hour = int(hour_split[1])
 
         if self.year is None:
             self.year = date.year
-        if self.day_of_year is None:
-            self.day_of_year = date.dayofyear
         if self.month is None:
             self.month = date.month
         if self.day is None:
@@ -142,19 +97,14 @@ class GLMPathParser(PathParser):
     def extract_regrid_res(self):
         if 'deg' in self.url.stem:
             filename_split = self.url.stem.split('_')
-            if self.naming_convention == OLD_GLM_NOTATION:  # GLM_array_xxdeg_DDD_HH1-HH2.nc
-                self.regrid_res = filename_split[-3]
-            else:  # xxdeg_OR_GLM-L2-LCFA_Gxx_YYYY_DDD_HH1-HH2.nc
-                self.regrid_res = filename_split[0]
+            # xxdeg_OR_GLM-L2-LCFA_Gxx_YYYY_MM_DD_HH1-HH2.nc
+            self.regrid_res = filename_split[0]
         else:
             self.regrid_res = None
 
     def extract_satellite(self):
         filename_split = self.url.stem.split('_')
-        if self.naming_convention == OLD_GLM_NOTATION or self.naming_convention == OLD_GLM_PRE_REGRID_TEMP_NOTATION:
-            # old_glm_filename --> usually only for 05-2018 or 06-2018 files so 'G16' satellite
-            self.satellite_version = 'G16'
-        elif self.directory:
+        if self.directory:
             self.satellite_version = None
         else:
             self.satellite_version = filename_split[-4]
@@ -173,11 +123,11 @@ class GLMPathParser(PathParser):
                 return None
         else:
             # if missing value (year, hour, start_hour)--> can't create timestamp
-            if any(val is None for val in [self.year, self.day_of_year, self.start_hour]):
+            if any(val is None for val in [self.year, self.month, self.day, self.start_hour]):
                 raise ValueError(f'Cannot get datetime object, one of more start date value missing (year={self.year}, '
-                                 f'day_of_year={self.day_of_year}, start_hour={self.start_hour})')
+                                 f'month={self.month}, day={self.day}, start_hour={self.start_hour})')
             else:
-                return pd.Timestamp(datetime.datetime.strptime(f'{self.year}_{self.day_of_year}_{self.start_hour}', '%Y_%j_%H'))
+                return pd.Timestamp(pd.Timestamp(f'{self.year}-{self.month}-{self.day}T{self.start_hour}'))
 
 
     def print(self):

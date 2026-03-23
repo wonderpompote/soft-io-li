@@ -44,7 +44,7 @@ class ABIPathParser(PathParser):
         self.satellite_version = satellite
         # if missing at elast 1 date info --> extract it from filename
         if any(val is None for val in [self.year, self.month, self.day, self.start_hour, self.start_date]):
-            self.extract_date()
+            self.extract_date_from_filename()
         if self.file_version is None:
             self.extract_file_version()
         if self.regrid and self.regrid_res is None:
@@ -52,7 +52,7 @@ class ABIPathParser(PathParser):
         if self.satellite_version is None:
             self.extract_satellite()
 
-    def extract_date(self):
+    def extract_date_from_filename(self):
         filename = self.url.stem
         filename_split = filename.split('_')
         if self.directory: # ABI_GEO_L1B_YYYY_MM_DD or xxdeg_ABI_GEO_L1B_YYYY_MM_DD
