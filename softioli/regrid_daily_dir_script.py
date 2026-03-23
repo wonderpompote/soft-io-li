@@ -3,25 +3,15 @@ import pathlib
 
 from utils import constants as cts
 from sat_regrid import regrid_sat_files
-
-"""
-recup fp ds
-recup start et end date
-appelle get_satellite_ds pour ABI et GLM avec start et end dates
-    get_satellite_ds recup les liens des dossiers journaliers nécessaires, si regrid_dir existe pas, regarde ce qu'il y a dans pre_regrid dir
-    + regrid appelle sat_regrid.py regrid_sat_files en passant la liste des directories to regrid
-    + recup tous les fichiers regrid et les ouvre dans un seul dataset
-
-DONC moi ici ce que j'aimerais faire c'est passer au script un dossier journalier et un nom des satellite et ça regrid pour ce jour là
-    OBJ: pouvoir le faire tourner avec des job array et je donnne un fichier text avec liste des dossiers à regrid
-    
-"""
+from common.utils import list_from_file
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dir-list', nargs="+", required=True,
-                        help='List of daily directory paths that need to be regridded')
+    path_list_group = parser.add_mutually_exclusive_group(required=True)
+    path_list_group.add_argument('--dir-list', help='Path to txt file containing list of daily directory paths that need to be regridded (1 path/line)')
+    path_list_group.add_argument('--file-list', help='Path to txt file containing list of paths to hourly files that need to be regridded (1 path/line)')
+
     parser.add_argument('--sat-name', required=True, choices=[cts.GOES_SATELLITE_ABI, cts.GOES_SATELLITE_GLM, cts.MTG_LI],
                         help=f'Satellite name, supported values: {cts.GOES_SATELLITE_ABI}, {cts.GOES_SATELLITE_GLM} or {cts.MTG_LI}')
 
@@ -46,12 +36,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    args.dir_list = [pathlib.Path(d_path) for d_path in args.dir_list]
+    if args.dir_list:
+        path_list = [pathlib.Path(d_path) for d_path in list_from_file(args.dir_list, header=0, ignore_blank_lines=True)]
+        is_dir_list = True
+    else:
+        path_list = [pathlib.Path(d_path) for d_path in list_from_file(args.file_list, header=0, ignore_blank_lines=True)]
+        is_dir_list = False
 
     if args.print_debug:
-        print(f"launching regrid_sat_files on : {args.dir_list}")
+        print(f"launching regrid_sat_files on : {path_list}")
 
-    regrid_sat_files(path_list=args.dir_list, sat_name=args.sat_name, dir_list=True,
+    regrid_sat_files(path_list=path_list, sat_name=args.sat_name, dir_list=is_dir_list,
                      overwrite=args.overwrite, rm_pre_regrid_file=args.rm_pre_regrid_files,
                      grid_res=args.regrid_res, grid_res_str=args.regrid_res_str,
                      result_dir_path=args.result_dir_path, print_debug=args.print_debug)
