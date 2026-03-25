@@ -10,7 +10,9 @@ if __name__ == '__main__':
 
     path_list_group = parser.add_mutually_exclusive_group(required=True)
     path_list_group.add_argument('--dir-list', help='Path to txt file containing list of daily directory paths that need to be regridded (1 path/line)')
+    path_list_group.add_argument('--dir-path', help='Path to a single daily directory that needs to be regridded (useful when regridding using a slurm array)')
     path_list_group.add_argument('--file-list', help='Path to txt file containing list of paths to hourly files that need to be regridded (1 path/line)')
+    path_list_group.add_argument('--file-path', help='Path to hourly .nc file that needs to be regridded (useful when regridding using a slurm array)')
 
     parser.add_argument('--sat-name', required=True, choices=[cts.GOES_SATELLITE_ABI, cts.GOES_SATELLITE_GLM, cts.MTG_LI],
                         help=f'Satellite name, supported values: {cts.GOES_SATELLITE_ABI}, {cts.GOES_SATELLITE_GLM} or {cts.MTG_LI}')
@@ -36,12 +38,20 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    if args.dir_list:
+    # directory path
+    if args.dir_list: # txt file with several directory paths
         path_list = [pathlib.Path(d_path) for d_path in list_from_file(args.dir_list, header=0, ignore_blank_lines=True)]
         is_dir_list = True
-    else:
+    elif args.dir_path: # directly path to directory
+        path_list = [pathlib.Path(args.dir_path)]
+        is_dir_list = True
+    # or file path
+    elif args.file_list: # txt file with several .nc file paths
         path_list = [pathlib.Path(d_path) for d_path in list_from_file(args.file_list, header=0, ignore_blank_lines=True)]
         is_dir_list = False
+    else: # directly path to .nc file
+        path_list = [pathlib.Path(args.file_path)]
+        is_dir_list=False
 
     if args.print_debug:
         print(f"launching regrid_sat_files on : {path_list}")
@@ -52,3 +62,4 @@ if __name__ == '__main__':
                      result_dir_path=args.result_dir_path, print_debug=args.print_debug)
 
     print("end of file: regrid_daily_dir_file")
+
