@@ -68,21 +68,21 @@ echo "Input creation job: $CREATE_FLEXPART_INPUT_FILES_JOB"
 
 
 ### slurm array parameters
-THROTTLE="$2" # max number of jobs that can be run at the same time (depends on the partition/nodes used)
-shift 2   # remaining args go to the array sbatch
+#THROTTLE="$2" # max number of jobs that can be run at the same time (depends on the partition/nodes used)
+#shift 2   # remaining args go to the array sbatch
 
-nb_of_flights=$(wc -l < "$FLIGHTS_LIST")
-echo "Flights: $nb_of_flights  |  Throttle: %${THROTTLE}"
-echo "Extra sbatch args: $@"
+#nb_of_flights=$(wc -l < "$FLIGHTS_LIST")
+#echo "Flights: $nb_of_flights  |  Throttle: %${THROTTLE}"
+#echo "Extra sbatch args: $@"
 
 # Step 2: run simulations once inputs are ready, forwarding your sbatch params
-RUN_FP_SIM_JOB=$(sbatch --parsable \
---dependency=afterok:$CREATE_FLEXPART_INPUT_FILES_JOB \
---array=0-$((nb_of_flights-1))%${THROTTLE} \
---output="$log_directory/${current_date}_fp_%A-%a_%N.out" \
-"$@" \
-flexpart_array.sh -o "$flight_output_dirpath" -f "$flexpart_output_dirname" "$FLIGHTS_LIST")
+#RUN_FP_SIM_JOB=$(sbatch --parsable \
+#--dependency=afterok:$CREATE_FLEXPART_INPUT_FILES_JOB \
+#--array=0-$((nb_of_flights-1))%${THROTTLE} \
+#--output="$log_directory/${current_date}_fp_%A-%a_%N.out" \
+#"$@" \
+#flexpart_array.sh -o "$flight_output_dirpath" -f "$flexpart_output_dirname" "$FLIGHTS_LIST")
 
-echo "Simulation array job: $RUN_FP_SIM_JOB (depends on $CREATE_FLEXPART_INPUT_FILES_JOB)"
+#echo "Simulation array job: $RUN_FP_SIM_JOB (depends on $CREATE_FLEXPART_INPUT_FILES_JOB)"
 
 

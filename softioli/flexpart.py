@@ -222,7 +222,7 @@ if __name__ == "__main__":
 
     if len(ok_flight_ids) > 0:
         print('\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-        print(f'Total number of flights: {len(args.flight_id_list)}')
+        print(f'Total number of flights: {len(flights_list)}')
         print(
             f'{len(ok_flight_ids)} fligths for which the flexpart installation and/or simulation is OK: \n{ok_flight_ids}')
         print('\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')

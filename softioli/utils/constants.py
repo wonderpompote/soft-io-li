@@ -94,7 +94,7 @@ FLIGHT_PROGRAM_KEYERROR_MSG = f'flight program NOT supported yet, supported valu
 
 
 #----- part 2 -----
-METEO_FIELDS_DIR = '/o3p/patj/ECMWF/ERA5/050deg_1h_T319_eta1/'
+METEO_FIELDS_DIR = '/o3p/wolp/ECMWF/ERA5/050deg_1h_T319_eta1/'
 
 FP_LOUTSTEP = '1h' # flexpart timestep
 FP_DURATION = 10 #days

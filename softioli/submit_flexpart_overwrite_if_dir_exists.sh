@@ -4,6 +4,8 @@
 
 #####################################################################################################
 # Script to run SOFT-IO-Li flexpart simulations with a slurm array
+#
+# <!!> When using this script, any existing flexpart configuration will be overwritten if a directory with the same name exists <!!>
 # 
 # 2 main steps: 
 #	1- create flexpart input files for each flight in the flights list (by running softioli/flexpart.py)
@@ -61,7 +63,7 @@ CREATE_FLEXPART_INPUT_FILES_JOB=$(sbatch --parsable \
 --job-name=fp_create_inputs \
 --partition=o3pwork,any \
 --output="$log_directory/${current_date}_create_fp_inputs_%j.out" \
---wrap="~/miniconda3/envs/$CONDA_ENV_NAME/bin/python $SOFT_IO_LI_ROOT_PATH/flexpart.py --flight-id-list $FLIGHTS_LIST --flights-output-dir $flight_output_dirpath --fp-output-dirname $flexpart_output_dirname --era5-dir $ERA5_DIR --print-debug")
+--wrap="~/miniconda3/envs/$CONDA_ENV_NAME/bin/python $SOFT_IO_LI_ROOT_PATH/flexpart.py --flight-id-list $FLIGHTS_LIST --flights-output-dir $flight_output_dirpath --fp-output-dirname $flexpart_output_dirname --era5-dir $ERA5_DIR --print-debug --overwrite")
 
 echo "Input creation job: $CREATE_FLEXPART_INPUT_FILES_JOB"
 
