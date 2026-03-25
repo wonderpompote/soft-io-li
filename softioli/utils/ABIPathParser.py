@@ -25,8 +25,7 @@ GOESNG-0750 + GOESNG-1370:    05deg_ABI_GEO_L1B-GOES16+GOES1[78]_YYYY_MM_DD_HH1-
 
 class ABIPathParser(PathParser):
 
-    def __init__(self, file_url, regrid, hourly=True, directory=False, year=None, month=None, day=None, start_hour=None, start_minute=None, end_hour=None,
-                 file_version=None, regrid_res_str=None, satellite=None, naming_convention=None):
+    def __init__(self, file_url, regrid, hourly=True, directory=False, year=None, month=None, day=None, start_hour=None, start_minute=None, end_hour=None, file_version=None, regrid_res_str=None, satellite=None):
         self.url = pathlib.Path(file_url)
         self.hourly = hourly
         self.regrid = regrid
@@ -66,7 +65,7 @@ class ABIPathParser(PathParser):
         else:  # ABI_GEO_L1B-GOES16_YYYY_MM_DD_HH1-HH2.nc or 05deg_ABI_GEO_L1B-GOES16_YYYY_MM_DD_HH1-HH2.nc
             hours = filename_split[-1].split('-')
             start_date = pd.Timestamp(f"{filename_split[-4]}-{filename_split[-3]}-{filename_split[-2]}T{hours[0]}00")
-            if hours[0] == 23:
+            if hours[0] == '23':
                 end_date = pd.Timestamp(f"{filename_split[-4]}-{filename_split[-3]}-{filename_split[-2]}T{hours[0]}59")
             else:
                 end_date = pd.Timestamp(f"{filename_split[-4]}-{filename_split[-3]}-{filename_split[-2]}T{hours[1]}00")
@@ -105,7 +104,16 @@ class ABIPathParser(PathParser):
                 self.satellite_version = filename_split[-5].split('-')[1]
 
     def get_start_date_pdTimestamp(self, ignore_missing_start_hour=False):
-        return pd.Timestamp(self.start_date)
+        """
+        Returns pd.Timestamp object of the start date of the ABI file / directory
+        @param ignore_missing_start_hour: <bool> if we need timestamp for directory
+        @return: <pandas.Timestamp> object
+        """
+        if self.start_date is None:
+            start_hour_str = f'{self.start_hour:02d}' if self.start_hour is not None else "00"
+            return pd.Timestamp(f'{self.year}-{self.month:02d}-{self.day:02d}T{start_hour_str}00')
+        else:
+            return pd.Timestamp(self.start_date)
 
     def print(self):
         for attr_key, attr_val in vars(self).items():

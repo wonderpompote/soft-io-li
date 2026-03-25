@@ -16,8 +16,7 @@ class GLMPathParser(PathParser):
         - xxdeg_OR_GLM-L2-LCFA_YYYY_MM_DD (<!> NO satellite nb, in regrid_hourly_glm dir)
     """
 
-    def __init__(self, file_url, regrid, hourly=True, year=None, month=None, day=None, day_of_year=None, start_hour=None, end_hour=None,
-                 regrid_res_str=None, satellite_version=None, directory=False):
+    def __init__(self, file_url, regrid, hourly=True, year=None, month=None, day=None, day_of_year=None, start_hour=None, end_hour=None, regrid_res_str=None, satellite_version=None, directory=False):
         """
 
         @param file_url: str or pathlib object
@@ -46,6 +45,7 @@ class GLMPathParser(PathParser):
         self.day_of_year = int(day_of_year) if day_of_year is not None else day_of_year
         self.start_hour = int(start_hour) if start_hour is not None else start_hour
         self.end_hour = int(end_hour) if end_hour is not None else end_hour
+        self.start_date = None
         # if we're missing at least 1 date info --> extract date from filename
         if any(val is None for val in [self.year, self.start_hour, self.month, self.day, self.day_of_year]):
             self.extract_date_from_filename()
@@ -56,7 +56,6 @@ class GLMPathParser(PathParser):
             self.extract_regrid_res()
         if self.satellite_version is None:
             self.extract_satellite()
-        self.start_datetime = self.get_start_date_pdTimestamp()
 
     def extract_date_from_filename(self):
         filename = self.url.stem
@@ -93,6 +92,7 @@ class GLMPathParser(PathParser):
             self.start_hour = start_hour
         if self.end_hour is None:
             self.end_hour = end_hour
+        self.start_date = date
 
     def extract_regrid_res(self):
         if 'deg' in self.url.stem:
@@ -104,8 +104,10 @@ class GLMPathParser(PathParser):
 
     def extract_satellite(self):
         filename_split = self.url.stem.split('_')
-        if self.directory:
+        if self.directory: # (xxdeg_)OR_GLM-L2-LCFA_YYYY_MM_DD
             self.satellite_version = None
+        elif self.hourly: # (xxdeg_)OR_GLM-L2-LCFA_Gxx_YYYY_MM_DD_HH1-HH2.nc
+            self.satellite_version = filename_split[-5]
         else:
             self.satellite_version = filename_split[-4]
 
@@ -115,21 +117,14 @@ class GLMPathParser(PathParser):
         @param ignore_missing_start_hour: <bool> if we need timestamp for directory
         @return: <pandas.Timestamp> object
         """
-        if self.directory:
-            # if ignore missing start hour --> create timestamp with hour == 00:00 (only OK if directory)
-            if ignore_missing_start_hour and not any(val is None for val in [self.year, self.month, self.day]):
-                return pd.Timestamp(f'{self.year}-{self.month}-{self.day}T00:00')
-            else:
-                return None
+        if self.start_date is None:
+            start_hour_str = f'{self.start_hour:02d}' if self.start_hour is not None else "00"
+            return pd.Timestamp(f'{self.year}-{self.month:02d}-{self.day:02d}T{start_hour_str}00')
         else:
-            # if missing value (year, hour, start_hour)--> can't create timestamp
-            if any(val is None for val in [self.year, self.month, self.day, self.start_hour]):
-                raise ValueError(f'Cannot get datetime object, one of more start date value missing (year={self.year}, '
-                                 f'month={self.month}, day={self.day}, start_hour={self.start_hour})')
-            else:
-                return pd.Timestamp(pd.Timestamp(f'{self.year}-{self.month}-{self.day}T{self.start_hour}'))
+            return pd.Timestamp(self.start_date)
 
 
     def print(self):
         for attr_key, attr_val in vars(self).items():
             print(f'{attr_key}: {attr_val}')
+

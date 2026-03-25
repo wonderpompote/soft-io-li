@@ -20,8 +20,7 @@ xxdeg_MTG_I1_LI_YYYY_MM_DD_HH1-HH2.nc
 
 class MTGLIPathParser(PathParser):
 
-    def __init__(self, file_url, regrid, hourly=True, directory=False, year=None, month=None, day=None, start_hour=None, start_minute=None, end_hour=None,
-                 file_version=None, regrid_res_str=None, satellite='', naming_convention=None):
+    def __init__(self, file_url, regrid, hourly=True, directory=False, year=None, month=None, day=None, start_hour=None, start_minute=None, end_hour=None, file_version=None, regrid_res_str=None, satellite=None):
         self.url = pathlib.Path(file_url)
         self.hourly = hourly
         self.regrid = regrid
@@ -88,8 +87,18 @@ class MTGLIPathParser(PathParser):
         self.satellite_version = None
 
     def get_start_date_pdTimestamp(self, ignore_missing_start_hour=False):
-        return pd.Timestamp(self.start_date)
+        """
+        Returns pd.Timestamp object of the start date of the MTG-LI file / directory
+        @param ignore_missing_start_hour: <bool> if we need timestamp for directory
+        @return: <pandas.Timestamp> object
+        """
+        if self.start_date is None:
+            start_hour_str = f'{self.start_hour:02d}' if self.start_hour is not None else "00"
+            return pd.Timestamp(f'{self.year}-{self.month:02d}-{self.day:02d}T{start_hour_str}00')
+        else:
+            return pd.Timestamp(self.start_date)
 
     def print(self):
         for attr_key, attr_val in vars(self).items():
             print(f'{attr_key}: {attr_val}')
+

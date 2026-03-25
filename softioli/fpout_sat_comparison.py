@@ -150,7 +150,7 @@ def get_satellite_ds(start_date, end_date, sat_name, grid_resolution=cts.GRID_RE
             if not dry_run:
                 sat_regrid.regrid_sat_files(path_list=list(dir_to_regrid_list), sat_name=sat_name,
                                             grid_res=grid_resolution, dir_list=True, print_debug=print_debug,
-                                            grid_res_str=grid_res_str, overwrite=overwrite, naming_convention=None,
+                                            grid_res_str=grid_res_str, overwrite=overwrite, 
                                             rm_pre_regrid_file=rm_pre_regrid_file)
         # if we still have missing pre-regrid directories --> FileNotFoundError
         if missing_raw_daily_dir_list - dir_to_regrid_list:

@@ -26,7 +26,7 @@ def generate_flash_count_ds(_df, data_var_name, res_var_name, grid_res):
 def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, overwrite,
                                               result_file_path, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                               lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
-                                              naming_convention=None, rm_pre_regrid_file=False):
+                                              rm_pre_regrid_file=False):
     """
     Pre-process lightning satellite hourly data file to regrid it to specific resolution and obtain
     the following information for each grid cell:
@@ -43,7 +43,6 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     :param lon_min: <float>
     :param lon_max: <float>
     :param result_file_path: <str> or <pathlib.Path>
-    :param naming_convention: <str> pre-regrid file naming convention (useful for backward compatibility). Supported values: 'OLD_TEMP', 'OLD', None (default)
     """
     if not sat_name in cts.SAT_SETTINGS:
         raise ValueError(f'{sat_name} {cts.SAT_VALUE_ERROR}')
@@ -51,8 +50,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     PathParser = get_PathParser(sat_name)
 
     # get pre-regrid file start date (year, day, hour) with <sat>PathParser
-    pre_regrid_path_parsed = PathParser(file_url=pre_regrid_file_url, regrid=False,
-                                           naming_convention=naming_convention)
+    pre_regrid_path_parsed = PathParser(file_url=pre_regrid_file_url, regrid=False)
 
     result_file_path = pathlib.Path(result_file_path)
     # check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
@@ -134,7 +132,7 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                                                        res_var_name='flash_count', grid_res=grid_res)
                     ds_to_merge_list.append(count_ds)
                 # flash area histogram
-                if _ds[flash_area].attrs['units'].upper() == 'km2':
+                if _ds[flash_area].attrs['units'].lower() == 'km2':
                     _df['flash_area_log'] = np.log10(_df[flash_area])
                     flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
                         _df, data_var_name='flash_area_log',
@@ -297,7 +295,7 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
 
 def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
-                     naming_convention=None, remove_temp_abi_dir=False, result_dir_path=None,
+                     remove_temp_abi_dir=False, result_dir_path=None,
                      print_debug=False, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                      lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX, rm_pre_regrid_file=False):
     """
@@ -308,7 +306,6 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     @param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
     @param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
     @param overwrite: <bool> overwrite file if it already exists
-    @param naming_convention: <str> GLM file or directory naming convention (used for backward compatibility). Supported values: 'OLD_TEMP', 'OLD' or None (default)
     @param remove_temp_abi_dir: <bool> if True, the temp directory containing all 15min hdf files will be deleted after being processed
     @param result_dir_path: <str> or <pathlib.Path> mostly used for testing purposes, if == None the default directory path is used
     @param print_debug: <bool>
@@ -350,8 +347,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     # if path_list contains paths to directories --> get list of files in each directory
     file_list = list(path_list)
     if dir_list:
-        filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=False, hourly=True,
-                                                         naming_convention=naming_convention)
+        filename_pattern = generate_sat_filename_pattern(sat_name=sat_name, regrid=False, hourly=True) 
         # Get list of files in subdirectories
         file_list = [
             file_path
@@ -368,8 +364,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
         if print_debug:
             print('---')
             print(f'pre_regrid_file_url: {pre_regrid_file_url}')
-        pre_regrid_path_parsed = PathParser(file_url=pre_regrid_file_url, regrid=False, hourly=True,
-                                               naming_convention=naming_convention)
+        pre_regrid_path_parsed = PathParser(file_url=pre_regrid_file_url, regrid=False, hourly=True)
         pre_regrid_file_date = pre_regrid_path_parsed.get_start_date_pdTimestamp(ignore_missing_start_hour=False)
         # create result nc file path
         result_file_path = generate_sat_hourly_file_path(date=pre_regrid_file_date, sat_name=sat_name, regrid=True,
@@ -388,7 +383,6 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                                                           sat_name=sat_name,
                                                           grid_res=grid_res,
                                                           overwrite=overwrite, result_file_path=result_file_path,
-                                                          naming_convention=naming_convention,
                                                           lat_min=lat_min, lat_max=lat_max, lon_min=lon_min,
                                                           lon_max=lon_max, rm_pre_regrid_file=rm_pre_regrid_file)
             elif sat_name == cts.GOES_SATELLITE_ABI:

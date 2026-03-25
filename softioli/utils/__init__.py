@@ -6,8 +6,6 @@ from .utils_functions import (
 
 from .GLMPathParser import (
     GLMPathParser,
-    OLD_GLM_NOTATION,
-    OLD_GLM_PRE_REGRID_TEMP_NOTATION
 )
 
 from .sat_utils import (

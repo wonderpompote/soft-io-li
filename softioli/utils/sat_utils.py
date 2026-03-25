@@ -27,7 +27,6 @@ def generate_sat_filename_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESO
     :param sat_name: <str> name of the satellite (only 'GOES_GLM' supported for now)
     :param regrid: <bool>
     :param regrid_res_str: <str> grid resolution str (to be added to the resulting filename)
-    :param naming_convention: <str> file naming convention (mostly for backward compatibility). Supported values: 'OLD_TEMP', 'OLD', None (default)
     :param YYYY: <str> or <int> year
     :param DDD: <str> or <int> day of the year
     :param start_HH: <str> or <int> start hour
@@ -74,7 +73,6 @@ def generate_sat_dirname_pattern(sat_name, regrid, regrid_res_str=cts.GRID_RESOL
     :param sat_name: <str>
     :param regrid: <bool>
     :param regrid_res_str: <str>
-    :param naming_convention: <str> file naming convention (mostly for backward compatibility). Supported values: 'OLD', 'OLD_TEMP', None (default)
     :return: <str> directory name pattern for the satellite
     """
     # GLM
