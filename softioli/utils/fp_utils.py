@@ -1,7 +1,10 @@
+import numpy as np
 import pandas as pd
 import pathlib
+import xarray as xr
 
 from fpsim import check_fp_status
+from fpout import open_fp_dataset
 
 from .constants import YYYY_pattern
 
@@ -46,4 +49,65 @@ def get_fpout_nc_file_path_from_fp_dir(fp_dirpath, fp_output_dirname='output',
         else:
             raise FileNotFoundError(f"No matching .nc files in {fp_output_dirpath}")
     else:
-        raise RuntimeError(f"Flexpart output status check failed for {fp_dirpath}")
+        raise RuntimeError(f"Flexpart output status check failed for: {fp_dirpath}")
+
+
+def get_fp_out_ds_xdays(fpout_path, days=7, sum_height=True, chunks='auto', max_chunk_size=1e8,
+                        assign_releases_position_coords=False):
+    """
+    Function to retrieve a flexpart output dataset only for a specific number of days previous to the release
+    :param fpout_path:
+    :param days: number of days we should keep
+    :param sum_height:
+    :param chunks:
+    :param max_chunk_size:
+    :param assign_releases_position_coords:
+    :return:
+    """
+    fp_ds = open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
+                            assign_releases_position_coords=assign_releases_position_coords)\
+                                    .squeeze('nageclass')
+    # rename numpoint dimension to pointspec
+    fp_ds = fp_ds.rename({'numpoint': 'pointspec'})
+    # get dataset containing releases info (RELxxxx variables)
+    rel_ds = fp_ds.drop_vars([var for var in fp_ds.variables if not 'REL' in var])
+    # fp simulation "start" date (ietime here because backwards)
+    ietime = pd.Timestamp(f"{fp_ds.attrs['iedate']}{fp_ds.attrs['ietime']}")
+    # fp release "start" dates (RELEND because backwards) --> get nearest hour before start
+    release_start_dates = (ietime + fp_ds.RELEND).dt.ceil('h')
+    # get "end" date (release_start_date - x days)
+    end_dates = release_start_dates - np.timedelta64(days, 'D')
+    # get spec001_mr over x days
+    date_mask = ((fp_ds.time >= end_dates) & (fp_ds.time <= release_start_dates)).compute()
+    fp_da = fp_ds.where(date_mask, drop=True).spec001_mr
+    # merge rel info and spec001_mr
+    fp_ds = xr.merge([fp_da, rel_ds])
+    # sum over height
+    if sum_height:
+        fp_ds = fp_ds.sum('height', skipna=True)
+    return fp_ds
+
+
+
+def get_fp_out_da(fpout_path, sum_height=True, chunks='auto', max_chunk_size=1e8,
+                  assign_releases_position_coords=False):
+    """
+
+    @param fpout_path:
+    @param sum_height:
+    @param chunks:
+    @param max_chunk_size:
+    @param assign_releases_position_coords:
+    @return:
+    """
+    if not pathlib.Path(fpout_path).exists():
+        raise ValueError(f'fp_path {fpout_path} does NOT exist')
+    fp_ds = open_fp_dataset(fpout_path, chunks=chunks, max_chunk_size=max_chunk_size,
+                            assign_releases_position_coords=assign_releases_position_coords)
+    fp_da = fp_ds.spec001_mr
+    fp_da = fp_da.squeeze()
+    if 'pointspec' in fp_da.dims:
+        fp_da = fp_da.assign_coords(pointspec=fp_da.pointspec)
+    if sum_height:
+        fp_da = fp_da.sum('height')
+    return fp_da

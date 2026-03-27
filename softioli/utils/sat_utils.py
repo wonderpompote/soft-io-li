@@ -270,3 +270,78 @@ def get_abi_coords_file(sat_version, file_version, print_debug=False):
         print(f'Using coords_file: {coords_file}')
     return pathlib.Path(f'{cts.ABI_COORDS_DIRPATH}/{coords_file}')
 
+
+
+def merge_GOES_sat_data_with_overlap(regrid_daily_file_list, sat_name, PathParser, print_debug=False):
+    sat_versions = set()
+    # divide files in 3 categories: files without overlap, GOES-E files w/ overlap, GOES-W files w/ overlap
+    files_without_overlap = []
+    GOES_EAST_files_with_overlap = []
+    GOES_WEST_files_with_overlap = []
+    # get list of files grouped by date
+    files_by_date_dict = get_list_of_sat_files_grouped_by_date(sat_files_list=regrid_daily_file_list, sat_name=sat_name,
+                                                               regrid=True)
+    # for each date, check if overlap and put file_list in corresponding list
+    for date, file_list in sorted(files_by_date_dict.items()):
+        if len(file_list) == 1:  # if just one file --> no overlap
+            f_parsed_sat_version = PathParser(file_list[0], regrid=True).satellite_version
+            sat_versions.add(f_parsed_sat_version)
+            files_without_overlap.extend(file_list)
+        else:  # if more than one file, add them to corresponding list of files to be pre-processed
+            if print_debug:
+                print(f'Overlapping files for {date}: {file_list}')
+            for f in file_list:
+                f_parsed_sat_version = PathParser(f, regrid=True).satellite_version
+                sat_versions.add(f_parsed_sat_version)
+                if f_parsed_sat_version in cts.GOES_EAST_SAT_VERSION:
+                    GOES_EAST_files_with_overlap.append(f)
+                elif f_parsed_sat_version in cts.GOES_WEST_SAT_VERSION:
+                    GOES_WEST_files_with_overlap.append(f)
+                else:
+                    raise ValueError(f'Unsupported satellite version: {f_parsed_sat_version}')
+
+    # functions to pre-process GOES-E and GOES-W data (cut at 100°W)
+    def pre_process_GOES_EAST_data(ds):
+        # if lightning sat, only keep flash_count variable to lighten computation time
+        if sat_name == cts.GOES_SATELLITE_GLM:
+            ds = ds[['flash_count']]
+        return ds.where(ds.longitude >= -100, drop=True)
+
+    def pre_process_GOES_WEST_data(ds):
+        # if lightning sat, only keep flash_count variable to lighten computation time
+        if sat_name == cts.GOES_SATELLITE_GLM:
+            ds = ds[['flash_count']]
+        return ds.where(ds.longitude < -100, drop=True)
+
+    datasets_to_merge = []
+    # for each list of files, open_mfdataset and pre-process accordingly before merging into a single dataset
+    # open_mfdataset allows lazy loading of datasets + pre-processing integrated
+    if files_without_overlap:
+        merged_dataset = xr.open_mfdataset(files_without_overlap, parallel=True, engine='h5netcdf',
+                              combine='nested', concat_dim='time', combine_attrs='drop_conflicts')
+        if sat_name == cts.GOES_SATELLITE_GLM:
+            merged_dataset = merged_dataset[['flash_count']]
+        datasets_to_merge.append(merged_dataset)
+    if GOES_EAST_files_with_overlap:
+        datasets_to_merge.append(
+            xr.open_mfdataset(GOES_EAST_files_with_overlap, parallel=True, engine='h5netcdf',
+                              preprocess=pre_process_GOES_EAST_data, concat_dim='time',
+                              combine='nested', combine_attrs='drop_conflicts')
+        )
+    if GOES_WEST_files_with_overlap:
+        datasets_to_merge.append(
+            xr.open_mfdataset(GOES_WEST_files_with_overlap, parallel=True, engine='h5netcdf',
+                              preprocess=pre_process_GOES_WEST_data, concat_dim='time',
+                              combine='nested', combine_attrs='drop_conflicts')
+        )
+
+    if print_debug:
+        print(f'Merging {len(datasets_to_merge)} datasets')
+        print(f'details: files_without_overlap={len(files_without_overlap)}, GOES_EAST_files_with_overlap={len(GOES_EAST_files_with_overlap)}, GOES_WEST_files_with_overlap={len(GOES_WEST_files_with_overlap)}')
+    # merge without overlap, GOES-E and GOES-W datasets into a single dataset
+    sat_ds = xr.merge(datasets_to_merge, combine_attrs='drop_conflicts')
+    sat_ds.attrs[cts.SAT_VERSION_ATTRS_NAME] = list(sat_versions)
+    if print_debug:
+        print(f'GOES-EAST and GOES-WEST datasets merged successfully!')
+
+    return sat_ds

@@ -7,7 +7,7 @@
 #####################################################################################################
 # Script to regrid hourly .nc files with a slurm array
 #
-# usage: sbatch --array=xx-xx%xxx regrid_array.sh SAT_NAME FILE_WITH_ARGS [EXTRA_PYTHON_ARGUMENTS]
+# usage: sbatch --array=xx-xx%xxx $0 SAT_NAME FILE_WITH_ARGS [EXTRA_PYTHON_ARGUMENTS]
 #   required arguments:
 #	SAT_NAME: name of the satellite (supported values: GOES-GLM, GOES-ABI, MTG-LI)
 #	FILE_WITH_ARGS: txt file with list of path pointing to hourly .nc files or directories containing hourly .nc files that need to be regridded
