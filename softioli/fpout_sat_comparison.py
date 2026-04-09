@@ -256,7 +256,7 @@ def fpout_sat_comparison(fp_path, lightning_sat_name, bTemp_sat_name, flights_id
                     weighted_fp_sat_ds.to_netcdf(f'{final_result_ds_name}.nc')
                 else:
                     weighted_ds_dirpath = pathlib.Path(
-                        f'{softioli_output_dirpath}/{flights_id_list[index]}/{final_result_ds_name}')
+                        f'{softioli_output_dirpath}/{flights_id_list[index]}/{result_dirname}')
                     weighted_ds_filepath = pathlib.Path(
                         f'{weighted_ds_dirpath}/{final_result_ds_name}.nc')
                     if not weighted_ds_filepath.exists() or overwrite_weighted_ds:
@@ -385,14 +385,15 @@ if __name__ == '__main__':
     for id in sorted(indices_flight_id_fp_not_ok_or_missing, reverse=True):
         del flight_id_list[id]
 
-    print(short_list_repr(sorted(fp_path_list)))
-    print()
-    print(sorted(flight_id_list))
+    print(f'Flight id list: {sorted(flight_id_list)}')
+    print(f'Flexpart path list: {short_list_repr(sorted(fp_path_list))}')
     print()
 
     # remove ".nc" if given in result_ds_name
     if args.result_ds_name[-3:] == '.nc':
         args.result_ds_name = args.result_ds_name[:-3]
+
+    print('Starting flexpart output - satellite data comparison...')
 
     missing_dates = fpout_sat_comparison(fp_path=sorted(fp_path_list), flights_id_list=sorted(flight_id_list),
                                          lightning_sat_name=args.lightning_sat_name, dry_run=args.dry_run,
@@ -430,3 +431,5 @@ if __name__ == '__main__':
             f'{len(missing_dates["cloud"])} missing ABI daily files, please download them before running the program again: \n{missing_dates["cloud"]}')
         print('See logs above for more details on which flights have not been computed')
         print('\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+
+    print('Done!')
