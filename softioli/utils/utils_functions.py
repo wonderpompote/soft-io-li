@@ -138,3 +138,10 @@ def open_hdf4(url):
     ds = xr.Dataset(dic)
     ds = ds.assign_attrs(hdf.attributes())
     return ds
+
+
+def _none_or_variable(value):
+    """
+    Returns None if value is a str containing "None
+    """
+    return None if value.lower() == "none" else value

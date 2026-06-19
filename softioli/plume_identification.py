@@ -11,7 +11,7 @@ from utils import constants as cts
 from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
 from utils.plume_info_utils import write_plume_info_to_csv_file
-from utils.utils_functions import create_root_output_dir, create_flight_output_dir
+from utils.utils_functions import create_root_output_dir, create_flight_output_dir, _none_or_variable
 
 
 def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print_debug=False):
@@ -284,8 +284,8 @@ if __name__ == "__main__":
     flights_list_group.add_argument('-a', '--all-flights', action='store_true',
                                     help='Indicates if all flights in output dir should be processed')
     # flight range
-    flights_list_group.add_argument('--start-end-flight-ids', nargs=2,
-                                    help='Start and end flight ids (in case we only want to retrieve NOx flights between two specific dates)')
+    flights_list_group.add_argument('--start-end-flight-ids', nargs='2', type=_none_or_variable,
+                                    help='Start and end flight ids (in case we only want to retrieve NOx flights between two specific dates/ids)')
     # list of flights in a txt file
     flights_list_group.add_argument('--flight-ids-list-file',
                                     help='Path to a txt file containing a list of flight ids (1 flight id/line)')
