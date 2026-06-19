@@ -60,8 +60,8 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
                 'O3_excess_mean': get_dict_value_by_region(get_excess_mean_by_region(plume_ds[O3_varname], CO_O3_bckgd_ds['O3_quantile'])),
 
                 'CO_mean': np.nanmean(plume_ds[CO_varname].values),
-                'CO_excess_std': get_dict_value_by_region(get_excess_mean_by_region(plume_ds[CO_varname], CO_O3_bckgd_ds['CO_quantile'])),
-                'CO_excess_mean': get_dict_value_by_region(get_excess_std_by_region(plume_ds[CO_varname], CO_O3_bckgd_ds['CO_quantile'])),
+                'CO_excess_std': get_dict_value_by_region(get_excess_std_by_region(plume_ds[CO_varname], CO_O3_bckgd_ds['CO_quantile'])),
+                'CO_excess_mean': get_dict_value_by_region(get_excess_mean_by_region(plume_ds[CO_varname], CO_O3_bckgd_ds['CO_quantile'])),
 
                 'NOx_mean': np.nanmean(plume_ds[NOx_varname].values),
                 'NOx_excess_mean': np.nanmean(plume_ds[NOx_varname].values - NOx_MEDIAN),
