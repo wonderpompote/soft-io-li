@@ -284,7 +284,7 @@ if __name__ == "__main__":
     flights_list_group.add_argument('-a', '--all-flights', action='store_true',
                                     help='Indicates if all flights in output dir should be processed')
     # flight range
-    flights_list_group.add_argument('--start-end-flight-ids', nargs='2', type=_none_or_variable,
+    flights_list_group.add_argument('--start-end-flight-ids', nargs=2, type=_none_or_variable,
                                     help='Start and end flight ids (in case we only want to retrieve NOx flights between two specific dates/ids)')
     # list of flights in a txt file
     flights_list_group.add_argument('--flight-ids-list-file',
