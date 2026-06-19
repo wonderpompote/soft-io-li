@@ -3,7 +3,7 @@ import pandas as pd
 import pathlib
 import xarray as xr
 
-from .constants import AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH, CORE, RHL_VARNAME
+from .constants import AIRPRESS_VARNAME, NOx_PLUME_ID_VARNAME, ARRIVALTIME_FORMAT_CSV_FILENAME, PROGRAM_ATTR, NOx_MEDIAN, CO_O3_BACKGROUND_DS_PATH, CORE, RHL_VARNAME, FLIGHT_NAME_ATTR
 from .iagos_utils import get_CO_varname, get_O3_varname, get_NOx_varname
 from .utils_functions import get_lon_lat_varnames
 
@@ -71,7 +71,7 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
                 plume_info_dict['RHL_mean'] = np.nanmean(plume_ds[RHL_VARNAME].values)
             elif print_debug:
                 print('~~~~~~')
-                print('No RHL measurements for this plume')
+                print(f'No RHL measurements for this plume (flight {ds.attrs[FLIGHT_NAME_ATTR]} - {plume_id=})')
                 print('~~~~~~')
             plume_info_list.append(plume_info_dict)
 

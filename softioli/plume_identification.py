@@ -12,6 +12,7 @@ from utils import iagos_utils, regions_utils
 from utils.common_coords import GEO_REGIONS
 from utils.plume_info_utils import write_plume_info_to_csv_file
 from utils.utils_functions import create_root_output_dir, create_flight_output_dir, _none_or_variable
+from utils.iagos_utils import MissingVariableError
 
 
 def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print_debug=False):
@@ -38,9 +39,12 @@ def get_flight_ds_with_PV_and_valid_data(ds, geo_regions_dict=GEO_REGIONS, print
                                         .mean()
     # smooth CO timeseries (rolling mean with window size = min plume length)
     CO_varname = iagos_utils.get_CO_varname(flight_program=flight_program, smoothed=False, tropo=False)
-    ds[cts.CO_SMOOTHED_VARNAME] = ds[CO_varname] \
-                                        .rolling(UTC_time=cts.WINDOW_SIZE[flight_program], min_periods=1) \
-                                        .mean()
+    if CO_varname in ds:
+        ds[cts.CO_SMOOTHED_VARNAME] = ds[CO_varname] \
+                                            .rolling(UTC_time=cts.WINDOW_SIZE[flight_program], min_periods=1) \
+                                            .mean()
+    else:
+        raise MissingVariableError(f'<!> {CO_varname} NOT found in dataset for flight {ds.attrs[cts.FLIGHT_NAME_ATTR]}')
     # add regions to each data point
     ds = regions_utils.assign_geo_region_to_ds(ds=ds, geo_regions_dict=geo_regions_dict)
 
@@ -219,13 +223,21 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
 
     q3_ds_complete = xr.open_dataset(q3_ds_path).mean('year') if use_q3_ds else None
 
+    skipped_flights = []
+
     for flight_path in NOx_flights_url:
         if print_debug:
             print('##################################################')
             print(f'flight {flight_path}')
             print('##################################################')
         with xr.open_dataset(flight_path) as flight_ds:
-            flight_ds = get_flight_ds_with_PV_and_valid_data(ds=flight_ds, print_debug=print_debug)
+            try:
+                flight_ds = get_flight_ds_with_PV_and_valid_data(ds=flight_ds, print_debug=print_debug)
+            except MissingVariableError as e:
+                print(f'<!> Skipping flight {flight_path}: {str(e)}')
+                skipped_flights.append(flight_path)
+                continue
+
             filtered_flight_ds = apply_LiNOx_plume_filters(ds=flight_ds, cruise_only=cruise_only,
                                                            CO_q3=CO_q3, NOx_q3=NOx_q3,
                                                            q3_ds_complete=q3_ds_complete, print_debug=print_debug)
@@ -272,7 +284,11 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                                                       plot_dirpath=flight_output_dirpath,
                                                       x_axis='UTC_time', x_lim=None, title=None)
 
-
+    if skipped_flights:
+        print('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+        print(f'<!> Skipped {len(skipped_flights)} flights: ')
+        print(skipped_flights)
+        print('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
 
 
 if __name__ == "__main__":

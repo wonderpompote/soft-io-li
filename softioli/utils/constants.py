@@ -209,6 +209,7 @@ SOFTIOLI_AIRPORTS = ['AGP, Malaga, Spain',
 Q3_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_NOx_q3_ds_NONEreg_2024-07-02_1839.nc' #TODO: suppr if we don't use it
 CO_O3_BACKGROUND_DS_PATH = '/home/patj/SOFT-IO-LI/q3_ds/CO_O3_bckg_q3_by_region_month_year_2024-09-20_1730.nc'
 
+FLIGHT_NAME_ATTR = 'flight_name'
 PROGRAM_ATTR = 'program'
 DEPARTURE_UTC_TIME_ATTR = 'departure_UTC_time'
 IAGOS = 'IAGOS'

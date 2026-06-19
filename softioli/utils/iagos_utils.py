@@ -9,6 +9,10 @@ import xarray as xr
 from . import constants as cts
 
 
+class MissingVariableError(Exception):
+    pass
+
+
 def get_NOx_varname(flight_program, smoothed, tropo, filtered):
     if filtered:
         return cts.NOx_FILTERED_VARNAME
