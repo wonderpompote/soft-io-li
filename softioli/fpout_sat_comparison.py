@@ -289,7 +289,7 @@ if __name__ == '__main__':
                               help='Indicates if all flights in output dir should be processed')
     # flight range
     flight_group.add_argument('--start-end-flight-id', nargs=2,
-                              help='Start and end dates (in case we only want to retrieve NOx flights between two specific dates)')
+                              help='Start and end flight ids (in case we only want to retrieve NOx flights between two specific dates)')
     # list of flights in a txt file
     flight_group.add_argument('--flight-id-list',
                               help='Path to a txt file containing a list of flight ids (1 flight id/line)')

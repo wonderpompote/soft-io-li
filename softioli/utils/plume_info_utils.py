@@ -55,10 +55,6 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
                 'start_press': plume_ds[AIRPRESS_VARNAME].values[0],
                 'end_press': plume_ds[AIRPRESS_VARNAME].values[-1],
 
-                'O3_mean': np.nanmean(plume_ds[O3_varname].values),
-                'O3_excess_std': get_dict_value_by_region(get_excess_std_by_region(plume_ds[O3_varname], CO_O3_bckgd_ds['O3_quantile'])),
-                'O3_excess_mean': get_dict_value_by_region(get_excess_mean_by_region(plume_ds[O3_varname], CO_O3_bckgd_ds['O3_quantile'])),
-
                 'CO_mean': np.nanmean(plume_ds[CO_varname].values),
                 'CO_excess_std': get_dict_value_by_region(get_excess_std_by_region(plume_ds[CO_varname], CO_O3_bckgd_ds['CO_quantile'])),
                 'CO_excess_mean': get_dict_value_by_region(get_excess_mean_by_region(plume_ds[CO_varname], CO_O3_bckgd_ds['CO_quantile'])),
@@ -67,6 +63,14 @@ def write_plume_info_to_csv_file(ds, output_dirpath, filename_suffix='', CO_O3_b
                 'NOx_excess_mean': np.nanmean(plume_ds[NOx_varname].values - NOx_MEDIAN),
                 'NOx_excess_std': np.nanstd(plume_ds[NOx_varname].values - NOx_MEDIAN),
             }
+            if O3_varname in plume_ds.data_vars:
+                plume_info_dict['O3_mean'] = np.nanmean(plume_ds[O3_varname].values)
+                plume_info_dict['O3_excess_std'] = get_dict_value_by_region(get_excess_std_by_region(plume_ds[O3_varname], CO_O3_bckgd_ds['O3_quantile']))
+                plume_info_dict['O3_excess_mean'] = get_dict_value_by_region(get_excess_mean_by_region(plume_ds[O3_varname], CO_O3_bckgd_ds['O3_quantile']))
+            else:
+                plume_info_dict['O3_mean'] = None
+                plume_info_dict['O3_excess_std'] = None
+                plume_info_dict['O3_excess_mean'] = None
             if ds.attrs[PROGRAM_ATTR] == CORE and not np.isnan(plume_ds[RHL_VARNAME]).all():
                 plume_info_dict['RHL_mean'] = np.nanmean(plume_ds[RHL_VARNAME].values)
             elif print_debug:

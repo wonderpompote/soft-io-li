@@ -4,6 +4,7 @@ import pandas as pd
 import pathlib
 from scipy.ndimage import label, find_objects
 import xarray as xr
+import warnings
 
 from common.utils import timestamp_now_formatted, list_from_file
 
@@ -64,16 +65,22 @@ def apply_LiNOx_plume_filters(ds, cruise_only, CO_q3=None, NOx_q3=None, q3_ds_co
     :param print_debug: <bool> for testing purposes, print debug
     :return: <xarray.Dataset> filtered version of flight ds
     """
+
     # only keep cruise data
     if cruise_only:
         ds = iagos_utils.keep_cruise(ds=ds, print_debug=print_debug)
     else: # else remove PBL only
         ds = iagos_utils.remove_PBL(ds=ds, print_debug=print_debug)
 
+    var_list = [cts.NOx_SMOOTHED_VARNAME, cts.CO_SMOOTHED_VARNAME]
+    O3_varname = iagos_utils.get_O3_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False)
+    if O3_varname in ds.data_vars:
+        var_list.append(O3_varname)
+    else:
+        warnings.warn('Missing O3 variable from flight dataset')
+
     # remove stratospheric influence
-    ds = iagos_utils.keep_tropo(ds=ds, print_debug=print_debug,
-                                var_list=[cts.NOx_SMOOTHED_VARNAME, cts.CO_SMOOTHED_VARNAME,
-                                             iagos_utils.get_O3_varname(ds.attrs[cts.PROGRAM_ATTR], tropo=False)])
+    ds = iagos_utils.keep_tropo(ds=ds, print_debug=print_debug, var_list=var_list)
 
     if q3_ds_complete is not None:
         # get q3_ds for ds month and geo region
@@ -272,13 +279,13 @@ def get_LiNOX_plumes(start_flight_id=None, end_flight_id=None, flight_type=None,
                                   'CO_q3': CO_q3 if CO_q3 is not None else cts.CO_Q3 }
                     else:
                         q3_ds = q3_ds_complete
-
+                    O3_varname = iagos_utils.get_O3_varname(plume_ds.attrs[cts.PROGRAM_ATTR], tropo=False)
                     iagos_utils.plot_NOx_CO_PV_RHL_O3(ds=plume_ds, q3_ds=q3_ds,
                                                       NOx_plumes=True, NOx_tropo=True, NOx_tropo_filtered=True,
                                                       scatter_NOx_tropo=False, scatter_NOx_excess=False,
                                                       NOx_spike=True, NOx_spike_id=[],
                                                       show_region_names=show_region_names,
-                                                      PV=True, RHL=True, CO=True, O3=True,
+                                                      PV=True, RHL=True, CO=True, O3=(O3_varname in plume_ds.data_vars),
                                                       save_fig=save_fig, show_fig=show_fig,
                                                       fig_name=None, fig_name_prefix='', fig_name_suffix=file_suffix,
                                                       plot_dirpath=flight_output_dirpath,

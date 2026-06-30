@@ -94,7 +94,7 @@ def get_valid_data(var_list, ds, valid_data_flag_value=0, print_debug=False):
     :return: <xarray.Dataset>
     """
     for varname in var_list:
-        if varname in ds.keys():
+        if varname in ds.data_vars:
             if print_debug:
                 print(f'{varname}.notnull().sum() BEFORE val flag filter: {ds[varname].notnull().sum().values}')
             ds[varname] = ds[varname].where(ds[f'{varname}_validity_flag'] == valid_data_flag_value)
