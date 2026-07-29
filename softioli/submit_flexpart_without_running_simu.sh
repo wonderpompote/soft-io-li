@@ -3,7 +3,7 @@
 # -e after bin/bash so that the failure of any command within the script will stop the job immediately instead of continuing
 
 #####################################################################################################
-# Script to run SOFT-IO-Li flexpart simulations with a slurm array
+# Script to run SOFT-IO-Li flexpart input files with a slurm array (without running the actual simulation)
 # 
 # 2 main steps: 
 #	1- create flexpart input files for each flight in the flights list (by running softioli/flexpart.py)

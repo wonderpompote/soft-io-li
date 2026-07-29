@@ -9,7 +9,7 @@
 #
 # usage: sbatch --array=xx-xx%xxx $0 SAT_NAME FILE_WITH_ARGS [EXTRA_PYTHON_ARGUMENTS]
 #   required arguments:
-#	SAT_NAME: name of the satellite (supported values: GOES-GLM, GOES-ABI, MTG-LI)
+#	SAT_NAME: name of the satellite (supported values: GOES_GLM, GOES_ABI, MTG_LI)
 #	FILE_WITH_ARGS: txt file with list of path pointing to hourly .nc files or directories containing hourly .nc files that need to be regridded
 #   optional arguments:
 #	EXTRA_PYTHON_ARGUMENTS: optional, extra arguments to be passed to the python regrid script (for example --overwrite --regrid-res 0.5 etc.)
