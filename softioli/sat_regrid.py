@@ -372,7 +372,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                                                          regrid_res_str=grid_res_str, dir_path=result_dir_path)
         # if directory/ies containing result nc file path does NOT exist --> create it/them
         if not result_file_path.parent.exists():
-            result_file_path.parent.mkdir(parents=True)
+            result_file_path.parent.mkdir(parents=True, exist_ok=True)
             print(f"Creating directory {result_file_path.parent}")
 
         # check if regrid file exists and if it doesn't OR if overwrite == True --> "create it"
