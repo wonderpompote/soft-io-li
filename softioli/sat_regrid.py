@@ -132,8 +132,17 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                                                        res_var_name='flash_count', grid_res=grid_res)
                     ds_to_merge_list.append(count_ds)
                 # flash area histogram
-                if _ds[flash_area].attrs['units'].lower() == 'km2':
-                    _df['flash_area_log'] = np.log10(_df[flash_area])
+                flash_area_units = _ds[flash_area].attrs['units'].lower()
+                # make sure flash_area values are in km2
+                if flash_area_units == 'km2':
+                    flash_area_km2_df = _ds[flash_area]
+                elif flash_area_units == 'm2':
+                    flash_area_km2_df = _ds[flash_area] / 1e6 # convert m2 to km2
+                else:
+                    flash_area_km2_df = None
+                    warnings.warn(f'flash area variable unit ({_ds[flash_area].attrs["units"]}), not supported yet')
+                if flash_area_km2_df is not None:
+                    _df['flash_area_log'] = np.log10(flash_area_km2_df)
                     flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
                         _df, data_var_name='flash_area_log',
                         min_bin_edge=cts.f_ar_km2_min_bin, max_bin_edge=cts.f_ar_km2_max_bin,
@@ -144,8 +153,6 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                         'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
                     })
                     ds_to_merge_list.append(flash_area_hist_ds)
-                else:  # TODO: handle other flash area variable units
-                    warnings.warn(f'flash area variable unit ({_ds[flash_area].attrs["units"]}), not supported yet')
 
             # merge count and hist ds with target ds
             ds_to_merge_list.append(target_ds)
