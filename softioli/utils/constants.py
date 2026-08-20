@@ -274,7 +274,7 @@ DEFAULT_LOGDIR = pathlib.Path('/home/patj/logs/softioli/')
 SAT_VERSION_ATTRS_NAME = 'satellite_version'
 
 GOES_WEST_SAT_VERSION = ['GOES17', 'G17', 'GOES18', 'G18']
-GOES_EAST_SAT_VERSION = ['GOES16', 'G16']
+GOES_EAST_SAT_VERSION = ['GOES16', 'G16', 'GOES19', 'G19']
 
 GOES_SATELLITE_GLM = 'GOES_GLM'
 GLM_ROOT_DIR = pathlib.Path('/o3p/patj/glm')
@@ -283,7 +283,7 @@ PRE_REGRID_GLM_DIRNAME = 'pre_regrid_glm'
 REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{REGRID_GLM_DIRNAME}')
 PRE_REGRID_GLM_ROOT_DIR = pathlib.Path(f'{GLM_ROOT_DIR}/{PRE_REGRID_GLM_DIRNAME}')
 GLM_PATH_PREFIX = 'OR_GLM-L2-LCFA'
-GLM_Gxx_PATTERN = 'G1[6-8]' # TODO: update if older/newer versions available
+GLM_Gxx_PATTERN = 'G1[6-9]' # TODO: update if older/newer versions available
 MIN_GOES_EAST_WEST_DATE_GLM = Timestamp('2019-10-15T0000')
 
 GOES_SATELLITE_ABI = 'GOES_ABI'
@@ -291,7 +291,7 @@ ABI_ROOT_DIR = pathlib.Path('/o3p/patj/ABI')
 REGRID_ABI_DIRNAME = 'regrid_hourly_ABI'
 PRE_REGRID_ABI_DIRNAME = 'pre_regrid_ABI'
 ABI_PATH_PREFIX = 'ABI_GEO_L1B'
-ABI_GOESXX_PATTERN = 'GOES1[236-8]'
+ABI_GOESXX_PATTERN = 'GOES1[236-9]' # TODO: update if older/newer versions available
 MIN_GOES_EAST_WEST_DATE_ABI = Timestamp('2019-02-12T0000')
 
 ABI_COORDS_DIRPATH = '/o3p/patj/ABI/coords_files'

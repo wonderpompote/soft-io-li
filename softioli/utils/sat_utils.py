@@ -2,6 +2,7 @@ from collections import defaultdict
 import pathlib
 import pandas as pd
 from pandas import Timedelta
+import xarray as xr
 
 from .utils_functions import date_to_pd_timestamp
 from . import constants as cts
