@@ -62,3 +62,36 @@ def count_using_pandas(_df, data_var_name, groupby_dims=None, res_var_name=None)
     _df_count = _df.groupby(by=groupby_dims, sort=True)[[data_var_name]] \
                     .count().rename(columns={data_var_name: res_var_name})
     return _df_count.to_xarray()
+
+
+def stats_using_pandas(_df, data_var_name, percentiles=(5, 25, 50, 75, 95, 99),
+                       groupby_dims=None, res_var_prefix=None):
+    """
+    Function to compute mean/std/percentiles of a variable in a dataset using
+    pandas to groupby on multiple dimensions.
+    @param _df: <pandas.DataFrame> containing the variable to compute stats on
+    @param data_var_name: <str> name of the variable to compute stats on
+    @param percentiles: <tuple> percentiles to compute (0-100)
+    @param groupby_dims: <list> dimensions to groupby (default=['latitude', 'longitude'])
+    @param res_var_prefix: <str> prefix for resulting variable names (default=data_var_name)
+    @return: <xarray.Dataset>
+    """
+    if isinstance(_df, xr.Dataset): # check just in case
+        _df = _df.to_dataframe()
+    if groupby_dims is None:
+        groupby_dims = ['latitude', 'longitude']
+    if res_var_prefix is None:
+        res_var_prefix = data_var_name
+
+    grouped_df = _df.groupby(by=groupby_dims, sort=True)[data_var_name]
+
+    # mean and std
+    stats_df = grouped_df.agg(['mean', 'std']).rename(
+        columns={'mean': f'{res_var_prefix}_mean',
+                 'std': f'{res_var_prefix}_std'}
+    )
+    # percentiles
+    for p in percentiles:
+        stats_df[f'{res_var_prefix}_p{p}'] = grouped_df.quantile(p / 100)
+
+    return stats_df.to_xarray()

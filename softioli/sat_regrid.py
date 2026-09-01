@@ -23,8 +23,10 @@ def generate_flash_count_ds(_df, data_var_name, res_var_name, grid_res):
 
 
 # TODO: gérer quand goes w et goes e + refacto
-def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, grid_res, overwrite,
-                                              result_file_path, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
+def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name,
+                                              grid_res, generate_hists, generate_stats,
+                                              overwrite, result_file_path,
+                                              lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                               lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX,
                                               rm_pre_regrid_file=False):
     """
@@ -36,7 +38,8 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
     :param pre_regrid_file_url: <pathlib.Path> or <str>
     :param sat_name: <str> satellite name (supported so far: 'GOES_GLM')
     :param grid_res: <float> grid resolution (default: 0.5°)
-    :param grid_res_str: <str> grid resolution str (default: '05deg')
+    :param generate_hists: <bool> indicates if flash energy and flash area histograms should be generated for each grid cell
+    :param generate_stats: <bool> indicates if flash energy and flash area stast should be generated for each grid cell
     :param overwrite: <bool> overwrite file if it already exists
     :param lat_min: <float>
     :param lat_max: <float>
@@ -104,18 +107,30 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                     count_ds = generate_flash_count_ds(_df=_df, data_var_name=flash_energy,
                                                        res_var_name='flash_count', grid_res=grid_res)
                     ds_to_merge_list.append(count_ds)
-                # flash energy histogram <!> result = xarray.DataArray
+
                 if _ds[flash_energy].attrs['units'].upper() == 'J':
-                    _df['flash_energy_log'] = np.log10(_df[flash_energy])
-                    flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
-                        _df, data_var_name='flash_energy_log',
-                        min_bin_edge=cts.f_en_J_min_bin, max_bin_edge=cts.f_en_J_max_bin,
-                        step=cts.f_en_J_hist_step, res_var_name='flash_energy_log_hist')
-                    flash_en_hist_ds['flash_energy_log_hist'].attrs.update({
-                        'long_name': f'Number of flash occurrences in log10(flash_energy) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
-                        'comment': 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
-                    })
-                    ds_to_merge_list.append(flash_en_hist_ds)
+                    if generate_hists:
+                        # flash energy histogram <!> result = xarray.DataArray
+                        _df['flash_energy_log'] = np.log10(_df[flash_energy])
+                        flash_en_hist_ds = xr_pd_utils.histogram_using_pandas(
+                            _df, data_var_name='flash_energy_log',
+                            min_bin_edge=cts.f_en_J_min_bin, max_bin_edge=cts.f_en_J_max_bin,
+                            step=cts.f_en_J_hist_step, res_var_name='flash_energy_log_hist')
+                        flash_en_hist_ds['flash_energy_log_hist'].attrs.update({
+                            'long_name': f'Number of flash occurrences in log10(flash_energy) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
+                            'comment': 'log10(flash_energy) bins between -15 and -10, step between bins = 0.1'
+                        })
+                        ds_to_merge_list.append(flash_en_hist_ds)
+
+                    if generate_stats:
+                        # mean/std/percentiles on the flash_energy values (J), NOT on log values
+                        flash_en_stats_ds = xr_pd_utils.stats_using_pandas(
+                            _df, data_var_name=flash_energy, res_var_prefix='flash_energy')
+                        for var in flash_en_stats_ds.data_vars:
+                            flash_en_stats_ds[var].attrs['units'] = 'J'
+                            flash_en_stats_ds[var].attrs['long_name'] = f'{var} of flash energy in a {grid_res}° x {grid_res}° x 1h grid cell'
+                        ds_to_merge_list.append(flash_en_stats_ds)
+
                 else:  # TODO: handle other flash energy variable units
                     warnings.warn(f'flash_energy unit ({_ds[flash_energy].attrs["units"]}), not supported yet')
 
@@ -142,17 +157,28 @@ def generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gri
                     flash_area_km2_df = None
                     warnings.warn(f'flash area variable unit ({_ds[flash_area].attrs["units"]}), not supported yet')
                 if flash_area_km2_df is not None:
-                    _df['flash_area_log'] = np.log10(flash_area_km2_df)
-                    flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
-                        _df, data_var_name='flash_area_log',
-                        min_bin_edge=cts.f_ar_km2_min_bin, max_bin_edge=cts.f_ar_km2_max_bin,
-                        step=cts.f_ar_km2_hist_step, res_var_name='flash_area_log_hist'
-                    )
-                    flash_area_hist_ds['flash_area_log_hist'].attrs.update({
-                        'long_name': f'Number of flash occurrences in log10(flash_area) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
-                        'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
-                    })
-                    ds_to_merge_list.append(flash_area_hist_ds)
+                    if generate_hists:
+                        _df['flash_area_log'] = np.log10(flash_area_km2_df)
+                        flash_area_hist_ds = xr_pd_utils.histogram_using_pandas(
+                            _df, data_var_name='flash_area_log',
+                            min_bin_edge=cts.f_ar_km2_min_bin, max_bin_edge=cts.f_ar_km2_max_bin,
+                            step=cts.f_ar_km2_hist_step, res_var_name='flash_area_log_hist'
+                        )
+                        flash_area_hist_ds['flash_area_log_hist'].attrs.update({
+                            'long_name': f'Number of flash occurrences in log10(flash_area) bin in a {grid_res}° x {grid_res}° x 1h grid cell',
+                            'comment': 'log10(flash_area) bins between 1.5 and 4.5, step between bins = 0.1'
+                        })
+                        ds_to_merge_list.append(flash_area_hist_ds)
+
+                    if generate_stats:
+                        # mean/std/percentiles on the linear (non-log) flash_area values (km2)
+                        _df['flash_area_km2'] = flash_area_km2_df.values
+                        flash_area_stats_ds = xr_pd_utils.stats_using_pandas(
+                            _df, data_var_name='flash_area_km2', res_var_prefix='flash_area')
+                        for var in flash_area_stats_ds.data_vars:
+                            flash_area_stats_ds[var].attrs['units'] = 'km2'
+                            flash_area_stats_ds[var].attrs['long_name'] = f'{var} of flash area in a {grid_res}° x {grid_res}° x 1h grid cell'
+                        ds_to_merge_list.append(flash_area_stats_ds)
 
             # merge count and hist ds with target ds
             ds_to_merge_list.append(target_ds)
@@ -301,7 +327,9 @@ def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_file
 
 
 def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
-                     grid_res_str=cts.GRID_RESOLUTION_STR, dir_list=False, overwrite=False,
+                     grid_res_str=cts.GRID_RESOLUTION_STR,
+                     generate_hists=True, generate_stats=True,
+                     dir_list=False, overwrite=False,
                      remove_temp_abi_dir=False, result_dir_path=None,
                      print_debug=False, lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                      lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX, rm_pre_regrid_file=False):
@@ -311,6 +339,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
     @param sat_name: <str> name of the satellite (only 'GOES_GLM' and 'GOES_ABI' supported for now)
     @param grid_res: <float> grid resolution
     @param grid_res_str: <str> grid resolution str (to be added to the resulting filename)
+    @param generate_hists: <bool> indicates if flash energy and flash area histograms should be generated for each grid cell
+    @param generate_stats: <bool> indicates if flash energy and flash area stast should be generated for each grid cell
     @param dir_list: <bool> if True, list received is a list of directories containing data files, NOT a list of files
     @param overwrite: <bool> overwrite file if it already exists
     @param remove_temp_abi_dir: <bool> if True, the temp directory containing all 15min hdf files will be deleted after being processed
@@ -389,6 +419,8 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                 generate_lightning_sat_hourly_regrid_file(pre_regrid_file_url=pre_regrid_file_url,
                                                           sat_name=sat_name,
                                                           grid_res=grid_res,
+                                                          generate_hists=generate_hists,
+                                                          generate_stats=generate_stats,
                                                           overwrite=overwrite, result_file_path=result_file_path,
                                                           lat_min=lat_min, lat_max=lat_max, lon_min=lon_min,
                                                           lon_max=lon_max, rm_pre_regrid_file=rm_pre_regrid_file)

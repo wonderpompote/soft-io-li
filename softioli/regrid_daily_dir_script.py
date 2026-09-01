@@ -25,6 +25,11 @@ if __name__ == '__main__':
     parser.add_argument('--regrid-res', help=f'grid resolution (float), default = {cts.GRID_RESOLUTION}',
                         default=cts.GRID_RESOLUTION, type=float)
 
+    parser.add_argument('--no-histograms', action='store_true',
+                        help="Flag to prevent the generation of histograms for each grid cells when regridding (used for flash data)")
+    parser.add_argument('--no-stats', action='store_true',
+                        help="Flag to prevent the generation of stats for each grid cells when regridding (used for flash data)")
+
     parser.add_argument('--result-dir-path',
                         help='For testing purposes, root directory in which regrid files should be stored (if None, path by default will be used)')
 
@@ -56,8 +61,13 @@ if __name__ == '__main__':
     if args.print_debug:
         print(f"launching regrid_sat_files on : {path_list}")
 
-    regrid_sat_files(path_list=path_list, sat_name=args.sat_name, dir_list=is_dir_list,
-                     overwrite=args.overwrite, rm_pre_regrid_file=args.rm_pre_regrid_files,
+    generate_hists = not args.no_histograms
+    generate_stats = not args.no_stats
+
+    regrid_sat_files(path_list=path_list, sat_name=args.sat_name,
+                     generate_hists=generate_hists, generate_stats=generate_stats,
+                     dir_list=is_dir_list, overwrite=args.overwrite,
+                     rm_pre_regrid_file=args.rm_pre_regrid_files,
                      grid_res=args.regrid_res, grid_res_str=args.regrid_res_str,
                      result_dir_path=args.result_dir_path, print_debug=args.print_debug)
 
