@@ -1,14 +1,13 @@
-from collections import defaultdict
 from datetime import datetime
 import numpy as np
 import pathlib
 import pandas as pd
-from shutil import rmtree
 import xarray as xr
 import warnings
 
+from utils.sat_utils import generate_abi_hourly_nc_file_from_15min_hdf_files
 from utils import generate_sat_hourly_file_path, generate_sat_filename_pattern, \
-    generate_sat_dirname_pattern, ABIPathParser, get_abi_coords_file, open_hdf4, get_PathParser
+    get_PathParser
 from utils import constants as cts
 from utils.constants import SAT_SETTINGS, raw_lat_cname, raw_lon_cname, flash_area_varname, flash_energy_varname, \
     attrs_to_keep
@@ -262,69 +261,6 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
     if rm_pre_regrid_file and result_file_path.exists():  # remove associated pre-regrid file to free up space
         pathlib.Path(pre_regrid_file_url).unlink()
 
-def generate_abi_hourly_nc_file_from_15min_hdf_files(path_list, remove_temp_files=False, overwrite=False, print_debug=False):
-    # pour chaque daily dir
-    if print_debug:
-        print(f'generate_abi_hourly_nc_file_from_15min_hdf_files:\npath_list={path_list}\noverwrite={overwrite}')
-    for dir_p in path_list:
-        dir_date = ABIPathParser(file_url=dir_p, regrid=False, directory=True).get_start_date_pdTimestamp(ignore_missing_start_hour=False)
-        if print_debug:
-            print(f'Directory date generate hourly pre regrid file: {dir_date}')
-        for h in range(24):
-            # get filename pattern
-            filename_pattern = generate_sat_filename_pattern(
-                sat_name=cts.GOES_SATELLITE_ABI,
-                regrid=False, hourly=False,
-                YYYY=dir_date.year, MM=f'{dir_date.month:02d}', DD=f'{dir_date.day:02d}',
-                start_HH=f'{h:02d}'
-            )
-            # get list of all 15-min files for the corresponding hour
-            h_file_list = sorted(pathlib.Path(f'{dir_p}/temp').glob(filename_pattern))
-            if not h_file_list:
-                continue
-            h_abi_ds_list = defaultdict(list)
-            hdf_file_list = defaultdict(list)
-            for h_file in h_file_list:
-                # open file + rename col names to correspond to coords_ds col names
-                with open_hdf4(str(h_file)).rename(dict(NbLines='Nlin', NbColumns='Ncol'))['Brightness_Temperature'] as abi_bTemp_da_wout_coords:
-                    # get corresponding coords file_path
-                    h_file_parser = ABIPathParser(file_url=h_file, regrid=False, hourly=False)
-                    coords_file_path = get_abi_coords_file(sat_version=h_file_parser.satellite_version, file_version=h_file_parser.file_version, print_debug=print_debug)
-                    # combine coords dataset with abi dataset
-                    with xr.open_dataset(coords_file_path)[['Latitude', 'Longitude']] as coords_ds:
-                        b_temp_w_coords_ds = coords_ds.assign(brightness_temperature=abi_bTemp_da_wout_coords)
-                        # add file timestamp
-                        b_temp_w_coords_ds = b_temp_w_coords_ds.expand_dims({
-                            'time': [h_file_parser.get_start_date_pdTimestamp(ignore_missing_start_hour=False).to_datetime64()]
-                        })
-                        b_temp_w_coords_ds.attrs = abi_bTemp_da_wout_coords.attrs
-                        b_temp_w_coords_ds = b_temp_w_coords_ds.rename_vars({'Latitude': 'latitude', 'Longitude': 'longitude'})
-                        b_temp_w_coords_ds.attrs[cts.SAT_VERSION_ATTRS_NAME] = h_file_parser.satellite_version
-                        # add ds to list corresponding to sat version
-                        h_abi_ds_list[h_file_parser.satellite_version].append(b_temp_w_coords_ds)
-                        # add hdf file name to corresponding sat version
-                        hdf_file_list[h_file_parser.satellite_version].append(h_file.name)
-            for sat, ds_list in sorted(h_abi_ds_list.items()):
-                result_hourly_filename = generate_sat_hourly_file_path(
-                                                        date=h_file_parser.start_date,
-                                                        sat_name=cts.GOES_SATELLITE_ABI, satellite=sat,
-                                                        regrid=False, dir_path=None)
-                h_abi_ds_sat = xr.merge(ds_list, combine_attrs="drop_conflicts")
-                h_abi_ds_sat.attrs[cts.SAT_VERSION_ATTRS_NAME] = sat
-                h_abi_ds_sat.attrs['raw_hdf_files'] = hdf_file_list[sat]
-                if not pathlib.Path(result_hourly_filename).exists() or (pathlib.Path(result_hourly_filename).exists() and overwrite):
-                    h_abi_ds_sat.to_netcdf(
-                        path=result_hourly_filename, mode='w',
-                        encoding={"time": {"dtype": 'float64', 'units': 'nanoseconds since 1970-01-01'}}
-                    )
-                    print(f"Saved {result_hourly_filename}")
-                else:
-                    print(f'{result_hourly_filename} already exists!')
-
-        if remove_temp_files:
-            rmtree(pathlib.Path(f'{dir_p}/temp'))
-            print(f"Deleting {dir_p}/temp directory")
-
 
 def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                      grid_res_str=cts.GRID_RESOLUTION_STR,
@@ -374,7 +310,7 @@ def regrid_sat_files(path_list, sat_name, grid_res=cts.GRID_RESOLUTION,
                 print(f'path_to_concat_into_hourly_files: {path_to_concat_into_hourly_files}')
                 print()
             if len(path_to_concat_into_hourly_files) > 0:  # concat 15min hdf files into hourly nc files
-                generate_abi_hourly_nc_file_from_15min_hdf_files(path_list=path_to_concat_into_hourly_files, print_debug=print_debug,
+                generate_abi_hourly_nc_file_from_15min_hdf_files(dir_path_list=path_to_concat_into_hourly_files, print_debug=print_debug,
                                                                  remove_temp_files=remove_temp_abi_dir, overwrite=overwrite)
     elif sat_name in cts.SUPPORTED_LI_SATELLITES_LIST:
         pass # pass because concat into hourly files already done with bash script when retrieving GLM/MTG-LI data
