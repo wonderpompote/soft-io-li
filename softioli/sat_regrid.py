@@ -4,6 +4,7 @@ import pathlib
 import pandas as pd
 import xarray as xr
 import warnings
+import flox.xarray
 
 from utils.sat_utils import generate_abi_hourly_nc_file_from_15min_hdf_files
 from utils import generate_sat_hourly_file_path, generate_sat_filename_pattern, \
@@ -206,6 +207,10 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
                                                overwrite, rm_pre_regrid_file=False,
                                                lat_min=cts.FPOUT_LAT_MIN, lat_max=cts.FPOUT_LAT_MAX,
                                                lon_min=cts.FPOUT_LON_MIN, lon_max=cts.FPOUT_LON_MAX):
+    """
+    Function to generate hourly regrid file for cloud brightness temperature
+    Only keep min brightness temperature for each grid cell
+    """
     PathParser = get_PathParser(sat_name)
     if sat_name == cts.GOES_SATELLITE_ABI:
         btemp_varname = 'brightness_temperature'
@@ -217,29 +222,47 @@ def generate_cloud_temp_sat_hourly_regrid_file(pre_regrid_file_url, sat_name, gr
     if (not result_file_path.exists()) or (result_file_path.exists() and overwrite):
         latitude = np.arange(lat_min, lat_max + grid_res, grid_res)
         longitude = np.arange(lon_min, lon_max + grid_res, grid_res)
-        lat_da = xr.DataArray(latitude, coords={"latitude": latitude}, dims=['latitude'])
-        lon_da = xr.DataArray(longitude, coords={'longitude': longitude}, dims=['longitude'])
+        n_lat, n_lon = len(latitude), len(longitude)
 
         with xr.open_dataset(pre_regrid_file_url) as pre_regrid_ds:
-            # replace longitude and latitude values with correct resolution using nearest routine
-            pre_regrid_ds['latitude'] = lat_da \
-                .sel(latitude=pre_regrid_ds['latitude'], method='nearest') \
-                .where(pre_regrid_ds['latitude'].notnull())
-            pre_regrid_ds['longitude'] = lon_da \
-                .sel(longitude=pre_regrid_ds['longitude'], method='nearest') \
-                .where(pre_regrid_ds['longitude'].notnull())
-            # convert to dataframe to be able to groupby
-            df = pre_regrid_ds.to_dataframe().reset_index()[
-                ['time', 'latitude', 'longitude', btemp_varname]]
-            # only keep mean value for each latitude, longitude, satellite, 15 min (time) group
-            df_gpby_mean = df.groupby(['time', 'longitude', 'latitude'], sort=True).mean()
-            result_ds = xr.Dataset.from_dataframe(df_gpby_mean)
-            # only keep min value for the hour
-            result_ds = result_ds.min('time')
+            lat_vals = pre_regrid_ds['latitude'].values
+            lon_vals = pre_regrid_ds['longitude'].values
+
+            # nearest target-grid value via direct arithmetic, clamped to the domain edges --
+            # equivalent to the old .sel(..., method='nearest')
+            lat_idx = np.clip(np.round((lat_vals - lat_min) / grid_res).astype(np.int64), 0, n_lat - 1)
+            lon_idx = np.clip(np.round((lon_vals - lon_min) / grid_res).astype(np.int64), 0, n_lon - 1)
+            lat_snapped = latitude[lat_idx]
+            lon_snapped = longitude[lon_idx]
+
+            # drop fill/off-disk pixels, same as the old .where(...notnull()) filter
+            not_fill = ~np.isnan(lat_vals) & ~np.isnan(lon_vals)
+            lat_snapped = np.where(not_fill, lat_snapped, np.nan)
+            lon_snapped = np.where(not_fill, lon_snapped, np.nan)
+
+            lat_snapped_da = xr.DataArray(lat_snapped, dims=pre_regrid_ds['latitude'].dims, name='latitude')
+            lon_snapped_da = xr.DataArray(lon_snapped, dims=pre_regrid_ds['longitude'].dims, name='longitude')
+
+            # mean brightness temperature per (time, latitude, longitude) grid cell.
+            # expected_groups pins the full target grid as exact labels (isbin=False, the
+            # default, since lat/lon are already snapped to exact grid values, not bins) --
+            # this also fills any grid cell with no data as NaN, replacing the old .reindex()
+            binned_mean = flox.xarray.xarray_reduce(
+                pre_regrid_ds[btemp_varname],
+                pre_regrid_ds['time'], lat_snapped_da, lon_snapped_da,
+                func='nanmean',
+                expected_groups=(None, latitude, longitude),
+                fill_value=np.nan,
+            )
+
+            # only keep min value for the hour, ignoring cells with no data in a given 15-min slice
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', category=RuntimeWarning)  # all-NaN cell across the hour
+                result_da = binned_mean.min('time', skipna=True)
+
+            result_ds = result_da.to_dataset(name=btemp_varname)
             # add time dimension
             result_ds = result_ds.expand_dims({'time': [pre_regrid_ds.time[0].values]})
-            # ensure all latitude and longitude values are included to avoid non monotonic latitude error when opening multiple files with different versions
-            result_ds = result_ds.reindex(latitude=latitude, longitude=longitude, fill_value=np.nan)
             # add atributes
             new_attrs = {
                 'grid_resolution': f'{grid_res}° x {grid_res}°',

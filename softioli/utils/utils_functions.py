@@ -121,15 +121,19 @@ def get_list_of_paths_between_two_values(dirpath, start_name, end_name, glob_pat
         return sorted(res_list)
 
 
-def open_hdf4(url):
+def open_hdf4(url, vars_to_keep=None):
     """
     Takes hdf4 file url, opens it and returns it as an xarray dataset (keeping the attributes)
     @param url: <str> path to the hdf4 file
+    @param vars_to_keep: <list> of <str>, variables to keep in the hdf file if only want to keep a subset
     @return: <xarray.Dataset>
     """
     hdf = SD(str(url))
     dic = {}
     for dsets, (dims, *_) in hdf.datasets().items():
+        # skip unwanted variables if needed
+        if vars_to_keep is not None and dsets not in vars_to_keep:
+            continue
         hdf_v = hdf.select(dsets)
         fill_value = hdf_v.getfillvalue()
         val = hdf_v.get()
