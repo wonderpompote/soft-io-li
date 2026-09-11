@@ -46,9 +46,10 @@ fi
 date
 echo "--- START regrid ---"
 echo "Satellite name: $SAT_NAME"
-echo "File to regrid: $ARGS"
+echo "File/dir to regrid: $ARGS"
+echo "Running: /home/patj/miniconda3/envs/softioli-src/bin/python /home/patj/SOFT-IO-LI/src/softioli/regrid_daily_dir_script.py --sat-name $SAT_NAME $path_type_args $ARGS $EXTRA_PYTHON_ARGS --print-debug"
 
-/home/patj/miniconda3/envs/softioli-src/bin/python /home/patj/SOFT-IO-LI/src/softioli/regrid_daily_dir_script.py --sat-name $SAT_NAME $path_type_args $ARGS $EXTRA_PYTHON_ARGS --print-debug
+/home/patj/miniconda3/envs/softioli-src/bin/python -u /home/patj/SOFT-IO-LI/src/softioli/regrid_daily_dir_script.py --sat-name $SAT_NAME $path_type_args $ARGS $EXTRA_PYTHON_ARGS --print-debug
 
 echo "----------------------"
 date
